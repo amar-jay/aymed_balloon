@@ -4,6 +4,10 @@ import { Badge } from '@renderer/components/ui/badge'
 import { Empty, EmptyMedia, EmptyTitle, EmptyDescription } from '@renderer/components/ui/empty'
 import { Label } from '@renderer/components/ui/label'
 import { cn } from './lib/utils'
+// import logo
+import logo from '@renderer/assets/logo.jpeg?asset'
+// get sync icon from lucide-react
+import { RefreshCcw } from 'lucide-react'
 
 interface SerialDevice {
   path: string
@@ -48,7 +52,7 @@ export function SerialPortMonitor(): React.JSX.Element {
   // Load available USB devices
   const loadDevices = React.useCallback(async (): Promise<void> => {
     setLoading(true)
-    setStatus('Loading devices...')
+    // setStatus('Loading devices...')
     try {
       const usbDevices = await window.api.SerialfindUSBDevices()
       setDevices(usbDevices)
@@ -132,7 +136,7 @@ export function SerialPortMonitor(): React.JSX.Element {
       await window.api.Serialdisconnect(connectionId)
       setConnectionId(null)
       setIsConnected(false)
-      setStatus('Disconnected')
+      setStatus(`Found ${devices.length} USB device(s)`)
       addReceivedData('Disconnected from device')
     } catch (error) {
       addReceivedData(`Disconnect error: ${(error as Error).message}`)
@@ -146,35 +150,43 @@ export function SerialPortMonitor(): React.JSX.Element {
     setReceivedData([])
   }
 
-  // Load devices on component mount
+  // Load devices on component mount and
+  // refresh devices every 5 seconds
   React.useEffect(() => {
     loadDevices()
+    const interval = setInterval(() => {
+      loadDevices()
+    }, 5000)
+    return () => clearInterval(interval)
   }, [loadDevices])
-
   return (
     <div className="h-screen w-screen bg-gray-50 flex flex-col">
       {/* Header */}
-      <header className="px-6 py-3 ">
+      <header className="px-6 py-1">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-10">
+            <img
+              src={logo}
+              alt="Aymed Medikal Teknoloji Logo"
+              className="h-10 w-10 rounded-full object-cover"
+            />
             {/* <h1 className="text-2xl font-bold text-gray-900">Serial Port Monitor</h1> */}
-            <span className="text-sm text-gray-600">{status}</span>
-            <div className="flex items-center gap-3">
-              <Badge variant={isConnected ? 'default' : 'secondary'}>
-                {isConnected ? 'Connected' : 'Disconnected'}
-              </Badge>
-              {connectionId && (
+            <div>
+              <span className="text-sm text-gray-600">{status}</span>
+              <div className="flex items-center gap-3">
+                {/* <Badge variant={isConnected ? 'default' : 'secondary'}>
+                  {isConnected ? 'Connected' : 'Disconnected'}
+                </Badge> */}
                 <span className="text-xs text-gray-500 font-mono">
-                  ID: {connectionId.slice(-8)}
+                  {connectionId ? `ID: ${connectionId.slice(-8)}` : 'No Connected Device'}
                 </span>
-              )}
+              </div>
             </div>
           </div>
           <div className="flex gap-2">
             {devices.length > 0 && (
               <Button
                 onClick={isConnected ? disconnect : connectToFirstDevice}
-                disabled={loading}
                 className={cn(
                   'text-white',
                   isConnected ? 'bg-red-700 hover:bg-red-800' : 'bg-green-700 hover:bg-green-800'
@@ -186,7 +198,7 @@ export function SerialPortMonitor(): React.JSX.Element {
             )}
 
             <Button onClick={loadDevices} disabled={loading} variant="outline" size="sm">
-              {loading ? 'Loading...' : 'Refresh Devices'}
+              <RefreshCcw className={cn('size-4', loading ? 'animate-spin text-gray-500' : '')} />
             </Button>
           </div>
         </div>
@@ -199,7 +211,7 @@ export function SerialPortMonitor(): React.JSX.Element {
           {/* Device List */}
           <div className="p-4 flex-1 border-b border-gray-200">
             <h2 className="text-lg font-semibold mb-3 text-gray-900">USB Devices</h2>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
+            <div className="space-y-2">
               {devices.length === 0 ? (
                 <Empty>
                   <EmptyMedia variant="icon">🔌</EmptyMedia>
@@ -228,7 +240,7 @@ export function SerialPortMonitor(): React.JSX.Element {
                       </div>
                       <Button
                         onClick={() => connectToDevice(device.path)}
-                        disabled={loading || isConnected}
+                        disabled={isConnected}
                         size="sm"
                         variant="default"
                         className="shrink-0"
