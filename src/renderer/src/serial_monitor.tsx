@@ -1,10 +1,9 @@
-/* eslint-disable prettier/prettier */
 import * as React from 'react'
 import { Button } from '@renderer/components/ui/button'
 import { Badge } from '@renderer/components/ui/badge'
-import { Separator } from '@renderer/components/ui/separator'
 import { Empty, EmptyMedia, EmptyTitle, EmptyDescription } from '@renderer/components/ui/empty'
 import { Label } from '@renderer/components/ui/label'
+import { cn } from './lib/utils'
 
 interface SerialDevice {
   path: string
@@ -155,15 +154,15 @@ export function SerialPortMonitor(): React.JSX.Element {
   return (
     <div className="h-screen w-screen bg-gray-50 flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
+      <header className="px-6 py-3 ">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold text-gray-900">Serial Port Monitor</h1>
+            {/* <h1 className="text-2xl font-bold text-gray-900">Serial Port Monitor</h1> */}
+            <span className="text-sm text-gray-600">{status}</span>
             <div className="flex items-center gap-3">
               <Badge variant={isConnected ? 'default' : 'secondary'}>
                 {isConnected ? 'Connected' : 'Disconnected'}
               </Badge>
-              <span className="text-sm text-gray-600">{status}</span>
               {connectionId && (
                 <span className="text-xs text-gray-500 font-mono">
                   ID: {connectionId.slice(-8)}
@@ -171,22 +170,22 @@ export function SerialPortMonitor(): React.JSX.Element {
               )}
             </div>
           </div>
-          <div className='gap-4 flex items-center'>
+          <div className="flex gap-2">
             {devices.length > 0 && (
               <Button
-                onClick={connectToFirstDevice}
-                disabled={loading || isConnected}
-                variant="default"
+                onClick={isConnected ? disconnect : connectToFirstDevice}
+                disabled={loading}
+                className={cn(
+                  'text-white',
+                  isConnected ? 'bg-red-700 hover:bg-red-800' : 'bg-green-700 hover:bg-green-800'
+                )}
+                size="sm"
               >
-                Quick Connect
+                {isConnected ? 'Disconnect' : 'Quick Connect'}
               </Button>
             )}
-            <Button
-              onClick={loadDevices}
-              disabled={loading}
-              variant="outline"
-              size="sm"
-            >
+
+            <Button onClick={loadDevices} disabled={loading} variant="outline" size="sm">
               {loading ? 'Loading...' : 'Refresh Devices'}
             </Button>
           </div>
@@ -196,11 +195,11 @@ export function SerialPortMonitor(): React.JSX.Element {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
-        <aside className="w-80 bg-white border-r border-gray-200 flex flex-col">
+        <aside className="w-80 flex flex-col">
           {/* Device List */}
           <div className="p-4 flex-1 border-b border-gray-200">
             <h2 className="text-lg font-semibold mb-3 text-gray-900">USB Devices</h2>
-            <div className="space-y-2">
+            <div className="space-y-2 max-h-48 overflow-y-auto">
               {devices.length === 0 ? (
                 <Empty>
                   <EmptyMedia variant="icon">🔌</EmptyMedia>
@@ -241,34 +240,22 @@ export function SerialPortMonitor(): React.JSX.Element {
                 ))
               )}
             </div>
-            {devices.length > 0 && (
-              <Button
-                onClick={connectToFirstDevice}
-                disabled={loading || isConnected}
-                className="w-full mt-3"
-                variant="secondary"
-              >
-                Quick Connect (First Device)
-              </Button>
-            )}
           </div>
 
           {/* Command Interface */}
-          <div className="p-4 flex flex-col bg-gray-50 rounded-lg border border-gray-100 gap-3">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg font-semibold text-gray-900">Command Interface</h3>
-                {isConnected && <Badge variant="outline">Active</Badge>}
-              </div>
+          <div className="p-4 flex flex-col pb-10">
+            <div className="flex items-center gap-2 mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Command Interface</h3>
+              {isConnected && <Badge variant="outline">Active</Badge>}
             </div>
 
-            <div className="flex-1 flex flex-col gap-3">
+            <div className="space-y-4 flex-1 flex flex-col">
               {/* Command Input */}
-              <div>
-                <Label htmlFor="command-input" className="text-sm font-medium text-gray-700">
+              <div className="space-y-3">
+                <Label htmlFor="command-input" className="text-sm font-medium">
                   Send Command
                 </Label>
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex gap-2 px-0.5 relative">
                   <input
                     id="command-input"
                     type="text"
@@ -276,15 +263,14 @@ export function SerialPortMonitor(): React.JSX.Element {
                     onChange={(e) => setCommand(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && sendCommand()}
                     placeholder="Enter command to send..."
-                    className="flex-1 px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm bg-white"
+                    className="flex-1 px-1 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                     disabled={!isConnected || loading}
                   />
                   <Button
                     onClick={sendCommand}
                     disabled={!isConnected || loading || !command.trim()}
                     size="sm"
-                    variant="secondary"
-                    className="min-w-[80px]"
+                    variant="default"
                   >
                     Send
                   </Button>
@@ -292,32 +278,22 @@ export function SerialPortMonitor(): React.JSX.Element {
               </div>
 
               {/* Control Buttons */}
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Button
-                  onClick={disconnect}
-                  disabled={!isConnected || loading}
-                  variant="destructive"
-                  size="sm"
-                  className="w-full sm:flex-1"
-                >
-                  Disconnect
-                </Button>
+              <div className="flex gap-3 py-2">
                 <Button
                   onClick={clearData}
                   disabled={receivedData.length === 0}
                   variant="outline"
-                  className="w-full sm:flex-1"
                   size="sm"
+                  className="flex-1"
                 >
-                  Clear
+                  Clear Console
                 </Button>
               </div>
 
               {/* Quick Commands */}
-              <div className="pt-2">
-                <Separator className="my-4" />
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Quick Commands</h4>
-                <div className="grid grid-cols-3 gap-2">
+              <div className="border-t border-gray-200 pt-4 mt-2">
+                <h4 className="text-lg font-extrabold text-gray-700 pb-1 ">Quick Commands</h4>
+                <div className="grid grid-cols-2 gap-2">
                   {['status', 'help', 'reset', 'version', 'ping', 'info'].map((cmd) => (
                     <Button
                       key={cmd}
@@ -327,8 +303,8 @@ export function SerialPortMonitor(): React.JSX.Element {
                       }}
                       disabled={!isConnected || loading}
                       size="sm"
-                      variant="ghost"
-                      className="text-xs h-8 text-gray-700 hover:bg-gray-100"
+                      variant="outline"
+                      className="text-xs h-8"
                     >
                       {cmd}
                     </Button>
@@ -340,16 +316,22 @@ export function SerialPortMonitor(): React.JSX.Element {
         </aside>
 
         {/* Main Console Area */}
-        <main className="flex-1 flex flex-col bg-gray-900">
+        <main className="flex-1 flex flex-col bg-[#1a1a1a] rounded-tl-2xl">
           {/* Console Header */}
-          <div className="bg-gray-800 border-b border-gray-700 px-4 py-3">
+          <div className="px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="text-green-400 font-mono text-sm">
                   <span className="text-gray-400 pr-3">Serial Console</span>
                   {isConnected && (
-                    <Badge variant="secondary" className="text-xs bg-green-400">
-                      Connected
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        'ml-6 text-xs',
+                        isConnected ? 'bg-green-500/60' : 'bg-green-900/30'
+                      )}
+                    >
+                      {isConnected ? 'Connected' : 'Disconnected'}
                     </Badge>
                   )}
                 </div>
@@ -363,7 +345,7 @@ export function SerialPortMonitor(): React.JSX.Element {
           {/* Console Output */}
           <div className="flex-1 p-4 overflow-hidden">
             <div
-              className="bg-black rounded-lg p-4 font-mono text-sm text-green-400 h-full overflow-y-auto border border-gray-700"
+              className="bg-[#222] rounded-lg p-4 font-mono text-sm h-full overflow-y-auto border border-[#333]"
               style={{ minHeight: '400px' }}
             >
               {receivedData.length === 0 ? (
@@ -379,11 +361,11 @@ export function SerialPortMonitor(): React.JSX.Element {
                     <div
                       key={index}
                       className={`whitespace-pre-wrap leading-relaxed ${
-                        data.includes('[ERROR]')
+                        data.includes('[ERROR]') || data.includes('error') || data.includes('Error')
                           ? 'text-red-400'
                           : data.startsWith('>')
                             ? 'text-blue-400'
-                            : 'text-green-400'
+                            : 'text-gray-300'
                       }`}
                     >
                       {data}
