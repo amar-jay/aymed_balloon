@@ -159,6 +159,20 @@ export function SerialPortMonitor(): React.JSX.Element {
     }, 5000)
     return () => clearInterval(interval)
   }, [loadDevices])
+  React.useEffect(() => {
+    // Disable Ctrl+R reload and refresh devices instead
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.ctrlKey && event.key === 'r') {
+        event.preventDefault()
+        loadDevices()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [loadDevices])
   return (
     <div className="h-screen w-screen bg-gray-50 flex flex-col">
       {/* Header */}
