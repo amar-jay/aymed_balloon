@@ -36,13 +36,13 @@ export interface SystemConfig {
   bottomTempThreshold: number
 
   /** Temperature sensor 1 offset calibration (100-255)
-	 * TODO: remove not necessary
-	 */
+   * TODO: remove not necessary
+   */
   temp1Offset: number
 
-  /** Temperature sensor 2 offset calibration (100-255) 
-	 * TODO: remove not necessary
-	*/
+  /** Temperature sensor 2 offset calibration (100-255)
+   * TODO: remove not necessary
+   */
   temp2Offset: number
 
   /** Menu auto-reset delay (seconds, 10-60) */

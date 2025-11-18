@@ -33,6 +33,7 @@
  */
 
 import { SerialPort, ReadlineParser } from 'serialport'
+import { SystemConfig } from '../preload/typings'
 
 export interface SerialDevice {
   path: string
@@ -51,6 +52,7 @@ interface ConnectionInfo {
   onData?: (data: string) => void
   onError?: (error: Error) => void
   dataBuffer: string[] // Buffer to store received data
+  config?: SystemConfig
 }
 
 // Store active connections
@@ -243,12 +245,53 @@ export function isDeviceConnected(connectionId: string): boolean {
  * Within a config string, it is structured as such:
  * CONFIG: key1=value1;key2=value2;...
  * Values can be strings, numbers(float) or booleans (true/false)
- * @param configString 
- * @returns 
+ * @param configString
+ * @returns
  */
-function parseConfig(configString: string): Record<string, any> {
-	const config:SystemConfig = {}
-	return config
+function parseConfig(connection: ConnectionInfo) {
+  const KEYS = [
+    'opTime',
+    'coTime',
+    'topTempThreshold',
+    'bottomTempThreshold',
+    'temp1Offset',
+    'temp2Offset',
+    'menuResetDelay',
+    'timeCalibration',
+    'maxTempError',
+    'vccVoltageError',
+    'powerTempError',
+    'powerVccErrorEnabled',
+    'sysErrorEnabled',
+    'voltageCalibration',
+    'heaterErrorEnable',
+    'coolingDelay'
+  ]
+
+  // find string starting with CONFIG:
+  const configLine = connection.dataBuffer.find((str) => str.startsWith('CONFIG:'))
+  let configString
+
+  if (configLine) {
+    const config: Partial<SystemConfig> = {}
+    configString = configLine.replace('CONFIG:', '').trim()
+    const pairs = configString.split(';')
+    for (const pair of pairs) {
+      if (pair.includes('=')) {
+        const [key, value] = pair.split('=').map((s) => s.trim())
+        // Determine type
+        const v =
+          value == 'T' ? true : value == 'F' ? false : isNaN(Number(value)) ? value : Number(value)
+        if (!KEYS.includes(key)) continue
+        config[key] = v
+      }
+    }
+    if (Object.keys(config).length === KEYS.length) {
+      connection.config = config as SystemConfig
+    } else {
+      console.warn('[Serial] Incomplete config received:', configString)
+    }
+  }
 }
 
 /**
@@ -264,6 +307,8 @@ export function readData(connectionId: string, clearBuffer: boolean = true): str
   }
 
   console.log('[Serial] Reading buffer, current size:', connection.dataBuffer.length) // Debug log
+  parseConfig(connection) // try to parse config before reading data
+
   const data = [...connection.dataBuffer]
   if (clearBuffer) {
     connection.dataBuffer = []
@@ -298,6 +343,18 @@ export function clearBuffer(connectionId: string): void {
     throw new Error(`Connection ${connectionId} not found`)
   }
   connection.dataBuffer = []
+}
+
+/**
+ * get the system config from a connection
+ * @param connectionId The connection ID returned by connect()
+ */
+export function getSystemConfig(connectionId: string): SystemConfig | null {
+  const connection = activeConnections.get(connectionId)
+  if (!connection) {
+    throw new Error(`Connection ${connectionId} not found`)
+  }
+  return connection.config || null
 }
 
 /**
