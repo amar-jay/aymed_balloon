@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { toast } from 'sonner'
 export interface SerialDevice {
   path: string
   manufacturer?: string
@@ -48,7 +49,7 @@ export const useSerial = () => {
 
   // Load available USB devices
   const loadDevices = React.useCallback(async (): Promise<void> => {
-    setLoading(true)
+    // setLoading(true)
     // setStatus('Loading devices...')
     try {
       const usbDevices = await window.api.SerialfindUSBDevices()
@@ -58,7 +59,7 @@ export const useSerial = () => {
       setStatus('Error loading devices')
       addReceivedData(`Error: ${(error as Error).message}`)
     } finally {
-      setLoading(false)
+      // setLoading(false)
     }
   }, [addReceivedData])
 
@@ -66,9 +67,17 @@ export const useSerial = () => {
   const connectToDevice = async (devicePath: string): Promise<void> => {
     setLoading(true)
     setStatus('Connecting...')
+		const p = toast.promise(
+			window.api.Serialconnect(devicePath, baudrate),
+			{
+				loading: 'Connecting to device...',
+				success: 'Connected to device successfully',
+				error: `Error connecting to device ${devicePath}`
+			}
+		)
     try {
       // Don't pass callbacks - we'll use buffer reading instead
-      const connId = await window.api.Serialconnect(devicePath, baudrate)
+      const connId = await p.unwrap()
       setConnectionId(connId)
       setIsConnected(true)
       setStatus(`Connected to ${devicePath}`)
@@ -91,9 +100,19 @@ export const useSerial = () => {
       setConnectionId(connId)
       setIsConnected(true)
       setStatus('Connected to first available device')
+      toast.success(
+        "Connected to device successfully", {
+          description: `Connected to first available USB device successfully`
+        }
+      )
       addReceivedData('Connected to first available USB device')
     } catch (error) {
       setStatus('Connection failed')
+      toast.error(
+        "Connection failed", {
+          description: `Connection error: ${(error as Error).message}`
+        }
+      )
       addReceivedData(`Connection error: ${(error as Error).message}`)
     } finally {
       setLoading(false)
@@ -127,9 +146,13 @@ export const useSerial = () => {
       setConnectionId(null)
       setIsConnected(false)
       setStatus(`Found ${devices.length} USB device(s)`)
+			toast.success("Device disconnected successfully")
       addReceivedData('Disconnected from device')
     } catch (error) {
       addReceivedData(`Disconnect error: ${(error as Error).message}`)
+			toast.error("Device disconnected failed", {
+				description: `Disconnect error: ${(error as Error).message}`
+			})
     } finally {
       setLoading(false)
     }

@@ -130,7 +130,7 @@ export interface ErrorStatus {
   description: string
 
   /** Timestamp of error occurrence */
-  timestamp: Date
+  timestamp: number 
 
   /** Is system currently in error state */
   hasError: boolean
