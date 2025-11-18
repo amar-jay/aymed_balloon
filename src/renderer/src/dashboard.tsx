@@ -118,7 +118,7 @@ export default function VoltageCard({power}: {power: {
 	voltage: number,
 	voltageOk: boolean
 }}) {
-  const canvasRef = useRef(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -127,6 +127,7 @@ export default function VoltageCard({power}: {power: {
     const ctx = canvas.getContext('2d');
     const width = canvas.width;
     const height = canvas.height;
+		if (ctx == null) return;
 
     ctx.clearRect(0, 0, width, height);
 

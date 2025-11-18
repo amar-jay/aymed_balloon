@@ -35,7 +35,7 @@ function Profile({
           </Avatar>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel>My Account</DropdownMenuLabel>
+          <DropdownMenuLabel className='text-blue-800'>Aymed Medikal Teknoloji</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setSelectedPage('dashboard')}>
             <span>Dashboard</span>

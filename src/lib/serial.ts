@@ -33,7 +33,7 @@
  */
 
 import { SerialPort, ReadlineParser } from 'serialport'
-import { SystemConfig, SystemStatus } from '../preload/typings'
+import { ErrorCode, SystemConfig, SystemStatus } from '../preload/typings'
 
 export interface SerialDevice {
   path: string
@@ -308,7 +308,7 @@ function parseStatus(connection: ConnectionInfo) {
 	if (statusLine.startsWith('STATUS:')) {
 		const status: Partial<SystemStatus> = {}
 		statusString = statusLine.replace('STATUS:', '').trim()
-		const statusPartitions = statusString.split(' ')
+		const statusPartitions = statusString.trim().split(' ')
 		for (let partition of statusPartitions) {
 			// work on the temp partition first
 			if (partition.startsWith("TEMP:")) {
@@ -335,6 +335,26 @@ function parseStatus(connection: ConnectionInfo) {
 						status.operation[key] = castConfigValue(value)
 					}
 				})
+			}
+
+			if (partition.startsWith("POWER:")) {
+				const value = partition.replace("POWER:", "").trim()
+				status.power  = {} as SystemStatus['power']
+				if (isNaN(Number(value))) {
+					status.error={
+						code: ErrorCode.POWER_SUPPLY_NTC,
+						message: "Invalid voltage value",
+						description: "Invalid voltage value received from device",
+						timestamp: Date.now(),
+						hasError: true,
+					}
+					status.power.powerTempOk = false
+				} else if (Number(value) < 0) {
+					status.power.voltageOk = false
+				} else{
+					status.power.voltage = Number(value)
+				}
+
 			}
 
 			if (partition.startsWith("ERROR:")) {
