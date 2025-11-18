@@ -6,173 +6,49 @@ import { Label } from '@renderer/components/ui/label'
 import { cn } from './lib/utils'
 // import logo
 import logo from '@renderer/assets/logo.jpeg?asset'
+import usb from '@renderer/assets/usb2.svg?asset'
 // get sync icon from lucide-react
 import { RefreshCcw } from 'lucide-react'
+import { SerialDevice } from './use-serial'
+import { Profile } from './components/profile'
 
-interface SerialDevice {
-  path: string
-  manufacturer?: string
-  serialNumber?: string
-  pnpId?: string
-  locationId?: string
-  productId?: string
-  vendorId?: string
-}
-
-export function SerialPortMonitor(): React.JSX.Element {
-  const [devices, setDevices] = React.useState<SerialDevice[]>([])
-  const [connectionId, setConnectionId] = React.useState<string | null>(null)
-  const [isConnected, setIsConnected] = React.useState(false)
-  const [receivedData, setReceivedData] = React.useState<string[]>([])
-  const [command, setCommand] = React.useState('')
-  const [status, setStatus] = React.useState('Ready')
-  const [loading, setLoading] = React.useState(false)
-
-  // Function to add data to the received data list
-  const addReceivedData = React.useCallback((data: string) => {
-    setReceivedData((prev) => [...prev.slice(-49), data]) // Keep last 50 messages
-  }, [])
-
-  // Function to handle serial data reception
-  const handleSerialData = React.useCallback(
-    (data: string) => {
-      addReceivedData(`[${new Date().toLocaleTimeString()}] ${data}`)
-    },
-    [addReceivedData]
-  )
-
-  // Function to handle serial errors
-  const handleSerialError = React.useCallback(
-    (error: Error) => {
-      addReceivedData(`[ERROR] ${error.message}`)
-    },
-    [addReceivedData]
-  )
-
-  // Load available USB devices
-  const loadDevices = React.useCallback(async (): Promise<void> => {
-    setLoading(true)
-    // setStatus('Loading devices...')
-    try {
-      const usbDevices = await window.api.SerialfindUSBDevices()
-      setDevices(usbDevices)
-      setStatus(`Found ${usbDevices.length} USB device(s)`)
-    } catch (error) {
-      setStatus('Error loading devices')
-      addReceivedData(`Error: ${(error as Error).message}`)
-    } finally {
-      setLoading(false)
-    }
-  }, [addReceivedData])
-
-  // Connect to a device
-  const connectToDevice = async (devicePath: string): Promise<void> => {
-    setLoading(true)
-    setStatus('Connecting...')
-    try {
-      const connId = await window.api.Serialconnect(
-        devicePath,
-        9600,
-        handleSerialData,
-        handleSerialError
-      )
-      setConnectionId(connId)
-      setIsConnected(true)
-      setStatus(`Connected to ${devicePath}`)
-      addReceivedData(`Connected to ${devicePath}`)
-    } catch (error) {
-      setStatus('Connection failed')
-      addReceivedData(`Connection error: ${(error as Error).message}`)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Connect to first available device
-  const connectToFirstDevice = async (): Promise<void> => {
-    setLoading(true)
-    setStatus('Connecting to first device...')
-    try {
-      const connId = await window.api.SerialconnectToFirstUSBDevice(
-        9600,
-        handleSerialData,
-        handleSerialError
-      )
-      setConnectionId(connId)
-      setIsConnected(true)
-      setStatus('Connected to first available device')
-      addReceivedData('Connected to first available USB device')
-    } catch (error) {
-      setStatus('Connection failed')
-      addReceivedData(`Connection error: ${(error as Error).message}`)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Send command
-  const sendCommand = async (): Promise<void> => {
-    if (!connectionId || !command.trim()) return
-
-    setLoading(true)
-    try {
-      await window.api.SerialsendCommand(connectionId, command)
-      addReceivedData(`> ${command}`)
-      setCommand('')
-    } catch (error) {
-      addReceivedData(`Send error: ${(error as Error).message}`)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Disconnect
-  const disconnect = async (): Promise<void> => {
-    if (!connectionId) return
-
-    setLoading(true)
-    setStatus('Disconnecting...')
-    try {
-      await window.api.Serialdisconnect(connectionId)
-      setConnectionId(null)
-      setIsConnected(false)
-      setStatus(`Found ${devices.length} USB device(s)`)
-      addReceivedData('Disconnected from device')
-    } catch (error) {
-      addReceivedData(`Disconnect error: ${(error as Error).message}`)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Clear received data
-  const clearData = (): void => {
-    setReceivedData([])
-  }
-
-  // Load devices on component mount and
-  // refresh devices every 5 seconds
-  React.useEffect(() => {
-    loadDevices()
-    const interval = setInterval(() => {
-      loadDevices()
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [loadDevices])
-  React.useEffect(() => {
-    // Disable Ctrl+R reload and refresh devices instead
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.ctrlKey && event.key === 'r') {
-        event.preventDefault()
-        loadDevices()
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [loadDevices])
+function MainLayout({
+  children,
+  connectionId,
+  command,
+  devices,
+  isConnected,
+  loading,
+  receivedData,
+  status,
+  selectedPage,
+  clearData,
+  connectToDevice,
+  connectToFirstDevice,
+  disconnect,
+  loadDevices,
+  sendCommand,
+  setCommand,
+  setSelectedPage
+}: {
+  children: React.ReactNode
+  devices: SerialDevice[]
+  connectionId: string | null
+  isConnected: boolean
+  receivedData: string[]
+  command: string
+  loading: boolean
+  status: string
+  selectedPage: 'serial-monitor' | 'dashboard'
+  clearData: () => void
+  connectToDevice: (devicePath: string) => Promise<void>
+  connectToFirstDevice: () => Promise<void>
+  disconnect: () => Promise<void>
+  loadDevices: () => Promise<void>
+  sendCommand: () => Promise<void>
+  setCommand: React.Dispatch<React.SetStateAction<string>>
+  setSelectedPage: React.Dispatch<React.SetStateAction<'serial-monitor' | 'dashboard'>>
+}): React.JSX.Element {
   return (
     <div className="h-screen w-screen bg-gray-50 flex flex-col">
       {/* Header */}
@@ -197,7 +73,7 @@ export function SerialPortMonitor(): React.JSX.Element {
               </div>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-3 items-center">
             {devices.length > 0 && (
               <Button
                 onClick={isConnected ? disconnect : connectToFirstDevice}
@@ -214,6 +90,8 @@ export function SerialPortMonitor(): React.JSX.Element {
             <Button onClick={loadDevices} disabled={loading} variant="outline" size="sm">
               <RefreshCcw className={cn('size-4', loading ? 'animate-spin text-gray-500' : '')} />
             </Button>
+
+            <Profile selectedPage={selectedPage} setSelectedPage={setSelectedPage} />
           </div>
         </div>
       </header>
@@ -228,7 +106,13 @@ export function SerialPortMonitor(): React.JSX.Element {
             <div className="space-y-2">
               {devices.length === 0 ? (
                 <Empty>
-                  <EmptyMedia variant="icon">🔌</EmptyMedia>
+                  <EmptyMedia variant="icon">
+                    <img
+                      src={usb}
+                      alt="Aymed Medikal Teknoloji Logo"
+                      className="h-6 w-6 rounded-full object-cover opacity-25"
+                    />
+                  </EmptyMedia>
                   <EmptyTitle>No USB devices found</EmptyTitle>
                   <EmptyDescription>Connect a serial device and refresh</EmptyDescription>
                 </Empty>
@@ -340,71 +224,87 @@ export function SerialPortMonitor(): React.JSX.Element {
             </div>
           </div>
         </aside>
-
-        {/* Main Console Area */}
-        <main className="flex-1 flex flex-col bg-[#1a1a1a] rounded-tl-2xl">
-          {/* Console Header */}
-          <div className="px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="text-green-400 font-mono text-sm">
-                  <span className="text-gray-400 pr-3">Serial Console</span>
-                  {isConnected && (
-                    <Badge
-                      variant="secondary"
-                      className={cn(
-                        'ml-6 text-xs',
-                        isConnected ? 'bg-green-500/60' : 'bg-green-900/30'
-                      )}
-                    >
-                      {isConnected ? 'Connected' : 'Disconnected'}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-              <div className="text-xs text-gray-400">
-                {receivedData.length} lines • Auto-scroll enabled
-              </div>
-            </div>
-          </div>
-
-          {/* Console Output */}
-          <div className="flex-1 p-4 overflow-hidden">
-            <div
-              className="bg-[#222] rounded-lg p-4 font-mono text-sm h-full overflow-y-auto border border-[#333]"
-              style={{ minHeight: '400px' }}
-            >
-              {receivedData.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-gray-500">
-                  <div className="text-center">
-                    <p className="text-lg">Serial Console Output</p>
-                    <p className="text-sm mt-2">Connect to a device to start receiving data</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {receivedData.map((data, index) => (
-                    <div
-                      key={index}
-                      className={`whitespace-pre-wrap leading-relaxed ${
-                        data.includes('[ERROR]') || data.includes('error') || data.includes('Error')
-                          ? 'text-red-400'
-                          : data.startsWith('>')
-                            ? 'text-blue-400'
-                            : 'text-gray-300'
-                      }`}
-                    >
-                      {data}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </main>
+        {children}
       </div>
     </div>
   )
 }
 
-export default SerialPortMonitor
+export function Main({
+  isConnected,
+  receivedData
+}: {
+  isConnected: boolean
+  receivedData: string[]
+}) {
+  return (
+    <main className="flex-1 flex flex-col bg-[#1a1a1a] rounded-tl-2xl">
+      {/* Main Console Area */}
+      {/* Console Header */}
+      <div className="px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="text-green-400 font-mono text-sm">
+              <span className="text-gray-400 pr-3">Serial Console</span>
+              {isConnected && (
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    'ml-6 text-xs',
+                    isConnected ? 'bg-green-500/60' : 'bg-green-900/30'
+                  )}
+                >
+                  {isConnected ? 'Connected' : 'Disconnected'}
+                </Badge>
+              )}
+            </div>
+          </div>
+          <div className="text-xs text-gray-400">
+            {receivedData.length} lines • Auto-scroll enabled
+          </div>
+        </div>
+      </div>
+
+      {/* Console Output */}
+      <div className="flex-1 p-4 overflow-hidden">
+        <div
+          className="bg-[#222] rounded-lg p-4 font-mono text-sm h-full overflow-y-auto border border-[#333]"
+          style={{ minHeight: '400px' }}
+        >
+          {receivedData.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-gray-500">
+              <div className="text-center">
+                <p className="text-lg">Serial Console Output</p>
+                <p className="text-sm mt-2">Connect to a device to start receiving data</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {receivedData.map((data, index) => (
+                <div
+                  key={index}
+                  className={`whitespace-pre-wrap leading-relaxed ${
+                    data.includes('[ERROR]') || data.includes('error') || data.includes('Error')
+                      ? 'text-red-400'
+                      : data.includes('[WARN]') ||
+                          data.includes('warn') ||
+                          data.includes('Warn') ||
+                          data.includes('<wrn>')
+                        ? 'text-yellow-400'
+                        : data.startsWith('>')
+                          ? 'text-blue-400'
+                          : 'text-gray-300'
+                  }`}
+                >
+                  {data}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </main>
+  )
+}
+
+export { MainLayout }

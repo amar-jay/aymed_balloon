@@ -10,10 +10,17 @@ function createWindow(): void {
     height: 670,
     show: false,
     autoHideMenuBar: true,
+    minWidth: 1280,
+    minHeight: 720,
+    // titleBarStyle: 'hidden',
+    // expose window controls in Windows/Linux
+    // ...(process.platform !== 'darwin' ? { titleBarOverlay: true } : {}),
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      // Enable persistent storage for localStorage
+      partition: 'persist:main'
     }
   })
 

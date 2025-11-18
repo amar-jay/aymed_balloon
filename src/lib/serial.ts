@@ -50,6 +50,7 @@ interface ConnectionInfo {
   devicePath: string
   onData?: (data: string) => void
   onError?: (error: Error) => void
+  dataBuffer: string[] // Buffer to store received data
 }
 
 // Store active connections
@@ -83,7 +84,7 @@ export async function listPorts(): Promise<SerialDevice[]> {
 }
 
 /**
- * Find USB serial devices (ACM* or USB* patterns)
+ * Find serial devices (USB on Linux/macOS, COM on Windows)
  */
 export async function findUSBDevices(): Promise<SerialDevice[]> {
   const ports = await listPorts()
@@ -92,7 +93,8 @@ export async function findUSBDevices(): Promise<SerialDevice[]> {
       port.path.includes('ACM') ||
       port.path.includes('USB') ||
       port.path.includes('ttyUSB') ||
-      port.path.includes('ttyACM')
+      port.path.includes('ttyACM') ||
+      port.path.includes('COM')
   )
 }
 
@@ -139,24 +141,41 @@ export async function connect(
       parser,
       devicePath,
       onData,
-      onError
+      onError,
+      dataBuffer: []
     }
 
     activeConnections.set(connectionId, connectionInfo)
 
     // Set up event listeners
     parser.on('data', (data: string) => {
+      const trimmedData = data.trim()
+      console.log('[Serial] Received data:', trimmedData) // Debug log
+      // Add to buffer
+      connectionInfo.dataBuffer.push(trimmedData)
+      console.log('[Serial] Buffer size:', connectionInfo.dataBuffer.length) // Debug log
+      // Also call the callback if provided
       if (connectionInfo.onData) {
-        connectionInfo.onData(data.trim())
+        connectionInfo.onData(trimmedData)
       }
     })
 
     port.on('error', (error: Error) => {
+      console.error('[Serial] Port error:', error) // Debug log
       if (connectionInfo.onError) {
         connectionInfo.onError(error)
       }
     })
 
+    port.on('open', () => {
+      console.log('[Serial] Port opened successfully:', devicePath) // Debug log
+    })
+
+    port.on('close', () => {
+      console.log('[Serial] Port closed:', devicePath) // Debug log
+    })
+
+    console.log('[Serial] Connection established:', connectionId, 'to', devicePath) // Debug log
     return connectionId
   } catch (error) {
     throw new Error(`Failed to connect to serial device: ${error}`)
@@ -217,6 +236,68 @@ export async function disconnect(connectionId: string): Promise<void> {
  */
 export function isDeviceConnected(connectionId: string): boolean {
   return activeConnections.has(connectionId)
+}
+
+// Extra helper
+/**
+ * Within a config string, it is structured as such:
+ * CONFIG: key1=value1;key2=value2;...
+ * Values can be strings, numbers(float) or booleans (true/false)
+ * @param configString 
+ * @returns 
+ */
+function parseConfig(configString: string): Record<string, any> {
+	const config:SystemConfig = {}
+	return config
+}
+
+/**
+ * Read all buffered data from a connection
+ * @param connectionId The connection ID returned by connect()
+ * @param clearBuffer Whether to clear the buffer after reading (default: true)
+ * @returns Array of received data strings
+ */
+export function readData(connectionId: string, clearBuffer: boolean = true): string[] {
+  const connection = activeConnections.get(connectionId)
+  if (!connection) {
+    throw new Error(`Connection ${connectionId} not found`)
+  }
+
+  console.log('[Serial] Reading buffer, current size:', connection.dataBuffer.length) // Debug log
+  const data = [...connection.dataBuffer]
+  if (clearBuffer) {
+    connection.dataBuffer = []
+    console.log('[Serial] Buffer cleared') // Debug log
+  }
+  return data
+}
+
+/**
+ * Read the latest data from a connection
+ * @param connectionId The connection ID returned by connect()
+ * @returns The most recent data string, or null if no data available
+ */
+export function readLatestData(connectionId: string): string | null {
+  const connection = activeConnections.get(connectionId)
+  if (!connection) {
+    throw new Error(`Connection ${connectionId} not found`)
+  }
+
+  return connection.dataBuffer.length > 0
+    ? connection.dataBuffer[connection.dataBuffer.length - 1]
+    : null
+}
+
+/**
+ * Clear the data buffer for a connection
+ * @param connectionId The connection ID returned by connect()
+ */
+export function clearBuffer(connectionId: string): void {
+  const connection = activeConnections.get(connectionId)
+  if (!connection) {
+    throw new Error(`Connection ${connectionId} not found`)
+  }
+  connection.dataBuffer = []
 }
 
 /**

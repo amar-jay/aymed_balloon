@@ -1,37 +1,42 @@
-/* eslint-disable prettier/prettier */
 import { contextBridge } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import { SerialPort as NodeSerialPort } from 'serialport'
 import {
-	listUSBPorts,
-	listPorts,
-	connect,
-	disconnect,
-	sendCommand,
-	disconnectAll,
-	connectToFirstUSBDevice,
-	findUSBDevices,
-	getActiveConnections,
-	getDevicePath,
-	isDeviceConnected,
+  listUSBPorts,
+  listPorts,
+  connect,
+  disconnect,
+  sendCommand,
+  readData,
+  readLatestData,
+  clearBuffer,
+  disconnectAll,
+  connectToFirstUSBDevice,
+  findUSBDevices,
+  getActiveConnections,
+  getDevicePath,
+  isDeviceConnected
 } from '../lib/serial'
 
 // Custom APIs for renderer
 const api = {
-	listSerialPorts: async (): Promise<string[]> => {
-		return (await NodeSerialPort.list()).map((port) => port.path)
-	},
-	SeriallistUSBPorts : listUSBPorts,
-	SeriallistPorts : listPorts,
-	Serialconnect : connect,
-	Serialdisconnect : disconnect,
-	SerialsendCommand : sendCommand,
-	SerialdisconnectAll : disconnectAll,
-	SerialconnectToFirstUSBDevice : connectToFirstUSBDevice,
-	SerialfindUSBDevices : findUSBDevices,
-	SerialgetActiveConnections : getActiveConnections,
-	SerialgetDevicePath : getDevicePath,
-	SerialisDeviceConnected : isDeviceConnected,
+  listSerialPorts: async (): Promise<string[]> => {
+    return (await NodeSerialPort.list()).map((port) => port.path)
+  },
+  SeriallistUSBPorts: listUSBPorts,
+  SeriallistPorts: listPorts,
+  Serialconnect: connect,
+  Serialdisconnect: disconnect,
+  SerialsendCommand: sendCommand,
+  SerialreadData: readData,
+  SerialreadLatestData: readLatestData,
+  SerialclearDataBuffer: clearBuffer,
+  SerialdisconnectAll: disconnectAll,
+  SerialconnectToFirstUSBDevice: connectToFirstUSBDevice,
+  SerialfindUSBDevices: findUSBDevices,
+  SerialgetActiveConnections: getActiveConnections,
+  SerialgetDevicePath: getDevicePath,
+  SerialisDeviceConnected: isDeviceConnected
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
