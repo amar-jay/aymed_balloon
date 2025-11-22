@@ -12,26 +12,26 @@ extern osMutexId_t configMutexHandle;
 extern osMutexId_t stateMutexHandle;
 
 
+char print_buf[128];
 void usb_printf(const char *fmt, ...)
 {
-    char buf[128];
     va_list args;
     va_start(args, fmt);
-    int len = vsnprintf(buf, sizeof(buf), fmt, args);
+    int len = vsnprintf(print_buf, sizeof(print_buf), fmt, args);
     va_end(args);
     if(osSemaphoreAcquire(uartSemaphoreHandle, osWaitForever) == osOK) {
-      HAL_UART_Transmit(&huart4, (uint8_t*)buf, len, 1000);
+      HAL_UART_Transmit(&huart4, (uint8_t*)print_buf, len, 1000);
       osSemaphoreRelease(uartSemaphoreHandle);
     }
 //    CDC_Transmit_FS((uint8_t *)buf, len);
 }
 
 
+char config_uart_buffer[256*2];
 void print_config(BalloonConfig_t* cfg) {
     systemconfig_t mb_cfg;
-    char uartBuffer[256];
-
-    if(osSemaphoreAcquire(configMutexHandle, osWaitForever) == osOK) {
+//
+    if(osSemaphoreAcquire(configMutexHandle, 100) == osOK) {
         // Map SystemConfig_t to systemconfig_t
         mb_cfg.opTime = cfg->optime;
         mb_cfg.coTime = cfg->cotime;
@@ -49,19 +49,24 @@ void print_config(BalloonConfig_t* cfg) {
         mb_cfg.voltageCalibration = (float)cfg->voltage_calibration;
         mb_cfg.heaterErrorEnable = (float)cfg->heater_error_enable;
         mb_cfg.coolingDelay = cfg->cooling_delay;
-        
+
         osSemaphoreRelease(configMutexHandle);
     }
 
+
     // Serialize
-    if (mb_systemconfig_serialize(&mb_cfg, uartBuffer, sizeof(uartBuffer)) == MB_OK) {
+    int serialize_res = mb_systemconfig_serialize(&mb_cfg, config_uart_buffer, sizeof(config_uart_buffer));
+    if (serialize_res == MB_OK) {
         // Append newline for UART transmission
-        strlcat(uartBuffer, "\r\n", sizeof(uartBuffer));
-        
+        strlcat(config_uart_buffer, "\r\n", sizeof(config_uart_buffer));
+
         if(osSemaphoreAcquire(uartSemaphoreHandle, osWaitForever) == osOK) {
-            HAL_UART_Transmit(&huart4, (uint8_t*)uartBuffer, strlen(uartBuffer), 1000);
+            HAL_UART_Transmit(&huart4, (uint8_t*)config_uart_buffer, strlen(config_uart_buffer), 1000);
             osSemaphoreRelease(uartSemaphoreHandle);
         }
+    } else {
+        usb_printf("State serialization failed %d\r\n", serialize_res);
+        osDelay(100);
     }
 }
 
@@ -96,6 +101,8 @@ void print_state(BalloonState_t* state) {
             // Minibuf usually doesn't add newline.
             osSemaphoreRelease(uartSemaphoreHandle);
         }
+    } else {
+        usb_printf("State serialization failed\r\n");
     }
 }
 

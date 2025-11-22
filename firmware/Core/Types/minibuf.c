@@ -1,9 +1,10 @@
 #include "minibuf.h"
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 #include <stdlib.h>
 
-int mb_float_precision = 3;
+int mb_float_precision = 1;
 
 int mb_systemdata_parse(const char* buf, systemdata_t* out) {
     char* start = strchr(buf, '[');
@@ -172,37 +173,79 @@ int mb_systemconfig_serialize(const systemconfig_t* in, char* buf, size_t buf_si
     len += snprintf(pos, buf_size - len, ";%d", in->bottomTempThreshold);
     if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
     pos = buf + len;
-    len += snprintf(pos, buf_size - len, ";%.*f", mb_float_precision, in->temp1Offset);
+    len += snprintf(pos, buf_size - len, ";%d.%03d", (int)in->temp2Offset, (int)((fabsf(in->temp2Offset) - abs((int)in->temp2Offset)) * 1000 + 0.5f));
     if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
     pos = buf + len;
-    len += snprintf(pos, buf_size - len, ";%.*f", mb_float_precision, in->temp2Offset);
+    len += snprintf(pos, buf_size - len, ";%d.%03d", (int)in->temp2Offset, (int)((fabsf(in->temp2Offset) - abs((int)in->temp2Offset)) * 1000 + 0.5f));
     if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
     pos = buf + len;
-    len += snprintf(pos, buf_size - len, ";%d", in->menuResetDelay);
+    len += snprintf(pos, buf_size - len, ";%d.%.*d", (int)in->temp2Offset,mb_float_precision, (int)((fabsf(in->temp2Offset) - abs((int)in->temp2Offset)) * 1000 + 0.5f));
     if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
     pos = buf + len;
-    len += snprintf(pos, buf_size - len, ";%.*f", mb_float_precision, in->timeCalibration);
+    len += snprintf(pos, buf_size - len, ";%d.%03d", (int)in->temp2Offset, (int)((fabsf(in->temp2Offset) - abs((int)in->temp2Offset)) * 1000 + 0.5f));
     if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
     pos = buf + len;
-    len += snprintf(pos, buf_size - len, ";%.*f", mb_float_precision, in->maxTempError);
+    len += snprintf(pos, buf_size - len, ";%d.%03d", (int)in->temp2Offset, (int)((fabsf(in->temp2Offset) - abs((int)in->temp2Offset)) * 1000 + 0.5f));
     if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
     pos = buf + len;
-    len += snprintf(pos, buf_size - len, ";%.*f", mb_float_precision, in->vccVoltageError);
+    len += snprintf(pos, buf_size - len, ";%d.%03d", (int)in->temp2Offset, (int)((fabsf(in->temp2Offset) - abs((int)in->temp2Offset)) * 1000 + 0.5f));
     if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
     pos = buf + len;
-    len += snprintf(pos, buf_size - len, ";%.*f", mb_float_precision, in->powerTempError);
+    len += snprintf(pos, buf_size - len, ";%d.%03d", (int)in->temp2Offset, (int)((fabsf(in->temp2Offset) - abs((int)in->temp2Offset)) * 1000 + 0.5f));
     if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
     pos = buf + len;
-    len += snprintf(pos, buf_size - len, ";%s", in->powerVccErrorEnabled ? "T" : "F");
+    len += snprintf(pos, buf_size - len, ";%d.%03d", (int)in->temp2Offset, (int)((fabsf(in->temp2Offset) - abs((int)in->temp2Offset)) * 1000 + 0.5f));
     if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
     pos = buf + len;
+    len += snprintf(pos, buf_size - len, ";%d.%03d", (int)in->temp2Offset, (int)((fabsf(in->temp2Offset) - abs((int)in->temp2Offset)) * 1000 + 0.5f));
+    if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
+    pos = buf + len;
+    len += snprintf(pos, buf_size - len, ";%d.%03d", (int)in->temp2Offset, (int)((fabsf(in->temp2Offset) - abs((int)in->temp2Offset)) * 1000 + 0.5f));
+    if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
+    pos = buf + len;
+    len += snprintf(pos, buf_size - len, ";%s%d.%0*d",
+        in->temp2Offset < 0 ? "-" : "",
+        abs((int)in->temp2Offset),
+        mb_float_precision,
+        (int)((fabsf(in->temp2Offset) - abs((int)in->temp2Offset)) * powf(10, mb_float_precision) + 0.5f));
+    if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
+    pos = buf + len;
+//    len += snprintf(pos, buf_size - len, ";%.*f", mb_float_precision, in->temp2Offset);
+//    if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
+//    pos = buf + len;
+//    len += snprintf(pos, buf_size - len, ";%d", in->menuResetDelay);
+//    if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
+//    pos = buf + len;
+//    len += snprintf(pos, buf_size - len, ";%.*f", mb_float_precision, in->timeCalibration);
+//    if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
+//    pos = buf + len;
+//    len += snprintf(pos, buf_size - len, ";%.*f", mb_float_precision, in->maxTempError);
+//    if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
+//    pos = buf + len;
+//    len += snprintf(pos, buf_size - len, ";%.*f", mb_float_precision, in->vccVoltageError);
+//    if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
+//    pos = buf + len;
+//    len += snprintf(pos, buf_size - len, ";%.*f", mb_float_precision, in->powerTempError);
+//    if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
+//    pos = buf + len;
+//    len += snprintf(pos, buf_size - len, ";%s", in->powerVccErrorEnabled ? "T" : "F");
+//    if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
+//    pos = buf + len;
     len += snprintf(pos, buf_size - len, ";%s", in->sysErrorEnabled ? "T" : "F");
     if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
     pos = buf + len;
-    len += snprintf(pos, buf_size - len, ";%.*f", mb_float_precision, in->voltageCalibration);
+    len += snprintf(pos, buf_size - len, ";%s%d.%0*d",
+        in->temp2Offset < 0 ? "-" : "",
+        abs((int)in->temp2Offset),
+        mb_float_precision,
+        (int)((fabsf(in->temp2Offset) - abs((int)in->temp2Offset)) * powf(10, mb_float_precision) + 0.5f));
     if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
     pos = buf + len;
-    len += snprintf(pos, buf_size - len, ";%.*f", mb_float_precision, in->heaterErrorEnable);
+    len += snprintf(pos, buf_size - len, ";%s%d.%0*d",
+        in->temp2Offset < 0 ? "-" : "",
+        abs((int)in->temp2Offset),
+        mb_float_precision,
+        (int)((fabsf(in->temp2Offset) - abs((int)in->temp2Offset)) * powf(10, mb_float_precision) + 0.5f));
     if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
     pos = buf + len;
     len += snprintf(pos, buf_size - len, ";%d", in->coolingDelay);
