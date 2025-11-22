@@ -56,7 +56,7 @@ void StartLog(void *argument){
   for (;;) {
 
      // Print current configuration via UART using the new serialization
-     print_config(&balloonConfig);
+//     print_config(&balloonConfig);
 //	  print_state(&balloonState);
     osDelay(1000); // Print every 2 seconds
   }
