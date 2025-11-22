@@ -1,34 +1,9 @@
-# app
+# Aymed Balloon Machine - Control Application
 
-An Electron application with React and TypeScript
+A desktop application for controlling the Aymed Balloon Machine, built with Electron and React. It features real-time control via Serial Port communication (USB). The application is designed to run seamlessly on Windows and Linux.
 
-## Recommended IDE Setup
 
-- [VSCode](https://code.visualstudio.com/) + [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) + [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
+### Prerequisites
 
-## Project Setup
-
-### Install
-
-```bash
-$ pnpm install
-```
-
-### Development
-
-```bash
-$ pnpm dev
-```
-
-### Build
-
-```bash
-# For windows
-$ pnpm build:win
-
-# For macOS
-$ pnpm build:mac
-
-# For Linux
-$ pnpm build:linux
-```
+- Node.js (v18 or later recommended)
+- pnpm (Package Manager)
