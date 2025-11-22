@@ -1,0 +1,77 @@
+# -------------------------
+# Altium Designer .gitignore
+# -------------------------
+
+# Temporary / generated system files
+History/
+__Previews/
+Project Logs/
+Project Outputs for*/
+Project Cache*/
+Project Logs*/
+Simulation Outputs*/
+
+# Generated compiler files
+*.LOG
+*.ERR
+*.DMP
+*.TMP
+*.DSN # auto-generated design files
+*.SCHDOC-preview.png
+*.PCBDOC-preview.png
+
+# Lock and recovery
+*.PrjPCBStructure
+*.FEL
+*.Bkp
+*.RCS
+*.MBD
+*.Bookmark
+*.CRP
+*.Drc
+*.SchDocPreview
+*.PcbDocPreview
+
+# Altium databases + compiled data
+*.Compiled
+*.CompiledLib
+*.Stat
+*.crc
+
+# Autosave & backup
+*_LOG.TXT
+*_LOG.csv
+*_Backup*
+*_AUTOSAVE*.SchDoc
+*_AUTOSAVE*.PcbDoc
+*.SchDoc.Zip
+*.PcbDoc.Zip
+
+# Output job internal cache
+*.OutJob.Cache
+*.OutJob.Results
+
+# CAM/Manufacturing junk (keep only exported zip/gerbers you want)
+*.GTL
+*.GBL
+*.GTS
+*.GBS
+*.GTO
+*.GBO
+*.DRL
+*.LSE
+*.GKO
+*.GM*
+*.XLN
+
+# Mechanical step / cached export files
+*.STEP
+*.STP
+
+# Misc Windows cruft
+Thumbs.db
+Desktop.ini
+
+# If you’re using Git LFS for large binaries, you may want:
+# *.PcbDoc filter=lfs diff=lfs merge=lfs
+# *.SchDoc filter=lfs diff=lfs merge=lfs
