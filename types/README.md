@@ -1,0 +1,1 @@
+This contains intermediary types across application and firmware that is used across UART/Serial communication. These types are compiled to the respective languages using [MiniBuf](https://github.com/amar-jay/minibuf). Its known for its simplicity, predictability and low overhead. With just one caveat "NO `;` IN STRINGS".

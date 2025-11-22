@@ -1,0 +1,33 @@
+SystemConfig {
+  opTime: number;
+
+  coTime: number;
+
+  topTempThreshold: number;
+
+  bottomTempThreshold: number;
+
+  temp1Offset: float;
+
+  temp2Offset: float;
+
+  menuResetDelay: number;
+
+  timeCalibration: float;
+
+  maxTempError: float;
+
+  vccVoltageError: float;
+
+  powerTempError: float;
+
+  powerVccErrorEnabled: bool;
+
+  sysErrorEnabled: bool;
+
+  voltageCalibration: float;
+
+  heaterErrorEnable: float;
+
+  coolingDelay: number;
+}
