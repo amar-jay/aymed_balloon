@@ -1,0 +1,3 @@
+../Core/Src/utils.c:14:6:usb_printf	144	static
+../Core/Src/utils.c:33:6:print_config	1152	static
+../Core/Src/utils.c:84:6:process_command	104	static
