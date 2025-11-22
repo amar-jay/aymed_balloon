@@ -1,4 +1,0 @@
-../Core/Types/minibuf.c:8:5:mb_systemdata_parse	48	static
-../Core/Types/minibuf.c:56:5:mb_systemdata_serialize	48	static
-../Core/Types/minibuf.c:90:5:mb_systemconfig_parse	48	static
-../Core/Types/minibuf.c:159:5:mb_systemconfig_serialize	48	static

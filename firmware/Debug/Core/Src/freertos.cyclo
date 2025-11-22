@@ -1,3 +1,0 @@
-../Core/Src/freertos.c:45:6:StartLog	2
-../Core/Src/freertos.c:67:6:StartSensor	1
-../Core/Src/freertos.c:68:6:StartHeater	1
