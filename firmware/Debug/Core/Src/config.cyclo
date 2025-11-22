@@ -1,0 +1,5 @@
+../Core/Src/config.c:20:6:BalloonConfig_Init	5
+../Core/Src/config.c:57:6:BalloonConfig_Load	1
+../Core/Src/config.c:78:6:BalloonConfig_SaveAll	1
+../Core/Src/config.c:98:6:BalloonConfig_Update	18
+../Core/Src/config.c:123:6:BalloonConfig_ForceReset	1

@@ -31,7 +31,7 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-extern SystemConfig_t sysConfig;
+extern BalloonConfig_t balloonConfig;
 void StartLog(void *argument);
 void StartSensor(void *argument);
 void StartHeater(void *argument);
@@ -43,17 +43,27 @@ void StartHeater(void *argument);
 int counter = 0;
 
 void StartLog(void *argument){
-EE_Init();
-SystemConfig_Init();
-EE_WriteVariable(0x11, 1030);
-for (;;) {
-//	usb_printf("Counter value: %d %d\r\n", counter, rete);
-//	counter +=1;
-//	counter %= 10;
-	print_config(&sysConfig);
-	osDelay(105);
+  EE_Init();
+  BalloonConfig_Init(); // Load config from EEPROM or set defaults
 
-}};
+  // Example: Update operation time if it's the default (just as a demo)
+  if (balloonConfig.optime == 10) {
+      usb_printf("Updating optime from 10 to 20...\r\n");
+      BalloonConfig_Update(VAR_OPTIME, 20); // Updates RAM and EEPROM
+  }
+
+  for (;;) {
+    // Print current configuration via UART using the new serialization
+    print_config(&balloonConfig);
+    
+    // Toggle a value to demonstrate persistence (optional demo)
+    // uint16_t val;
+    // EE_ReadVariable(VAR_OPTIME, &val);
+    // usb_printf("Current EEPROM OP Time: %d\r\n", val);
+
+    osDelay(2000); // Print every 2 seconds
+  }
+}
 void StartSensor(void *argument){for (;;) { osDelay(101);}};
 void StartHeater(void *argument){for (;;) { osDelay(100);}};
 

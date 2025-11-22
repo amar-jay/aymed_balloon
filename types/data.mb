@@ -1,15 +1,19 @@
-TemperatureData {
+SystemData {
   topTemp: float;
 
   bottomTemp: float;
 
   powerSupplyTemp: float;
 
-  topTempSetpoint: float;
-
-  bottomTempSetpoint: float;
-
   topHeaterActive: bool;
 
   bottomHeaterActive: bool; 
+
+  powerSupplyVoltage: float;
+
+  proximityActive: bool;
+
+  menuActive: bool;
+
+  pedalActive: bool;
 }

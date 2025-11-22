@@ -1,4 +1,4 @@
-Core/Src/utils.o: ../Core/Src/utils.c ../Core/Inc/utils.h \
+Core/Src/utils.o: ../Core/Src/utils.c ../Core/Src/../Types/minibuf.h \
  ../Core/Inc/system.h ../Core/Inc/ads1115.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h \
  ../Core/Inc/stm32f4xx_hal_conf.h \
@@ -33,8 +33,8 @@ Core/Src/utils.o: ../Core/Src/utils.c ../Core/Inc/utils.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
- ../Core/Inc/flash.h ../Core/Inc/system.h ../Core/Inc/main.h \
- ../Core/Inc/utils.h \
+ ../Core/Inc/flash.h ../Core/Inc/config.h ../Core/Inc/main.h \
+ ../Core/Inc/utils.h ../Core/Inc/system.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h \
  ../Core/Inc/FreeRTOSConfig.h \
@@ -46,7 +46,7 @@ Core/Src/utils.o: ../Core/Src/utils.c ../Core/Inc/utils.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h
-../Core/Inc/utils.h:
+../Core/Src/../Types/minibuf.h:
 ../Core/Inc/system.h:
 ../Core/Inc/ads1115.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
@@ -83,9 +83,10 @@ Core/Src/utils.o: ../Core/Src/utils.c ../Core/Inc/utils.h \
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h:
 ../Core/Inc/flash.h:
-../Core/Inc/system.h:
+../Core/Inc/config.h:
 ../Core/Inc/main.h:
 ../Core/Inc/utils.h:
+../Core/Inc/system.h:
 ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os.h:
 ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h:
 ../Core/Inc/FreeRTOSConfig.h:

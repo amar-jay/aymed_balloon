@@ -1,0 +1,4 @@
+../Core/Types/minibuf.c:8:5:mb_systemdata_parse	14
+../Core/Types/minibuf.c:56:5:mb_systemdata_serialize	16
+../Core/Types/minibuf.c:90:5:mb_systemconfig_parse	21
+../Core/Types/minibuf.c:159:5:mb_systemconfig_serialize	20
