@@ -19,7 +19,7 @@
  * console.log('Available devices:', devices)
  *
  * // Connect to first device
- * const connectionId = await connect(devices[0].path, 9600,
+ * const connectionId = await connect(devices[0].path, 115200,
  *   (data) => console.log('Received:', data), // onData callback
  *   (error) => console.error('Error:', error)  // onError callback
  * )
@@ -53,7 +53,7 @@ interface ConnectionInfo {
   onError?: (error: Error) => void
   dataBuffer: string[] // Buffer to store received data
   config?: SystemConfig
-  status?: Partial<SystemStatus> 
+  status?: Partial<SystemStatus>
 }
 
 // Store active connections
@@ -104,14 +104,14 @@ export async function findUSBDevices(): Promise<SerialDevice[]> {
 /**
  * Connect to a serial device
  * @param devicePath Path to the serial device (e.g., '/dev/ttyACM0')
- * @param baudRate Baud rate for communication (default: 9600)
+ * @param baudRate Baud rate for communication (default: 115200)
  * @param onData Callback for incoming data
  * @param onError Callback for errors
  * @returns Connection ID for use with other functions
  */
 export async function connect(
   devicePath: string,
-  baudRate: number = 9600,
+  baudRate: number = 115200,
   onData?: (data: string) => void,
   onError?: (error: Error) => void
 ): Promise<string> {
@@ -243,7 +243,7 @@ export function isDeviceConnected(connectionId: string): boolean {
 
 // Extra helper
 const castConfigValue = (value: string) => {
-	return value == 'T' ? true : value == 'F' ? false : isNaN(Number(value)) ? value : Number(value)
+  return value == 'T' ? true : value == 'F' ? false : isNaN(Number(value)) ? value : Number(value)
 }
 /**
  * Within a config string, it is structured as such:
@@ -273,7 +273,7 @@ function parseConfig(connection: ConnectionInfo) {
   ]
 
   // find string starting with CONFIG:
-  const configLine = connection.dataBuffer[0].split('\n')[0]//.find((str) => str.startsWith('CONFIG:'))
+  const configLine = connection.dataBuffer.find((str) => str.startsWith('CONFIG:'))
   let configString
 
   if (configLine) {
@@ -292,93 +292,122 @@ function parseConfig(connection: ConnectionInfo) {
     if (Object.keys(config).length === KEYS.length) {
       connection.config = config as SystemConfig
     } else {
-      console.warn('[Serial] Incomplete config received:', configString)
+      console.warn(
+        '[Serial] Incomplete config received:',
+        configString,
+        'It must have ',
+        KEYS.length,
+        'keys but received ',
+        Object.keys(config).length
+      )
     }
-		connection.dataBuffer.shift()
+    connection.dataBuffer.shift()
   }
 }
 /**
- * Within the config string parse the status, structured as 
+ * Within the config string parse the status, structured as
  * STATUS: TEMP:topTemp=val;bottomTemp=val; OPERATIONS: ...
  */
 function parseStatus(connection: ConnectionInfo) {
-	//
-	const statusLine = connection.dataBuffer[0].trim()
-	let statusString = "";
-	if (statusLine.startsWith('STATUS:')) {
-		const status: Partial<SystemStatus> = {}
-		statusString = statusLine.replace('STATUS:', '').trim()
-		const statusPartitions = statusString.trim().split(' ')
-		for (let partition of statusPartitions) {
-			// work on the temp partition first
-			if (partition.startsWith("TEMP:")) {
-				const pairs = partition.replace("TEMP:", "").split(';')
-				pairs.map((pair) => {
-					if (pair.includes('=')) {
-						const [key, value] = pair.split('=').map((s) => s.trim())
-						// Determine type
-						if (!["topTemp", "bottomTemp", "powerSupplyTemp", "topTempSetpoint", "bottomTempSetpoint", "topHeaterActive", "bottomHeaterActive"].includes(key)) return 
-						status.temperature  = {} as SystemStatus['temperature']
-						status.temperature[key] = castConfigValue(value)
-					}
-				})
-			}
+  //
+  const statusLine = connection.dataBuffer[0].trim()
+  let statusString = ''
+  if (statusLine.startsWith('STATUS:')) {
+    const status: Partial<SystemStatus> = {}
+    statusString = statusLine.replace('STATUS:', '').trim()
+    const statusPartitions = statusString.trim().split(' ')
+    for (const partition of statusPartitions) {
+      // work on the temp partition first
+      if (partition.startsWith('TEMP:')) {
+        const pairs = partition.replace('TEMP:', '').split(';')
+        pairs.map((pair) => {
+          if (pair.includes('=')) {
+            const [key, value] = pair.split('=').map((s) => s.trim())
+            // Determine type
+            if (
+              ![
+                'topTemp',
+                'bottomTemp',
+                'powerSupplyTemp',
+                'topTempSetpoint',
+                'bottomTempSetpoint',
+                'topHeaterActive',
+                'bottomHeaterActive'
+              ].includes(key)
+            )
+              return
+            status.temperature = {} as SystemStatus['temperature']
+            status.temperature[key] = castConfigValue(value)
+          }
+        })
+      }
 
-			if (partition.startsWith("OPERATIONS:")) {
-				const pairs = partition.replace("TEMP:", "").split(';')
-				pairs.map((pair) => {
-					if (pair.includes('=')) {
-						const [key, value] = pair.split('=').map((s) => s.trim())
-						// Determine type
-						if (!["weldingTime", "weldingTimeTarget", "coolingTime", "coolingTimeTarget", "pressureValveActive", "coolingFanActive", "pedalPressed", "proximityDetected"].includes(key)) return 
-						status.operation  = {} as SystemStatus['operation']
-						status.operation[key] = castConfigValue(value)
-					}
-				})
-			}
+      if (partition.startsWith('OPERATIONS:')) {
+        const pairs = partition.replace('TEMP:', '').split(';')
+        pairs.map((pair) => {
+          if (pair.includes('=')) {
+            const [key, value] = pair.split('=').map((s) => s.trim())
+            // Determine type
+            if (
+              ![
+                'weldingTime',
+                'weldingTimeTarget',
+                'coolingTime',
+                'coolingTimeTarget',
+                'pressureValveActive',
+                'coolingFanActive',
+                'pedalPressed',
+                'proximityDetected'
+              ].includes(key)
+            )
+              return
+            status.operation = {} as SystemStatus['operation']
+            status.operation[key] = castConfigValue(value)
+          }
+        })
+      }
 
-			if (partition.startsWith("POWER:")) {
-				const value = partition.replace("POWER:", "").trim()
-				status.power  = {} as SystemStatus['power']
-				if (isNaN(Number(value))) {
-					status.error={
-						code: ErrorCode.POWER_SUPPLY_NTC,
-						message: "Invalid voltage value",
-						description: "Invalid voltage value received from device",
-						timestamp: Date.now(),
-						hasError: true,
-					}
-					status.power.powerTempOk = false
-				} else if (Number(value) < 0) {
-					status.power.voltageOk = false
-				} else{
-					status.power.voltage = Number(value)
-				}
+      if (partition.startsWith('POWER:')) {
+        const value = partition.replace('POWER:', '').trim()
+        status.power = {} as SystemStatus['power']
+        if (isNaN(Number(value))) {
+          status.error = {
+            code: ErrorCode.POWER_SUPPLY_NTC,
+            message: 'Invalid voltage value',
+            description: 'Invalid voltage value received from device',
+            timestamp: Date.now(),
+            hasError: true
+          }
+          status.power.powerTempOk = false
+        } else if (Number(value) < 0) {
+          status.power.voltageOk = false
+        } else {
+          status.power.voltage = Number(value)
+        }
+      }
 
-			}
-
-			if (partition.startsWith("ERROR:")) {
-				const pairs = partition.replace("ERROR:", "").split(';')
-				pairs.map((pair) => {
-					if (pair.includes(':')) {
-						const [key, value] = pair.split(':').map((s) => s.trim())
-						// Determine type
-						if (key.length > 0 && value.length > 0) {
-							status.error  = {
-								code: Number(key),
-								message: value,
-								description: value,
-								timestamp: Date.now(),
-								hasError: true,
-							} as SystemStatus['error']
-						}
-					}
-				})
-			}
-		}
-		connection.status = status
-		connection.dataBuffer.shift()
-	}
+      if (partition.startsWith('ERROR:')) {
+        const pairs = partition.replace('ERROR:', '').split(';')
+        pairs.map((pair) => {
+          if (pair.includes(':')) {
+            const [key, value] = pair.split(':').map((s) => s.trim())
+            // Determine type
+            if (key.length > 0 && value.length > 0) {
+              status.error = {
+                code: Number(key),
+                message: value,
+                description: value,
+                timestamp: Date.now(),
+                hasError: true
+              } as SystemStatus['error']
+            }
+          }
+        })
+      }
+    }
+    connection.status = status
+    connection.dataBuffer.shift()
+  }
 }
 /**
  * Read all buffered data from a connection
@@ -393,8 +422,12 @@ export function readData(connectionId: string, clearBuffer: boolean = true): str
   }
 
   console.log('[Serial] Reading buffer, current size:', connection.dataBuffer.length) // Debug log
-  parseConfig(connection) // try to parse config before reading data
-	parseStatus(connection)
+  try {
+    parseConfig(connection) // try to parse config before reading data
+    parseStatus(connection)
+  } catch (error) {
+    console.error('[Serial] Error parsing data:', error)
+  }
 
   const data = [...connection.dataBuffer]
   if (clearBuffer) {
@@ -470,13 +503,13 @@ export async function disconnectAll(): Promise<void> {
 
 /**
  * Connect to the first available USB serial device
- * @param baudRate Baud rate for communication (default: 9600)
+ * @param baudRate Baud rate for communication (default: 115200)
  * @param onData Callback for incoming data
  * @param onError Callback for errors
  * @returns Connection ID for use with other functions
  */
 export async function connectToFirstUSBDevice(
-  baudRate: number = 9600,
+  baudRate: number = 115200,
   onData?: (data: string) => void,
   onError?: (error: Error) => void
 ): Promise<string> {
