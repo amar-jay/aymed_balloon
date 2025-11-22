@@ -3,15 +3,15 @@
 This repository contains the firmware and control software for the Aymed Balloon Machine. The system consists of an embedded controller (STM32) for hardware management and a desktop application (Electron) for the user interface.
 
 
-## Firmware
+#### Firmware
 
 The firmware is designed for the **STM32F407VGTx** microcontroller and handles low-level hardware control. This includes managing PID control loops for the Top Heater, Bottom Heater, and Power Supply, reading temperature sensors via the ADS1115 ADC, and monitoring system state and safety conditions.
 
-## Application
+#### Application
 
 The desktop application provides a user-friendly interface to monitor and control the machine built with Electron and React compiled with Vite.
 
-## Communication Protocol
+#### Communication Protocol
 
 The firmware and application communicate over UART using **MiniBuf**, a lightweight serialization format. The shared message definitions are located in the `types/` directory.
 
