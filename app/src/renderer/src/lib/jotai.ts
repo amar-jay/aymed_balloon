@@ -11,8 +11,8 @@ import { SystemConfig } from '../../../preload/typings'
 type currentPathType = 'serial-monitor' | 'dashboard'
 export const currentPathAtom = atomWithStorage<currentPathType>('currentPath', 'serial-monitor')
 
-// Storage key: 'baudRate', default: 9600
-export const baudRateAtom = atomWithStorage<number>('baudRate', 9600)
+// Storage key: 'baudRate', default: 115200
+export const baudRateAtom = atomWithStorage<number>('baudRate', 115200)
 
 // export interface SystemConfig {
 //   optime: number
