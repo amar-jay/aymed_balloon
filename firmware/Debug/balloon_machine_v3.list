@@ -7,19 +7,19 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   CONTENTS, ALLOC, LOAD, READONLY, DATA
   1 .text         00009014  08000190  08000190  00001190  2**4
                   CONTENTS, ALLOC, LOAD, READONLY, CODE
-  2 .rodata       0000028c  080091a4  080091a4  0000a1a4  2**2
+  2 .rodata       000002dc  080091a4  080091a4  0000a1a4  2**2
                   CONTENTS, ALLOC, LOAD, READONLY, DATA
-  3 .ARM.extab    00000000  08009430  08009430  0000b0bc  2**0
+  3 .ARM.extab    00000000  08009480  08009480  0000b0bc  2**0
                   CONTENTS, READONLY
-  4 .ARM          00000008  08009430  08009430  0000a430  2**2
+  4 .ARM          00000008  08009480  08009480  0000a480  2**2
                   CONTENTS, ALLOC, LOAD, READONLY, DATA
-  5 .preinit_array 00000000  08009438  08009438  0000b0bc  2**0
+  5 .preinit_array 00000000  08009488  08009488  0000b0bc  2**0
                   CONTENTS, ALLOC, LOAD, DATA
-  6 .init_array   00000004  08009438  08009438  0000a438  2**2
+  6 .init_array   00000004  08009488  08009488  0000a488  2**2
                   CONTENTS, ALLOC, LOAD, READONLY, DATA
-  7 .fini_array   00000004  0800943c  0800943c  0000a43c  2**2
+  7 .fini_array   00000004  0800948c  0800948c  0000a48c  2**2
                   CONTENTS, ALLOC, LOAD, READONLY, DATA
-  8 .data         000000bc  20000000  08009440  0000b000  2**2
+  8 .data         000000bc  20000000  08009490  0000b000  2**2
                   CONTENTS, ALLOC, LOAD, DATA
   9 .ccmram       00000000  10000000  10000000  0000b0bc  2**0
                   CONTENTS
@@ -29,25 +29,25 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   ALLOC
  12 .ARM.attributes 00000030  00000000  00000000  0000b0bc  2**0
                   CONTENTS, READONLY
- 13 .debug_info   0001e733  00000000  00000000  0000b0ec  2**0
+ 13 .debug_info   0001e76a  00000000  00000000  0000b0ec  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 14 .debug_abbrev 000043f9  00000000  00000000  0002981f  2**0
+ 14 .debug_abbrev 00004410  00000000  00000000  00029856  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 15 .debug_aranges 00001a08  00000000  00000000  0002dc18  2**3
+ 15 .debug_aranges 00001a08  00000000  00000000  0002dc68  2**3
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 16 .debug_rnglists 00001454  00000000  00000000  0002f620  2**0
+ 16 .debug_rnglists 0000146c  00000000  00000000  0002f670  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 17 .debug_macro  00005ceb  00000000  00000000  00030a74  2**0
+ 17 .debug_macro  00005ceb  00000000  00000000  00030adc  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 18 .debug_line   000203f9  00000000  00000000  0003675f  2**0
+ 18 .debug_line   000203fa  00000000  00000000  000367c7  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 19 .debug_str    000e6f83  00000000  00000000  00056b58  2**0
+ 19 .debug_str    000e6f7b  00000000  00000000  00056bc1  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 20 .comment      00000043  00000000  00000000  0013dadb  2**0
+ 20 .comment      00000043  00000000  00000000  0013db3c  2**0
                   CONTENTS, READONLY
- 21 .debug_frame  000073f0  00000000  00000000  0013db20  2**2
+ 21 .debug_frame  000073f4  00000000  00000000  0013db80  2**2
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 22 .debug_line_str 0000006d  00000000  00000000  00144f10  2**0
+ 22 .debug_line_str 0000006d  00000000  00000000  00144f74  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
 
 Disassembly of section .text:
@@ -3056,22 +3056,22 @@ int main(void)
   while (1)
  8001650:	bf00      	nop
  8001652:	e7fd      	b.n	8001650 <main+0x8c>
- 8001654:	080093b4 	.word	0x080093b4
+ 8001654:	08009404 	.word	0x08009404
  8001658:	200001e0 	.word	0x200001e0
- 800165c:	080093c4 	.word	0x080093c4
+ 800165c:	08009414 	.word	0x08009414
  8001660:	200001e4 	.word	0x200001e4
- 8001664:	080093d4 	.word	0x080093d4
+ 8001664:	08009424 	.word	0x08009424
  8001668:	200001e8 	.word	0x200001e8
- 800166c:	08009324 	.word	0x08009324
+ 800166c:	08009374 	.word	0x08009374
  8001670:	080019e9 	.word	0x080019e9
  8001674:	200001d0 	.word	0x200001d0
- 8001678:	08009348 	.word	0x08009348
+ 8001678:	08009398 	.word	0x08009398
  800167c:	08001565 	.word	0x08001565
  8001680:	200001d4 	.word	0x200001d4
- 8001684:	0800936c 	.word	0x0800936c
+ 8001684:	080093bc 	.word	0x080093bc
  8001688:	080015a5 	.word	0x080015a5
  800168c:	200001d8 	.word	0x200001d8
- 8001690:	08009390 	.word	0x08009390
+ 8001690:	080093e0 	.word	0x080093e0
  8001694:	080015b5 	.word	0x080015b5
  8001698:	200001dc 	.word	0x200001dc
 
@@ -4828,7 +4828,7 @@ void print_config(BalloonConfig_t* cfg) {
  80020e4:	20020000 	.word	0x20020000
  80020e8:	20000000 	.word	0x20000000
  80020ec:	200000bc 	.word	0x200000bc
- 80020f0:	08009440 	.word	0x08009440
+ 80020f0:	08009490 	.word	0x08009490
  80020f4:	200000bc 	.word	0x200000bc
  80020f8:	20004d6c 	.word	0x20004d6c
 
@@ -5158,11 +5158,11 @@ int mb_systemconfig_serialize(const systemconfig_t* in, char* buf, size_t buf_si
  800235a:	d80b      	bhi.n	8002374 <mb_systemconfig_serialize+0x274>
  800235c:	2302      	movs	r3, #2
  800235e:	e0c5      	b.n	80024ec <mb_systemconfig_serialize+0x3ec>
- 8002360:	080092fc 	.word	0x080092fc
- 8002364:	08009304 	.word	0x08009304
- 8002368:	08009308 	.word	0x08009308
+ 8002360:	0800934c 	.word	0x0800934c
+ 8002364:	08009354 	.word	0x08009354
+ 8002368:	08009358 	.word	0x08009358
  800236c:	2000003c 	.word	0x2000003c
- 8002370:	080092ec 	.word	0x080092ec
+ 8002370:	0800933c 	.word	0x0800933c
     pos = buf + len;
  8002374:	697b      	ldr	r3, [r7, #20]
  8002376:	68ba      	ldr	r2, [r7, #8]
@@ -5363,11 +5363,11 @@ int mb_systemconfig_serialize(const systemconfig_t* in, char* buf, size_t buf_si
  80024f0:	46bd      	mov	sp, r7
  80024f2:	bdb0      	pop	{r4, r5, r7, pc}
  80024f4:	2000003c 	.word	0x2000003c
- 80024f8:	080092ec 	.word	0x080092ec
- 80024fc:	080092dc 	.word	0x080092dc
- 8002500:	080092f4 	.word	0x080092f4
- 8002504:	080092f8 	.word	0x080092f8
- 8002508:	08009308 	.word	0x08009308
+ 80024f8:	0800933c 	.word	0x0800933c
+ 80024fc:	0800932c 	.word	0x0800932c
+ 8002500:	08009344 	.word	0x08009344
+ 8002504:	08009348 	.word	0x08009348
+ 8002508:	08009358 	.word	0x08009358
 
 0800250c <HAL_Init>:
  800250c:	b580      	push	{r7, lr}
@@ -8219,7 +8219,7 @@ int mb_systemconfig_serialize(const systemconfig_t* in, char* buf, size_t buf_si
  8003df6:	bf00      	nop
  8003df8:	40023c00 	.word	0x40023c00
  8003dfc:	40023800 	.word	0x40023800
- 8003e00:	080093e4 	.word	0x080093e4
+ 8003e00:	08009434 	.word	0x08009434
  8003e04:	20000038 	.word	0x20000038
  8003e08:	20000040 	.word	0x20000040
 
@@ -8466,7 +8466,7 @@ int mb_systemconfig_serialize(const systemconfig_t* in, char* buf, size_t buf_si
  8004064:	4618      	mov	r0, r3
  8004066:	bd80      	pop	{r7, pc}
  8004068:	40023800 	.word	0x40023800
- 800406c:	080093f4 	.word	0x080093f4
+ 800406c:	08009444 	.word	0x08009444
 
 08004070 <HAL_RCC_GetPCLK2Freq>:
  8004070:	b580      	push	{r7, lr}
@@ -8483,7 +8483,7 @@ int mb_systemconfig_serialize(const systemconfig_t* in, char* buf, size_t buf_si
  800408c:	4618      	mov	r0, r3
  800408e:	bd80      	pop	{r7, pc}
  8004090:	40023800 	.word	0x40023800
- 8004094:	080093f4 	.word	0x080093f4
+ 8004094:	08009444 	.word	0x08009444
 
 08004098 <HAL_RCC_GetClockConfig>:
  8004098:	b480      	push	{r7}
@@ -13262,7 +13262,7 @@ int mb_systemconfig_serialize(const systemconfig_t* in, char* buf, size_t buf_si
  8006ba2:	3718      	adds	r7, #24
  8006ba4:	46bd      	mov	sp, r7
  8006ba6:	bd80      	pop	{r7, pc}
- 8006ba8:	0800930c 	.word	0x0800930c
+ 8006ba8:	0800935c 	.word	0x0800935c
  8006bac:	080071f9 	.word	0x080071f9
  8006bb0:	20000ec8 	.word	0x20000ec8
  8006bb4:	200009d0 	.word	0x200009d0
@@ -14669,7 +14669,7 @@ int mb_systemconfig_serialize(const systemconfig_t* in, char* buf, size_t buf_si
  80077f4:	bd80      	pop	{r7, pc}
  80077f6:	bf00      	nop
  80077f8:	20000f00 	.word	0x20000f00
- 80077fc:	08009314 	.word	0x08009314
+ 80077fc:	08009364 	.word	0x08009364
  8007800:	08007941 	.word	0x08007941
  8007804:	20000f04 	.word	0x20000f04
 
@@ -15348,7 +15348,7 @@ int mb_systemconfig_serialize(const systemconfig_t* in, char* buf, size_t buf_si
  8007e18:	20000efc 	.word	0x20000efc
  8007e1c:	20000fac 	.word	0x20000fac
  8007e20:	20000f0c 	.word	0x20000f0c
- 8007e24:	0800931c 	.word	0x0800931c
+ 8007e24:	0800936c 	.word	0x0800936c
 
 08007e28 <pxPortInitialiseStack>:
  8007e28:	b480      	push	{r7}
@@ -16709,10 +16709,10 @@ int mb_systemconfig_serialize(const systemconfig_t* in, char* buf, size_t buf_si
  8008a5a:	4798      	blx	r3
  8008a5c:	3601      	adds	r6, #1
  8008a5e:	e7f2      	b.n	8008a46 <__libc_init_array+0x1e>
- 8008a60:	08009438 	.word	0x08009438
- 8008a64:	08009438 	.word	0x08009438
- 8008a68:	08009438 	.word	0x08009438
- 8008a6c:	0800943c 	.word	0x0800943c
+ 8008a60:	08009488 	.word	0x08009488
+ 8008a64:	08009488 	.word	0x08009488
+ 8008a68:	08009488 	.word	0x08009488
+ 8008a6c:	0800948c 	.word	0x0800948c
 
 08008a70 <__retarget_lock_acquire_recursive>:
  8008a70:	4770      	bx	lr
@@ -17079,11 +17079,11 @@ int mb_systemconfig_serialize(const systemconfig_t* in, char* buf, size_t buf_si
  8008db8:	4638      	mov	r0, r7
  8008dba:	f000 f879 	bl	8008eb0 <_printf_i>
  8008dbe:	e7ed      	b.n	8008d9c <_svfiprintf_r+0x1c0>
- 8008dc0:	080093fc 	.word	0x080093fc
- 8008dc4:	08009406 	.word	0x08009406
+ 8008dc0:	0800944c 	.word	0x0800944c
+ 8008dc4:	08009456 	.word	0x08009456
  8008dc8:	00000000 	.word	0x00000000
  8008dcc:	08008b25 	.word	0x08008b25
- 8008dd0:	08009402 	.word	0x08009402
+ 8008dd0:	08009452 	.word	0x08009452
 
 08008dd4 <_printf_common>:
  8008dd4:	e92d 47f0 	stmdb	sp!, {r4, r5, r6, r7, r8, r9, sl, lr}
@@ -17412,8 +17412,8 @@ int mb_systemconfig_serialize(const systemconfig_t* in, char* buf, size_t buf_si
  80090dc:	2500      	movs	r5, #0
  80090de:	f104 0619 	add.w	r6, r4, #25
  80090e2:	e7f5      	b.n	80090d0 <_printf_i+0x220>
- 80090e4:	0800940d 	.word	0x0800940d
- 80090e8:	0800941e 	.word	0x0800941e
+ 80090e4:	0800945d 	.word	0x0800945d
+ 80090e8:	0800946e 	.word	0x0800946e
 
 080090ec <memmove>:
  80090ec:	4288      	cmp	r0, r1
