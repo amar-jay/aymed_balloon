@@ -15,6 +15,7 @@
 #include "ads1115.h"
 #include "utils.h"
 #include "config.h"
+#include "stm32f4xx_hal_uart.h"
 
 
 #include "cmsis_os.h"
@@ -23,7 +24,7 @@
 extern BalloonConfig_t balloonConfig; // Will be used later. is this right? since it is defined in config.c
 BalloonState_t balloonState;
 
-extern UART_HandleTypeDef huart2;
+extern UART_HandleTypeDef huart4;
 extern ADC_HandleTypeDef hadc1;
 
 extern osSemaphoreId_t uartSemaphoreHandle;
@@ -122,37 +123,37 @@ void PrintError(ErrorCode_t code) {
         case ERR_NONE:
             break;
         case ERR_TOP_HEATER_NTC:
-            usb_printf("Error: Top heater NTC sensor fault.\r\n");
+            usb_printf("ERROR: Top heater NTC sensor fault.\r\n");
             break;
         case ERR_BOTTOM_HEATER_NTC:
-            usb_printf("Error: Bottom heater NTC sensor fault.\r\n");
+            usb_printf("ERROR: Bottom heater NTC sensor fault.\r\n");
             break;
         case ERR_POWER_SUPPLY_NTC:
-            usb_printf("Error: Power supply NTC sensor fault.\r\n");
+            usb_printf("ERROR: Power supply NTC sensor fault.\r\n");
             break;
         case ERR_POWER_SUPPLY_HIGH_TEMP:
-            usb_printf("Error: Power supply temperature too high.\r\n");
+            usb_printf("ERROR: Power supply temperature too high.\r\n");
             break;
         case ERR_LOW_VOLTAGE:
-            usb_printf("Error: Input voltage too low.\r\n");
+            usb_printf("ERROR: Input voltage too low.\r\n");
             break;
         case ERR_HIGH_VOLTAGE:
-            usb_printf("Error: Input voltage too high.\r\n");
+            usb_printf("ERROR: Input voltage too high.\r\n");
             break;
         case ERR_TOP_HEATER_HIGH_TEMP:
-            usb_printf("Error: Top heater temperature too high.\r\n");
+            usb_printf("ERROR: Top heater temperature too high.\r\n");
             break;
         case ERR_BOTTOM_HEATER_HIGH_TEMP:
-            usb_printf("Error: Bottom heater temperature too high.\r\n");
+            usb_printf("ERROR: Bottom heater temperature too high.\r\n");
             break;
         case ERR_TOP_HEATER_HEATING:
-            usb_printf("Error: Top heater failed to heat properly.\r\n");
+            usb_printf("ERROR: Top heater failed to heat properly.\r\n");
             break;
         case ERR_BOTTOM_HEATER_HEATING:
-            usb_printf("Error: Bottom heater failed to heat properly.\r\n");
+            usb_printf("ERROR: Bottom heater failed to heat properly.\r\n");
             break;
         case ERR_PEDAL_LOCKED:
-            usb_printf("Error: Pedal is locked or not responding.\r\n");
+            usb_printf("ERROR: Pedal is locked or not responding.\r\n");
             break;
         default:
             usb_printf("Unknown error code.\r\n");
@@ -165,7 +166,7 @@ void PrintError(ErrorCode_t code) {
 void MonitorSensors(void) {
 	float value;
 	char msg[64];
-	osMutexAcquire(stateMutexHandle, osWaitForever);
+	osMutexAcquire(stateMutexHandle, 100);
 	  if (ads1115_read_P0NG(&balloonState.ads1115, &value) == HAL_OK) {
 		  balloonState.temp1 = (int16_t)ComputeTopHeaterTemperature(value);
 		  snprintf(msg, sizeof(msg), "Current Temperature of A0: %d\r\n", balloonState.temp1);
@@ -174,7 +175,7 @@ void MonitorSensors(void) {
 	  osMutexRelease(stateMutexHandle);
 	  osDelay(10);
 
-	  osMutexAcquire(stateMutexHandle, osWaitForever);
+	  osMutexAcquire(stateMutexHandle, 100);
 	  if (ads1115_read_P1NG(&balloonState.ads1115, &value) == HAL_OK) {
 		  balloonState.temp2 = (int16_t)ComputeBottomHeaterTemperature(value);
 		  snprintf(msg, sizeof(msg), "Current Temperature of A1: %d\r\n", balloonState.temp2);
@@ -183,7 +184,7 @@ void MonitorSensors(void) {
 	  osMutexRelease(stateMutexHandle);
 	  osDelay(10);
 
-	  osMutexAcquire(stateMutexHandle, osWaitForever);
+	  osMutexAcquire(stateMutexHandle, 100);
 	  if (ads1115_read_P2NG(&balloonState.ads1115, &value) == HAL_OK) {
 		  balloonState.temp3 = (int16_t)ComputePowerSupplyTemperature(value);
 		  snprintf(msg, sizeof(msg), "Current Temperature of A2: %d\r\n", balloonState.temp3);
@@ -192,7 +193,7 @@ void MonitorSensors(void) {
 	  osMutexRelease(stateMutexHandle);
 	  osDelay(10);
 
-	  osMutexAcquire(stateMutexHandle, osWaitForever);
+	  osMutexAcquire(stateMutexHandle, 100);
 	  if (ads1115_read_P3NG(&balloonState.ads1115, &value) == HAL_OK) {
 		  balloonState.vcc = (uint16_t)value; 
 		  snprintf(msg, sizeof(msg), "Current Value of A3: %d\r\n", balloonState.vcc);
@@ -202,14 +203,14 @@ void MonitorSensors(void) {
 	  osDelay(10);
 
       // monitor proximity sensor (gpio)
-      if (osMutexAcquire(stateMutexHandle, osWaitForever) == osOK) {
+      if (osMutexAcquire(stateMutexHandle, 100) == osOK) {
         balloonState.proximity = HAL_GPIO_ReadPin(PROXIMITY_SENSOR_GPIO_Port, PROXIMITY_SENSOR_Pin);
         osMutexRelease(stateMutexHandle);
         osDelay(10);
       }
 
       // pedal state
-      if (osMutexAcquire(stateMutexHandle, osWaitForever) == osOK) {
+      if (osMutexAcquire(stateMutexHandle, 100) == osOK) {
         balloonState.pedal = HAL_GPIO_ReadPin(PEDAL_SWITCH_GPIO_Port, PEDAL_SWITCH_Pin);
         osMutexRelease(stateMutexHandle);
         osDelay(10);
@@ -246,9 +247,9 @@ void ControlHeater(void){
 }
 
 
-void ControlError(void) {
-    osMutexAcquire(stateMutexHandle, osWaitForever);
-    osMutexAcquire(configMutexHandle, osWaitForever);
+void MonitorError(void) {
+    osMutexAcquire(stateMutexHandle, 100);
+    osMutexAcquire(configMutexHandle, 100);
 
 
     if(balloonState.error == ERR_NONE) {
@@ -280,47 +281,52 @@ void ControlError(void) {
 
       // If error detected and system error checking is enabled
       if(balloonState.error != ERR_NONE && balloonConfig.sys_error == 0) {
-        BuzzerBeep(750, 1);
+//        BuzzerBeep(750, 1);
         balloonState.menu_active = true;
         balloonState.menu_state = MENU_SYSTEM_ERROR;
         balloonState.op_state = OP_STANDBY;
         PrintError(balloonState.error);
-        osMutexRelease(configMutexHandle);
-        osMutexRelease(stateMutexHandle);
-        osDelay(1000);
       }
     }
+//    else {
+//    	PrintError(balloonState.error);
+//    }
     osMutexRelease(configMutexHandle);
     osMutexRelease(stateMutexHandle);
 }
 
+
 // --------------------------- UART Serial Ops -----------------------------------------
 // UART Printf Implementation
+
 uint8_t rx_line[RX_BUFFER_SIZE];
 uint8_t rx_index = 0;
-void usb_scanf(UART_HandleTypeDef* huart, uint8_t* rx_char)
+uint8_t rx_byte = 0;   // the only RX byte variable
+
+// Build line buffer and process commands
+void LogCallbackHandler()
 {
-    if (huart->Instance == USART2) {
-        if (*rx_char == '\n' || *rx_char == '\r') {
-            rx_line[rx_index] = '\0';  // terminate string
-
-            // parse command
-            process_command((char *)rx_line, &balloonConfig, &balloonState);
-
-            // reset buffer
-            rx_index = 0;
-        } else if (rx_index < RX_BUFFER_SIZE - 1) {
-            rx_line[rx_index++] = *rx_char;
-        }
-
-        // restart interrupt reception
-        HAL_UART_Receive_IT(huart, rx_char, 1);
-        HAL_UART_Receive_IT(huart, rx_char, 1);
-    }
+	  while (HAL_UART_Receive(&huart4, &rx_byte, 1, 10) == HAL_OK)
+	  {
+			if (rx_byte == '\n' || rx_byte == '\r')
+			{
+				osDelay(10);
+				rx_line[rx_index] = '\0';  // terminate string
+		        process_command((char *)rx_line, &balloonConfig, &balloonState);
+				rx_index = 0;               // reset buffer
+			}
+			else if (rx_index < RX_BUFFER_SIZE - 1)
+			{
+				rx_line[rx_index++] = rx_byte;
+			}
+	  }
 }
 
 
-void BalloonSystemInit(void) {
-	 balloonState.ads1115 = ads1115_hal_init(&hi2c1, ADS1115_DEFAULT_CONFIG());
-	 BalloonConfig_Init();
+// Initialize the system and start RX interrupt
+void BalloonSystemInit(void)
+{
+    //balloonState.ads1115 = ads1115_hal_init(&hi2c1, ADS1115_DEFAULT_CONFIG());
+    //BalloonConfig_Init();
 }
+

@@ -48,7 +48,7 @@ void BalloonConfig_Init(void) {
 				BalloonConfig_Load(); // load saved data
 			}
 	} else {
-		usb_printf("Error: EEPROM Read Failed - Using Defaults\r\n");
+		usb_printf("ERROR: EEPROM Read Failed - Using Defaults\r\n");
 	}
     osSemaphoreRelease(configMutexHandle);
   }

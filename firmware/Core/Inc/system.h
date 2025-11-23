@@ -99,11 +99,11 @@ typedef struct {
 */
 //void UART_Printf(const char *fmt, ...);
 //void UART_Scanf(UART_HandleTypeDef *huart, uint8_t* rx_char);
-double ComputeTemperature(int16_t adc_value);
+void MonitorSensors(void);
 void ControlHeater(void);
-void ControlError(void);
+void MonitorError(void);
 
 void BalloonSystemInit(void);
 
-
+void LogCallbackHandler();
 #endif

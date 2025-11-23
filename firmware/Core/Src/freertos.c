@@ -54,15 +54,22 @@ void StartLog(void *argument){
 //  }
 
   for (;;) {
+//		 usb_printf("Hey!! ");
 
+		LogCallbackHandler();
+		osDelay(1);
+		MonitorError();
      // Print current configuration via UART using the new serialization
 //     print_config(&balloonConfig);
 //	  print_state(&balloonState);
-    osDelay(1000); // Print every 2 seconds
+    osDelay(1); // Print every 2 seconds
   }
 }
-void StartSensor(void *argument){for (;;) { osDelay(101);}};
-void StartHeater(void *argument){for (;;) { osDelay(100);}};
+void StartSensor(void *argument){for (;;) {
+	MonitorSensors();
+	osDelay(1);
+}};
+void StartHeater(void *argument){for (;;) {ControlHeater(); osDelay(100);}};
 
 /* USER CODE END PD */
 

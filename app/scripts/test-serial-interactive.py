@@ -72,7 +72,7 @@ def interactive_test(device_path, baud_rate=9600):
 
         if cmd:
             try:
-                port.write((cmd + "\n").encode())
+                port.write((cmd + "\r\n").encode())
                 print(f">> Sent: {cmd}")
             except Exception as e:
                 print(f"❌ Write error: {e}")

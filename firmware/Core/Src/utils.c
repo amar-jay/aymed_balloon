@@ -23,16 +23,14 @@ void usb_printf(const char *fmt, ...)
       HAL_UART_Transmit(&huart4, (uint8_t*)print_buf, len, 1000);
       osSemaphoreRelease(uartSemaphoreHandle);
     }
-//    CDC_Transmit_FS((uint8_t *)buf, len);
 }
 
 
 char config_uart_buffer[256*2];
 void print_config(BalloonConfig_t* cfg) {
     systemconfig_t mb_cfg;
-//
+
     if(osSemaphoreAcquire(configMutexHandle, 100) == osOK) {
-        // Map SystemConfig_t to systemconfig_t
         mb_cfg.opTime = cfg->optime;
         mb_cfg.coTime = cfg->cotime;
         mb_cfg.topTempThreshold = cfg->top_temp_threshold;
@@ -53,34 +51,39 @@ void print_config(BalloonConfig_t* cfg) {
         osSemaphoreRelease(configMutexHandle);
     }
 
+    // Prepend "CONFIG: " and serialize directly after prefix
+    strcpy(config_uart_buffer, "CONFIG: ");  // prepend prefix
+    size_t prefix_len = strlen(config_uart_buffer);
 
-    // Serialize
-    int serialize_res = mb_systemconfig_serialize(&mb_cfg, config_uart_buffer, sizeof(config_uart_buffer));
-    if (serialize_res == MB_OK) {
-        // Append newline for UART transmission
+    if(mb_systemconfig_serialize(&mb_cfg, (uint8_t*)(config_uart_buffer + prefix_len),
+                                 sizeof(config_uart_buffer) - prefix_len - 2) == MB_OK)
+    {
         strlcat(config_uart_buffer, "\r\n", sizeof(config_uart_buffer));
 
         if(osSemaphoreAcquire(uartSemaphoreHandle, osWaitForever) == osOK) {
             HAL_UART_Transmit(&huart4, (uint8_t*)config_uart_buffer, strlen(config_uart_buffer), 1000);
             osSemaphoreRelease(uartSemaphoreHandle);
         }
+
+        // Clear buffer for next use
+        config_uart_buffer[0] = '\0';
     } else {
-        usb_printf("State serialization failed %d\r\n", serialize_res);
+        usb_printf("[DEBUG] Config serialization failed\r\n");
         osDelay(100);
     }
 }
 
-void print_state(BalloonState_t* state) {
-    systemdata_t data;
-    char uartBuffer[256];
 
-    if(osSemaphoreAcquire(stateMutexHandle, osWaitForever) == osOK) {
-        // Map state to systemdata_t
+char status_uart_buffer[256];
+void print_status(BalloonState_t* state) {
+    systemdata_t data;
+
+    // Safely copy state under mutex
+    if(osSemaphoreAcquire(stateMutexHandle, 100) == osOK) {
         data.topTemp = (float)state->temp1;
         data.bottomTemp = (float)state->temp2;
         data.powerSupplyTemp = (float)state->temp3;
-        
-        // Read heater states directly from GPIO
+
         data.topHeaterActive = (HAL_GPIO_ReadPin(TOP_HEATER1_GPIO_Port, TOP_HEATER1_Pin) == GPIO_PIN_SET);
         data.bottomHeaterActive = (HAL_GPIO_ReadPin(BOTTOM_HEATER1_GPIO_Port, BOTTOM_HEATER1_Pin) == GPIO_PIN_SET);
 
@@ -92,19 +95,28 @@ void print_state(BalloonState_t* state) {
         osSemaphoreRelease(stateMutexHandle);
     }
 
-    // Serialize
-    if (mb_systemdata_serialize(&data, uartBuffer, sizeof(uartBuffer)) == MB_OK) {
-        // Send via UART
+    // Serialize directly into status_uart_buffer after the prefix
+    strcpy(status_uart_buffer, "STATUS: "); // prepend prefix
+
+    size_t prefix_len = strlen(status_uart_buffer);
+    if (mb_systemdata_serialize(&data, (uint8_t*)(status_uart_buffer + prefix_len),
+                                sizeof(status_uart_buffer) - prefix_len - 2) == MB_OK)
+    {
+        // Add CRLF
+        strlcat(status_uart_buffer, "\r\n", sizeof(status_uart_buffer));
+
+        // Send via UART under semaphore protection
         if(osSemaphoreAcquire(uartSemaphoreHandle, osWaitForever) == osOK) {
-            HAL_UART_Transmit(&huart4, (uint8_t*)uartBuffer, strlen(uartBuffer), 1000);
-            HAL_UART_Transmit(&huart4, (uint8_t*)"\r\n", 2, 1000); // Add newline if needed by protocol? 
-            // Minibuf usually doesn't add newline.
+            HAL_UART_Transmit(&huart4, (uint8_t*)status_uart_buffer, strlen(status_uart_buffer), 1000);
             osSemaphoreRelease(uartSemaphoreHandle);
         }
+        status_uart_buffer[0] = '\0';
     } else {
-        usb_printf("State serialization failed\r\n");
+        usb_printf("[DEBUG] State serialization failed\r\n");
+        osDelay(100);
     }
 }
+
 
 void handle_commands(const char *key, const char *value, BalloonConfig_t* config, BalloonState_t* state)
 {
@@ -145,11 +157,11 @@ void process_command(const char *input, BalloonConfig_t* config, BalloonState_t*
         if (sscanf(input + 4, "%31s %31s", param1, param2) == 2) {
             char msg[128];
             handle_commands(param1, param2, config, state);
-            
-            snprintf(msg, sizeof(msg), "Parsed SET with %s, %s\r\n", param1, param2);
-            usb_printf(msg); // Use usb_printf for thread-safe printing
+
+//            snprintf(msg, sizeof(msg), "Parsed SET with %s, %s\r\n", param1, param2);
+//            usb_printf(msg); // Use usb_printf for thread-safe printing
         } else {
-             usb_printf("Error: Invalid SET command format\r\n");
+             usb_printf("ERROR: Invalid SET command format\r\n");
         }
     }
     else if (strncmp(input, "GET", 3) == 0) {
@@ -163,14 +175,19 @@ void process_command(const char *input, BalloonConfig_t* config, BalloonState_t*
                 print_config(config);
             }
             // if its state print state
-            else if (strcmp(key, "STATE") == 0) {
-                print_state(state);
+            else if (strcmp(key, "STATUS") == 0) {
+                print_status(state);
             }
-            
-            snprintf(msg, sizeof(msg), "Parsed GET with key: %s\r\n", key);
-            usb_printf(msg);
+
+            else if (strcmp(key, "ERROR") == 0) {
+                PrintError(state->error);
+            }
+
+//            snprintf(msg, sizeof(msg), "Parsed GET with key: %s\r\n", key);
+//            usb_printf(msg);
         } else {
-            usb_printf("Error: Invalid GET command format\r\n");
+            usb_printf("ERROR: Invalid GET command format\r\n");
         }
     }
 }
+
