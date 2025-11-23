@@ -281,16 +281,13 @@ void MonitorError(void) {
 
       // If error detected and system error checking is enabled
       if(balloonState.error != ERR_NONE && balloonConfig.sys_error == 0) {
-//        BuzzerBeep(750, 1);
         balloonState.menu_active = true;
         balloonState.menu_state = MENU_SYSTEM_ERROR;
         balloonState.op_state = OP_STANDBY;
         PrintError(balloonState.error);
+        BuzzerBeep(750, 1);
       }
     }
-//    else {
-//    	PrintError(balloonState.error);
-//    }
     osMutexRelease(configMutexHandle);
     osMutexRelease(stateMutexHandle);
 }
@@ -326,7 +323,7 @@ void LogCallbackHandler()
 // Initialize the system and start RX interrupt
 void BalloonSystemInit(void)
 {
-    //balloonState.ads1115 = ads1115_hal_init(&hi2c1, ADS1115_DEFAULT_CONFIG());
-    //BalloonConfig_Init();
+//    balloonState.ads1115 = ads1115_hal_init(&hi2c1, ADS1115_DEFAULT_CONFIG());
+    BalloonConfig_Init();
 }
 

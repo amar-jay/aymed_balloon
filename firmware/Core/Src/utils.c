@@ -155,6 +155,7 @@ void process_command(const char *input, BalloonConfig_t* config, BalloonState_t*
         memset(param2, 0, sizeof(param2));
         
         if (sscanf(input + 4, "%31s %31s", param1, param2) == 2) {
+        	// I DONT HAVE A FUCKING CLUE WHY IT WONT WORK WITHOUT THIS VARIABLE. DONT REMOVE IT!!!
             char msg[128];
             handle_commands(param1, param2, config, state);
 
@@ -169,7 +170,8 @@ void process_command(const char *input, BalloonConfig_t* config, BalloonState_t*
         memset(key, 0, sizeof(key));
         
     	if (sscanf(input + 4, "%31s", key) == 1) {
-            char msg[64];
+    		// I DONT HAVE A FUCKING CLUE WHY IT WONT WORK WITHOUT THIS VARIABLE. DONT REMOVE IT!!!
+    		char msg[64];
             // if its config print config
             if (strcmp(key, "CONFIG") == 0) {
                 print_config(config);

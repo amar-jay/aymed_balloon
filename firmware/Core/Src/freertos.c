@@ -47,21 +47,12 @@ void StartLog(void *argument){
   EE_Init();
   BalloonConfig_Init(); // Load config from EEPROM or set defaults
 
-//  // Example: Update operation time if it's the default (just as a demo)
-//  if (balloonConfig.optime == 10) {
-//      usb_printf("Updating optime from 10 to 20...\r\n");
-//      BalloonConfig_Update(VAR_OPTIME, 20); // Updates RAM and EEPROM
-//  }
-
   for (;;) {
-//		 usb_printf("Hey!! ");
 
 		LogCallbackHandler();
 		osDelay(1);
 		MonitorError();
-     // Print current configuration via UART using the new serialization
-//     print_config(&balloonConfig);
-//	  print_state(&balloonState);
+
     osDelay(1); // Print every 2 seconds
   }
 }
