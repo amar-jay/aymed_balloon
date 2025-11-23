@@ -249,7 +249,7 @@ export interface MenuStatus {
 // SYSTEM STATUS (Complete State)
 // ============================================================================
 
-export interface SystemStatus {
+export interface BalloonStatus {
   /** Temperature data */
   temperature: TemperatureData
 
@@ -359,7 +359,7 @@ export interface TelemetryPacket {
   sequence: number
 
   /** Data payload */
-  data: SystemStatus | SystemConfig | ErrorStatus | SystemEvent
+  data: BalloonStatus | SystemConfig | ErrorStatus | SystemEvent
 
   /** Timestamp */
   timestamp: Date
@@ -479,7 +479,7 @@ export interface HistoryRecord {
 
 export interface DashboardState {
   /** Current system status */
-  systemStatus: SystemStatus
+  BalloonStatus: BalloonStatus
 
   /** Connection status */
   connected: boolean
@@ -588,7 +588,7 @@ export interface SerialConfig {
 }
 
 export interface TelemetryData {
-  data: SystemStatus
+  data: BalloonStatus
   timestamp: Date
 }
 
@@ -691,7 +691,7 @@ export const ERROR_DESCRIPTIONS: Record<ErrorCode, ErrorInfo> = {
 export type ConfigUpdate = Partial<SystemConfig>
 
 /** Type for status updates */
-export type StatusUpdate = Partial<SystemStatus>
+export type StatusUpdate = Partial<BalloonStatus>
 
 /** Type guard for checking if a value is an ErrorCode */
 export function isErrorCode(value: string | ErrorCode): value is ErrorCode {

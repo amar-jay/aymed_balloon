@@ -204,11 +204,11 @@ function MainLayout({
               <div className="border-t border-gray-200 pt-4 mt-2">
                 <h4 className="text-lg font-extrabold text-gray-700 pb-1 ">Quick Commands</h4>
                 <div className="grid grid-cols-2 gap-2">
-                  {['status', 'help', 'reset', 'version', 'ping', 'info'].map((cmd) => (
+                  {['status', 'config', 'error', 'help', 'reset', 'version', 'ping'].map((cmd) => (
                     <Button
                       key={cmd}
                       onClick={() => {
-                        setCommand(cmd)
+                        setCommand('GET ' + cmd.toUpperCase())
                         setTimeout(() => sendCommand(), 0)
                       }}
                       disabled={!isConnected || loading}
@@ -268,7 +268,7 @@ export function Main({
       {/* Console Output */}
       <div className="flex-1 p-4 overflow-hidden">
         <div
-          className="bg-[#222] rounded-lg p-4 font-mono text-sm h-full overflow-y-auto border border-[#333]"
+          className="bg-[#222] rounded-lg p-4 font-mono text-sm h-full overflow-y-auto overflow-x-hidden border border-[#333]"
           style={{ minHeight: '400px' }}
         >
           {receivedData.length === 0 ? (
@@ -283,8 +283,8 @@ export function Main({
               {receivedData.map((data, index) => (
                 <div
                   key={index}
-                  className={`whitespace-pre-wrap leading-relaxed ${
-                    data.includes('[ERROR]') || data.includes('error') || data.includes('Error')
+                  className={`break-all whitespace-pre-wrap leading-relaxed ${
+                    data.includes('error') || data.includes('Error ') || data.includes('ERROR:')
                       ? 'text-red-400'
                       : data.includes('[WARN]') ||
                           data.includes('warn') ||

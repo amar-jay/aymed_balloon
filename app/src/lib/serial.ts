@@ -33,7 +33,11 @@
  */
 
 import { SerialPort, ReadlineParser } from 'serialport'
-import { ErrorCode, SystemConfig, SystemStatus } from '../preload/typings'
+import {
+  // ErrorCode,
+  SystemConfig
+} from '../preload/typings'
+import { SystemDataParse, SystemData, SystemConfigParse } from './types/minibuf'
 
 export interface SerialDevice {
   path: string
@@ -53,7 +57,7 @@ interface ConnectionInfo {
   onError?: (error: Error) => void
   dataBuffer: string[] // Buffer to store received data
   config?: SystemConfig
-  status?: Partial<SystemStatus>
+  status?: SystemData
 }
 
 // Store active connections
@@ -274,34 +278,20 @@ function parseConfig(connection: ConnectionInfo) {
 
   // find string starting with CONFIG:
   const configLine = connection.dataBuffer.find((str) => str.startsWith('CONFIG:'))
-  let configString
-
   if (configLine) {
-    const config: Partial<SystemConfig> = {}
-    configString = configLine.replace('CONFIG:', '').trim()
-    const pairs = configString.split(';')
-    for (const pair of pairs) {
-      if (pair.includes('=')) {
-        const [key, value] = pair.split('=').map((s) => s.trim())
-        // Determine type
-        const v = castConfigValue(value)
-        if (!KEYS.includes(key)) continue
-        config[key] = v
-      }
-    }
-    if (Object.keys(config).length === KEYS.length) {
-      connection.config = config as SystemConfig
-    } else {
-      console.warn(
-        '[Serial] Incomplete config received:',
-        configString,
-        'It must have ',
-        KEYS.length,
-        'keys but received ',
-        Object.keys(config).length
+    const configString = configLine.replace('CONFIG:', '').trim()
+    try {
+      connection.config = SystemConfigParse(configString)
+      connection.dataBuffer.shift()
+      connection.dataBuffer.unshift(
+        '[LOG] Parsed config successfully, ' // + JSON.stringify(connection.config)
+      )
+    } catch (error) {
+      connection.dataBuffer.shift()
+      connection.dataBuffer.unshift(
+        'ERROR: Failed to parse config data. ' + (error as Error).message
       )
     }
-    connection.dataBuffer.shift()
   }
 }
 /**
@@ -310,103 +300,23 @@ function parseConfig(connection: ConnectionInfo) {
  */
 function parseStatus(connection: ConnectionInfo) {
   //
-  const statusLine = connection.dataBuffer[0].trim()
-  let statusString = ''
-  if (statusLine.startsWith('STATUS:')) {
-    const status: Partial<SystemStatus> = {}
-    statusString = statusLine.replace('STATUS:', '').trim()
-    const statusPartitions = statusString.trim().split(' ')
-    for (const partition of statusPartitions) {
-      // work on the temp partition first
-      if (partition.startsWith('TEMP:')) {
-        const pairs = partition.replace('TEMP:', '').split(';')
-        pairs.map((pair) => {
-          if (pair.includes('=')) {
-            const [key, value] = pair.split('=').map((s) => s.trim())
-            // Determine type
-            if (
-              ![
-                'topTemp',
-                'bottomTemp',
-                'powerSupplyTemp',
-                'topTempSetpoint',
-                'bottomTempSetpoint',
-                'topHeaterActive',
-                'bottomHeaterActive'
-              ].includes(key)
-            )
-              return
-            status.temperature = {} as SystemStatus['temperature']
-            status.temperature[key] = castConfigValue(value)
-          }
-        })
-      }
-
-      if (partition.startsWith('OPERATIONS:')) {
-        const pairs = partition.replace('TEMP:', '').split(';')
-        pairs.map((pair) => {
-          if (pair.includes('=')) {
-            const [key, value] = pair.split('=').map((s) => s.trim())
-            // Determine type
-            if (
-              ![
-                'weldingTime',
-                'weldingTimeTarget',
-                'coolingTime',
-                'coolingTimeTarget',
-                'pressureValveActive',
-                'coolingFanActive',
-                'pedalPressed',
-                'proximityDetected'
-              ].includes(key)
-            )
-              return
-            status.operation = {} as SystemStatus['operation']
-            status.operation[key] = castConfigValue(value)
-          }
-        })
-      }
-
-      if (partition.startsWith('POWER:')) {
-        const value = partition.replace('POWER:', '').trim()
-        status.power = {} as SystemStatus['power']
-        if (isNaN(Number(value))) {
-          status.error = {
-            code: ErrorCode.POWER_SUPPLY_NTC,
-            message: 'Invalid voltage value',
-            description: 'Invalid voltage value received from device',
-            timestamp: Date.now(),
-            hasError: true
-          }
-          status.power.powerTempOk = false
-        } else if (Number(value) < 0) {
-          status.power.voltageOk = false
-        } else {
-          status.power.voltage = Number(value)
-        }
-      }
-
-      if (partition.startsWith('ERROR:')) {
-        const pairs = partition.replace('ERROR:', '').split(';')
-        pairs.map((pair) => {
-          if (pair.includes(':')) {
-            const [key, value] = pair.split(':').map((s) => s.trim())
-            // Determine type
-            if (key.length > 0 && value.length > 0) {
-              status.error = {
-                code: Number(key),
-                message: value,
-                description: value,
-                timestamp: Date.now(),
-                hasError: true
-              } as SystemStatus['error']
-            }
-          }
-        })
-      }
+  const statusLine = connection.dataBuffer.find((str) => str.startsWith('STATUS:'))
+  if (statusLine) {
+    const statusString = statusLine.replace('STATUS:', '').trim()
+    try {
+      const systemData = SystemDataParse(statusString)
+      connection.status = systemData
+      connection.dataBuffer.shift()
+      // add log of fetching status success
+      connection.dataBuffer.unshift(
+        '[LOG] Parsed status successfully, ' + JSON.stringify(systemData)
+      )
+    } catch (error) {
+      connection.dataBuffer.shift()
+      connection.dataBuffer.unshift(
+        'ERROR: Failed to parse status data. ' + (error as Error).message
+      )
     }
-    connection.status = status
-    connection.dataBuffer.shift()
   }
 }
 /**

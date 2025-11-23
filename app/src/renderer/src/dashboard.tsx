@@ -2,23 +2,23 @@ import { Badge } from './components/ui/badge'
 import { Gauge } from './components/ui/guage'
 import { cn } from './lib/utils'
 import {
-  SystemStatus,
+  BalloonStatus,
   OperationState,
   ErrorCode,
   MenuState,
-	OperationStatus
+  OperationStatus
 } from '../../preload/typings'
 import { Card } from './components/ui/card'
 import { useEffect, useRef } from 'react'
 import { toast } from 'sonner'
-import { Activity, Clock } from 'lucide-react';
+import { Activity, Clock } from 'lucide-react'
 
 interface DashboardProps {
   isConnected: boolean
   receivedData: string[]
 }
 
-export function generateMockSystemStatus(): SystemStatus {
+export function generateMockBalloonStatus(): BalloonStatus {
   return {
     temperature: {
       topTemp: Math.random() * 150,
@@ -31,7 +31,7 @@ export function generateMockSystemStatus(): SystemStatus {
     },
     operation: {
       state: OperationState.READY,
-      weldingTime: Math.random() * 30,	
+      weldingTime: Math.random() * 30,
       weldingTimeTarget: 30,
       coolingTime: Math.random() * 15,
       coolingTimeTarget: 15,
@@ -113,240 +113,246 @@ const getOperationStateText = (state: OperationState) => {
   }
 }
 
-
-export default function VoltageCard({power}: {power: {
-	voltage: number,
-	voltageOk: boolean
-}}) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+export default function VoltageCard({
+  power
+}: {
+  power: {
+    voltage: number
+    voltageOk: boolean
+  }
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const canvas = canvasRef.current
+    if (!canvas) return
 
-    const ctx = canvas.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
-		if (ctx == null) return;
+    const ctx = canvas.getContext('2d')
+    const width = canvas.width
+    const height = canvas.height
+    if (ctx == null) return
 
-    ctx.clearRect(0, 0, width, height);
+    ctx.clearRect(0, 0, width, height)
 
     // Battery dimensions
-    const bodyWidth = 80;
-    const bodyHeight = 130;
-    const bodyX = (width - bodyWidth) / 2;
-    const bodyY = 40;
-    const tipHeight = 5;
-    const tipWidth = 40;
-    const tipX = (width - tipWidth) / 2;
+    const bodyWidth = 80
+    const bodyHeight = 130
+    const bodyX = (width - bodyWidth) / 2
+    const bodyY = 40
+    const tipHeight = 5
+    const tipWidth = 40
+    const tipX = (width - tipWidth) / 2
 
     // Battery tip
-    ctx.fillStyle = '#64748b';
-    ctx.fillRect(tipX, bodyY - tipHeight, tipWidth, tipHeight);
+    ctx.fillStyle = '#64748b'
+    ctx.fillRect(tipX, bodyY - tipHeight, tipWidth, tipHeight)
 
     // Battery outline
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(bodyX - 2, bodyY-2, bodyWidth+4, bodyHeight+4);
+    ctx.strokeStyle = '#64748b'
+    ctx.lineWidth = 3
+    ctx.strokeRect(bodyX - 2, bodyY - 2, bodyWidth + 4, bodyHeight + 4)
 
     // Fill level
-    const percentage = power.voltage / 30;
-    const fillHeight = bodyHeight * percentage;
-    const fillY = bodyY + bodyHeight - fillHeight;
+    const percentage = power.voltage / 30
+    const fillHeight = bodyHeight * percentage
+    const fillY = bodyY + bodyHeight - fillHeight
 
     // Color based on range
-    let fillColor;
+    let fillColor
     if (percentage < 0.5) {
-      fillColor = '#ef4444'; // Red
+      fillColor = '#ef4444' // Red
     } else if (percentage < 0.75) {
-      fillColor = '#eab308'; // Yellow
+      fillColor = '#eab308' // Yellow
     } else {
-      fillColor = '#22c55e'; // Green
+      fillColor = '#22c55e' // Green
     }
 
-    ctx.fillStyle = fillColor;
-    ctx.fillRect(bodyX , fillY, bodyWidth, fillHeight );
+    ctx.fillStyle = fillColor
+    ctx.fillRect(bodyX, fillY, bodyWidth, fillHeight)
 
     // Voltage text in center of battery
-    ctx.fillStyle = '#1e293b';
-    ctx.font = 'bold 20px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(`${power.voltage.toFixed(2)}V`, width / 2, bodyY + bodyHeight / 2);
-
-  }, [power]);
+    ctx.fillStyle = '#1e293b'
+    ctx.font = 'bold 20px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(`${power.voltage.toFixed(2)}V`, width / 2, bodyY + bodyHeight / 2)
+  }, [power])
 
   return (
-      <Card className="max-h-[300px] flex flex-col items-center gap-2 space-x-0 transition-colors shadow-none md:border-none">
+    <Card className="max-h-[300px] flex flex-col items-center gap-2 space-x-0 transition-colors shadow-none md:border-none">
+      <p className="text-sm font-medium text-muted-foreground">Voltage</p>
+      <div>
+        <canvas ref={canvasRef} width={200} height={200} className="w-full" />
+      </div>
 
-        <p className="text-sm font-medium text-muted-foreground">
-					Voltage
-					</p>
-				<div>
-        <canvas
-          ref={canvasRef}
-          width={200}
-          height={200}
-          className="w-full"
-        />
-				</div>
-
-        <Badge
-          className={power.voltageOk ? 'bg-green-600 text-white mx-auto' : 'bg-red-600 text-white mx-auto'}
-        >
-          {power.voltageOk ? 'OK' : 'Alert'}
-        </Badge>
-
+      <Badge
+        className={
+          power.voltageOk ? 'bg-green-600 text-white mx-auto' : 'bg-red-600 text-white mx-auto'
+        }
+      >
+        {power.voltageOk ? 'OK' : 'Alert'}
+      </Badge>
     </Card>
-  );
+  )
 }
 
-const OperationCard = ({operation}:{operation: OperationStatus}) => {
-
+const OperationCard = ({ operation }: { operation: OperationStatus }) => {
   const getStateColor = (state) => {
     switch (state) {
       case OperationState.READY:
-        return 'bg-green-500';
+        return 'bg-green-500'
       case OperationState.WELDING:
-        return 'bg-blue-500';
+        return 'bg-blue-500'
       case OperationState.COOLING:
-        return 'bg-amber-500';
+        return 'bg-amber-500'
       case OperationState.STANDBY:
-        return 'bg-secondary';
+        return 'bg-secondary'
       default:
-        return 'bg-gray-500';
+        return 'bg-gray-500'
     }
-  };
+  }
 
   const getProgressPercentage = (current, target) => {
-    return Math.min((current / target) * 100, 100);
-  };
+    return Math.min((current / target) * 100, 100)
+  }
 
   return (
     <Card className="p-0 flex flex-col items-center transition-colors shadow-none md:border-none">
-        <div className="text-sm font-medium text-muted-foreground">Operation</div>
+      <div className="text-sm font-medium text-muted-foreground">Operation</div>
 
       {/* <CardHeader> */}
-        {/* <div className="flex items-center justify-between"> */}
-          {/* <CardTitle>Welding Operation</CardTitle> */}
-          {/* <div className="flex items-center gap-2">
+      {/* <div className="flex items-center justify-between"> */}
+      {/* <CardTitle>Welding Operation</CardTitle> */}
+      {/* <div className="flex items-center gap-2">
             <div className={`w-3 h-3 rounded-full ${getStateColor(operation.state)} animate-pulse`}></div>
             <span className="text-sm font-semibold text-foreground">{operation.state}</span>
           </div>
         </div> */}
       {/* </CardHeader> */}
-        {/* Time Progress Bars */}
-        <div className="w-full">
-          {/* Welding Time */}
-          <div>
-            <div className="flex items-center justify-between pb-1">
-                <span className="text-xs font-medium text-muted-foreground">Welding</span>
-							<div className='inline-flex items-center gap-2 text-xs'>
-                <Activity className="w-4 h-4 text-blue-600" />
+      {/* Time Progress Bars */}
+      <div className="w-full">
+        {/* Welding Time */}
+        <div>
+          <div className="flex items-center justify-between pb-1">
+            <span className="text-xs font-medium text-muted-foreground">Welding</span>
+            <div className="inline-flex items-center gap-2 text-xs">
+              <Activity className="w-4 h-4 text-blue-600" />
               <span className="text-xs text-muted-foreground">
                 {operation.weldingTime.toFixed(1)}s / {operation.weldingTimeTarget.toFixed(1)}s
               </span>
-							</div>
-            </div>
-            <div className="w-full bg-secondary rounded-full h-2">
-              <div
-                className="bg-blue-500 h-2 rounded-full transition-all duration-200"
-                style={{ width: `${getProgressPercentage(operation.weldingTime, operation.weldingTimeTarget)}%` }}
-              ></div>
             </div>
           </div>
-					<div className='h-5'></div>
+          <div className="w-full bg-secondary rounded-full h-2">
+            <div
+              className="bg-blue-500 h-2 rounded-full transition-all duration-200"
+              style={{
+                width: `${getProgressPercentage(operation.weldingTime, operation.weldingTimeTarget)}%`
+              }}
+            ></div>
+          </div>
+        </div>
+        <div className="h-5"></div>
 
-          {/* Cooling Time */}
-          <div>
-            <div className="flex items-center justify-between pb-1">
-                <span className="text-xs font-medium text-muted-foreground">Cooling Time</span>
+        {/* Cooling Time */}
+        <div>
+          <div className="flex items-center justify-between pb-1">
+            <span className="text-xs font-medium text-muted-foreground">Cooling Time</span>
 
-							<div className='inline-flex items-center gap-2 text-xs'>
-                <Clock className="w-4 h-4 text-green-600" />
+            <div className="inline-flex items-center gap-2 text-xs">
+              <Clock className="w-4 h-4 text-green-600" />
               <span className="text-xs text-muted-foreground">
                 {operation.coolingTime.toFixed(1)}s / {operation.coolingTimeTarget.toFixed(1)}s
               </span>
-							</div>
             </div>
-            <div className="w-full bg-secondary rounded-full h-2">
-              <div
-                className="bg-cyan-500 h-2 rounded-full transition-all duration-200"
-                style={{ width: `${getProgressPercentage(operation.coolingTime, operation.coolingTimeTarget)}%` }}
-              ></div>
-            </div>
+          </div>
+          <div className="w-full bg-secondary rounded-full h-2">
+            <div
+              className="bg-cyan-500 h-2 rounded-full transition-all duration-200"
+              style={{
+                width: `${getProgressPercentage(operation.coolingTime, operation.coolingTimeTarget)}%`
+              }}
+            ></div>
           </div>
         </div>
+      </div>
 
-        {/* Status Indicators Grid */}
-        <div className="grid grid-cols-2 gap-3 w-full">
-          <div className={`rounded-lg p-2 border transition-colors ${
-            operation.pressureValveActive 
-              ? 'bg-blue-50 border-blue-300' 
-              : 'bg-muted border-border'
-          }`}>
-            <div className="flex items-center gap-2">
-              {/* <Droplet className={`w-4 h-4 ${operation.pressureValveActive ? 'text-blue-600' : 'text-muted-foreground'}`} /> */}
-              <span className="text-xs font-medium text-foreground">Pressure Valve</span>
-            </div>
-            <p className={`text-xs mt-1 ${operation.pressureValveActive ? 'text-blue-700' : 'text-muted-foreground'}`}>
-              {operation.pressureValveActive ? 'Active' : 'Inactive'}
-            </p>
+      {/* Status Indicators Grid */}
+      <div className="grid grid-cols-2 gap-3 w-full">
+        <div
+          className={`rounded-lg p-2 border transition-colors ${
+            operation.pressureValveActive ? 'bg-blue-50 border-blue-300' : 'bg-muted border-border'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {/* <Droplet className={`w-4 h-4 ${operation.pressureValveActive ? 'text-blue-600' : 'text-muted-foreground'}`} /> */}
+            <span className="text-xs font-medium text-foreground">Pressure Valve</span>
           </div>
-
-          <div className={`rounded-lg p-2 border transition-colors ${
-            operation.coolingFanActive 
-              ? 'bg-cyan-50 border-cyan-300' 
-              : 'bg-muted border-border'
-          }`}>
-            <div className="flex items-center gap-2">
-              {/* <Wind className={`w-4 h-4 ${operation.coolingFanActive ? 'text-cyan-600' : 'text-muted-foreground'}`} /> */}
-              <span className="text-xs font-medium text-foreground">Cooling Fan</span>
-            </div>
-            <p className={`text-xs mt-1 ${operation.coolingFanActive ? 'text-cyan-700' : 'text-muted-foreground'}`}>
-              {operation.coolingFanActive ? 'Active' : 'Inactive'}
-            </p>
-          </div>
-
-          <div className={`rounded-lg p-3 border transition-colors ${
-            operation.pedalPressed 
-              ? 'bg-green-50 border-green-300' 
-              : 'bg-muted border-border'
-          }`}>
-            <div className="flex items-center gap-2">
-              {/* <div className={`w-4 h-4 rounded ${operation.pedalPressed ? 'bg-green-500' : 'bg-muted-foreground'}`}></div> */}
-              <span className="text-xs font-medium text-foreground">Pedal</span>
-            </div>
-            <p className={`text-xs mt-1 ${operation.pedalPressed ? 'text-green-700' : 'text-muted-foreground'}`}>
-              {operation.pedalPressed ? 'Pressed' : 'Released'}
-            </p>
-          </div>
-
-          <div className={`rounded-lg p-3 border transition-colors ${
-            operation.proximityDetected 
-              ? 'bg-amber-50 border-amber-300' 
-              : 'bg-muted border-border'
-          }`}>
-            <div className="flex items-center gap-2">
-              {/* <div className={`w-4 h-4 rounded-full ${operation.proximityDetected ? 'bg-amber-500' : 'bg-muted-foreground'}`}></div> */}
-              <span className="text-xs font-medium text-foreground">Proximity</span>
-            </div>
-            <p className={`text-xs mt-1 ${operation.proximityDetected ? 'text-amber-700' : 'text-muted-foreground'}`}>
-              {operation.proximityDetected ? 'Detected' : 'Clear'}
-            </p>
-          </div>
+          <p
+            className={`text-xs mt-1 ${operation.pressureValveActive ? 'text-blue-700' : 'text-muted-foreground'}`}
+          >
+            {operation.pressureValveActive ? 'Active' : 'Inactive'}
+          </p>
         </div>
+
+        <div
+          className={`rounded-lg p-2 border transition-colors ${
+            operation.coolingFanActive ? 'bg-cyan-50 border-cyan-300' : 'bg-muted border-border'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {/* <Wind className={`w-4 h-4 ${operation.coolingFanActive ? 'text-cyan-600' : 'text-muted-foreground'}`} /> */}
+            <span className="text-xs font-medium text-foreground">Cooling Fan</span>
+          </div>
+          <p
+            className={`text-xs mt-1 ${operation.coolingFanActive ? 'text-cyan-700' : 'text-muted-foreground'}`}
+          >
+            {operation.coolingFanActive ? 'Active' : 'Inactive'}
+          </p>
+        </div>
+
+        <div
+          className={`rounded-lg p-3 border transition-colors ${
+            operation.pedalPressed ? 'bg-green-50 border-green-300' : 'bg-muted border-border'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {/* <div className={`w-4 h-4 rounded ${operation.pedalPressed ? 'bg-green-500' : 'bg-muted-foreground'}`}></div> */}
+            <span className="text-xs font-medium text-foreground">Pedal</span>
+          </div>
+          <p
+            className={`text-xs mt-1 ${operation.pedalPressed ? 'text-green-700' : 'text-muted-foreground'}`}
+          >
+            {operation.pedalPressed ? 'Pressed' : 'Released'}
+          </p>
+        </div>
+
+        <div
+          className={`rounded-lg p-3 border transition-colors ${
+            operation.proximityDetected ? 'bg-amber-50 border-amber-300' : 'bg-muted border-border'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {/* <div className={`w-4 h-4 rounded-full ${operation.proximityDetected ? 'bg-amber-500' : 'bg-muted-foreground'}`}></div> */}
+            <span className="text-xs font-medium text-foreground">Proximity</span>
+          </div>
+          <p
+            className={`text-xs mt-1 ${operation.proximityDetected ? 'text-amber-700' : 'text-muted-foreground'}`}
+          >
+            {operation.proximityDetected ? 'Detected' : 'Clear'}
+          </p>
+        </div>
+      </div>
     </Card>
-  );
-};
+  )
+}
 
 export function Dashboard({ isConnected, receivedData }: DashboardProps) {
   // Get the latest system status from received data
   const latestData = receivedData.length > 0 ? receivedData[receivedData.length - 1] : null
-  // const systemStatus: SystemStatus | null = latestData?.data || null
+  // const systemStatus: BalloonStatus | null = latestData?.data || null
   // if in dev, use mock data
-  const systemStatus: SystemStatus | null = generateMockSystemStatus()
-  // let systemStatus: SystemStatus | null
+  const systemStatus: BalloonStatus | null = generateMockBalloonStatus()
+  // let systemStatus: BalloonStatus | null
   // try {
   //   systemStatus = (latestData && JSON.parse(latestData)) || null
   // } catch (e) {
@@ -356,12 +362,12 @@ export function Dashboard({ isConnected, receivedData }: DashboardProps) {
 
   // Error handling with toast notifications
   const previousErrorRef = useRef<ErrorCode | null>(null)
-  
+
   useEffect(() => {
     if (systemStatus?.error.hasError && systemStatus.error.code !== previousErrorRef.current) {
       toast.error(systemStatus.error.message, {
         description: systemStatus.error.description,
-        duration: 5000,
+        duration: 5000
       })
       previousErrorRef.current = systemStatus.error.code
     } else if (!systemStatus?.error.hasError && previousErrorRef.current !== null) {
@@ -482,8 +488,8 @@ export function Dashboard({ isConnected, receivedData }: DashboardProps) {
                     : 'NORMAL'}
                 </Badge>
               </Card>
-							<VoltageCard power={systemStatus.power} />
-							<OperationCard operation={systemStatus.operation} />
+              <VoltageCard power={systemStatus.power} />
+              <OperationCard operation={systemStatus.operation} />
             </div>
           </div>
 
@@ -517,19 +523,17 @@ export function Dashboard({ isConnected, receivedData }: DashboardProps) {
                   {systemStatus.operation.proximityDetected ? 'DETECTED' : 'CLEAR'}
                 </Badge>
               </div> */}
-              <div className="bg-card dark:bg-card rounded-lg border dark:border-border p-4 space-y-2 transition-colors">
-                <div className="text-sm text-muted-foreground">System Status</div>
-                <Badge
-                  variant={systemStatus.error.hasError ? 'destructive' : 'outline'}
-                  className={cn(
-                    !systemStatus.error.hasError && 'bg-green-600/80 text-white text-lg'
-                  )}
-                >
-                  {systemStatus.error.hasError ? 'ERROR' : 'OK'}
-                </Badge>
-              </div>
+            <div className="bg-card dark:bg-card rounded-lg border dark:border-border p-4 space-y-2 transition-colors">
+              <div className="text-sm text-muted-foreground">System Status</div>
+              <Badge
+                variant={systemStatus.error.hasError ? 'destructive' : 'outline'}
+                className={cn(!systemStatus.error.hasError && 'bg-green-600/80 text-white text-lg')}
+              >
+                {systemStatus.error.hasError ? 'ERROR' : 'OK'}
+              </Badge>
             </div>
           </div>
+        </div>
       )}
       {/* add more dashboard elements here later */}
       {/* {systemStatus && <p className="max-w-full text-wrap px-1">{JSON.stringify(systemStatus)}</p>} */}

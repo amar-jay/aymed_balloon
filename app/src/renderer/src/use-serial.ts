@@ -36,6 +36,13 @@ export const useSerial = () => {
         const bufferedData = await window.api.SerialreadData(connectionId, true)
         if (bufferedData && bufferedData.length > 0) {
           bufferedData.forEach((data) => {
+            if (data.trim() === '') return
+            if (data.startsWith('ERROR:')) {
+              toast.error('Serial Error', { description: data })
+            }
+            if (data.startsWith('[LOG] Parsed config successfully')) {
+              toast.success('MCU Config Updated', { description: data })
+            }
             addReceivedData(`[${new Date().toLocaleTimeString()}] ${data}`)
           })
         }
