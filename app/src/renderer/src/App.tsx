@@ -17,7 +17,7 @@ function App(): React.JSX.Element {
           <Main isConnected={serial.isConnected} receivedData={serial.receivedData} />
         )}
         {currentPath === 'dashboard' && (
-          <Dashboard isConnected={serial.isConnected} receivedData={serial.receivedData} />
+          <Dashboard isConnected={serial.isConnected} receivedData={serial.receivedData} connectionId={serial.connectionId} />
         )}
         {/* <div></div> */}
       </MainLayout>

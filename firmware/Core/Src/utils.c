@@ -89,6 +89,8 @@ void print_status(BalloonState_t* state) {
 
         data.pedalActive = state->pedal;
         data.proximityActive = state->proximity;
+				// TODO: cooling fan
+				// TODO: pressure valve
         data.menuActive = state->menu_active;
         data.powerSupplyVoltage = (float)state->vcc;
 
@@ -121,21 +123,22 @@ void print_status(BalloonState_t* state) {
 void handle_commands(const char *key, const char *value, BalloonConfig_t* config, BalloonState_t* state)
 {
     if (osSemaphoreAcquire(stateMutexHandle, 1000) == osOK) {
-        if (strcmp(key, "MANUAL_PEDAL")) {
+        if (strcmp(key, "MANUAL_PEDAL") == 0) {
             if (strcmp(value, "ON") == 0) {
                 state->pedal = 1;
             }
             else if (strcmp(value, "OFF") == 0) {
                 state->pedal = 0;
             }
-        } else if (strcmp(key, "MANUAL_PROXIMITY")) {
+        } else if (strcmp(key, "MANUAL_PROXIMITY") == 0) {
             if (strcmp(value, "ON") == 0) {
                 state->proximity = 1;
             }
             else if (strcmp(value, "OFF") == 0) {
                 state->proximity = 0;
             }
-        }
+        } else if (strcmp(key, "MANUAL_FAN") == 0) {}
+				else if (strcmp(key, "MANUAL_VALVE") == 0) {}
         osSemaphoreRelease(stateMutexHandle);
     }
 }

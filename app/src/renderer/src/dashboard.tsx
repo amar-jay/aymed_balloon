@@ -9,13 +9,14 @@ import {
   OperationStatus
 } from '../../preload/typings'
 import { Card } from './components/ui/card'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Activity, Clock } from 'lucide-react'
 
 interface DashboardProps {
   isConnected: boolean
   receivedData: string[]
+  connectionId: string | null
 }
 
 export function generateMockBalloonStatus(): BalloonStatus {
@@ -83,44 +84,37 @@ export function generateMockBalloonStatus(): BalloonStatus {
   }
 }
 
-const getOperationStateColor = (state: OperationState) => {
-  switch (state) {
-    case OperationState.STANDBY:
-      return 'secondary'
-    case OperationState.READY:
-      return 'default'
-    case OperationState.WELDING:
-      return 'destructive'
-    case OperationState.COOLING:
-      return 'outline'
-    default:
-      return 'secondary'
-  }
-}
+// const getOperationStateColor = (state: OperationState) => {
+//   switch (state) {
+//     case OperationState.STANDBY:
+//       return 'secondary'
+//     case OperationState.READY:
+//       return 'default'
+//     case OperationState.WELDING:
+//       return 'destructive'
+//     case OperationState.COOLING:
+//       return 'outline'
+//     default:
+//       return 'secondary'
+//   }
+// }
 
-const getOperationStateText = (state: OperationState) => {
-  switch (state) {
-    case OperationState.STANDBY:
-      return 'STANDBY'
-    case OperationState.READY:
-      return 'READY'
-    case OperationState.WELDING:
-      return 'WELDING'
-    case OperationState.COOLING:
-      return 'COOLING'
-    default:
-      return 'UNKNOWN'
-  }
-}
+// const getOperationStateText = (state: OperationState) => {
+//   switch (state) {
+//     case OperationState.STANDBY:
+//       return 'STANDBY'
+//     case OperationState.READY:
+//       return 'READY'
+//     case OperationState.WELDING:
+//       return 'WELDING'
+//     case OperationState.COOLING:
+//       return 'COOLING'
+//     default:
+//       return 'UNKNOWN'
+//   }
+// }
 
-export default function VoltageCard({
-  power
-}: {
-  power: {
-    voltage: number
-    voltageOk: boolean
-  }
-}) {
+export default function VoltageCard({ power }: { power: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -153,7 +147,7 @@ export default function VoltageCard({
     ctx.strokeRect(bodyX - 2, bodyY - 2, bodyWidth + 4, bodyHeight + 4)
 
     // Fill level
-    const percentage = power.voltage / 30
+    const percentage = power / 30
     const fillHeight = bodyHeight * percentage
     const fillY = bodyY + bodyHeight - fillHeight
 
@@ -175,7 +169,7 @@ export default function VoltageCard({
     ctx.font = 'bold 20px sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText(`${power.voltage.toFixed(2)}V`, width / 2, bodyY + bodyHeight / 2)
+    ctx.fillText(`${power.toFixed(2)}V`, width / 2, bodyY + bodyHeight / 2)
   }, [power])
 
   return (
@@ -187,30 +181,38 @@ export default function VoltageCard({
 
       <Badge
         className={
-          power.voltageOk ? 'bg-green-600 text-white mx-auto' : 'bg-red-600 text-white mx-auto'
+          power > 0 && power < 24
+            ? 'bg-green-600 text-white mx-auto'
+            : 'bg-red-600 text-white mx-auto'
         }
       >
-        {power.voltageOk ? 'OK' : 'Alert'}
+        {power > 0 && power < 24 ? 'OK' : 'Alert'}
       </Badge>
     </Card>
   )
 }
 
-const OperationCard = ({ operation }: { operation: OperationStatus }) => {
-  const getStateColor = (state) => {
-    switch (state) {
-      case OperationState.READY:
-        return 'bg-green-500'
-      case OperationState.WELDING:
-        return 'bg-blue-500'
-      case OperationState.COOLING:
-        return 'bg-amber-500'
-      case OperationState.STANDBY:
-        return 'bg-secondary'
-      default:
-        return 'bg-gray-500'
-    }
-  }
+const OperationCard = ({
+  operation,
+  systemData
+}: {
+  operation: OperationStatus
+  systemData: ReturnType<typeof window.api.SerialgetSystemStatus>
+}) => {
+  // const getStateColor = (state) => {
+  //   switch (state) {
+  //     case OperationState.READY:
+  //       return 'bg-green-500'
+  //     case OperationState.WELDING:
+  //       return 'bg-blue-500'
+  //     case OperationState.COOLING:
+  //       return 'bg-amber-500'
+  //     case OperationState.STANDBY:
+  //       return 'bg-secondary'
+  //     default:
+  //       return 'bg-gray-500'
+  //   }
+  // }
 
   const getProgressPercentage = (current, target) => {
     return Math.min((current / target) * 100, 100)
@@ -312,7 +314,7 @@ const OperationCard = ({ operation }: { operation: OperationStatus }) => {
 
         <div
           className={`rounded-lg p-3 border transition-colors ${
-            operation.pedalPressed ? 'bg-green-50 border-green-300' : 'bg-muted border-border'
+            systemData?.pedalActive ? 'bg-green-50 border-green-300' : 'bg-muted border-border'
           }`}
         >
           <div className="flex items-center gap-2">
@@ -320,15 +322,15 @@ const OperationCard = ({ operation }: { operation: OperationStatus }) => {
             <span className="text-xs font-medium text-foreground">Pedal</span>
           </div>
           <p
-            className={`text-xs mt-1 ${operation.pedalPressed ? 'text-green-700' : 'text-muted-foreground'}`}
+            className={`text-xs mt-1 ${systemData?.pedalActive ? 'text-green-700' : 'text-muted-foreground'}`}
           >
-            {operation.pedalPressed ? 'Pressed' : 'Released'}
+            {systemData?.pedalActive ? 'Pressed' : 'Released'}
           </p>
         </div>
 
         <div
           className={`rounded-lg p-3 border transition-colors ${
-            operation.proximityDetected ? 'bg-amber-50 border-amber-300' : 'bg-muted border-border'
+            systemData?.proximityActive ? 'bg-amber-50 border-amber-300' : 'bg-muted border-border'
           }`}
         >
           <div className="flex items-center gap-2">
@@ -336,9 +338,9 @@ const OperationCard = ({ operation }: { operation: OperationStatus }) => {
             <span className="text-xs font-medium text-foreground">Proximity</span>
           </div>
           <p
-            className={`text-xs mt-1 ${operation.proximityDetected ? 'text-amber-700' : 'text-muted-foreground'}`}
+            className={`text-xs mt-1 ${systemData?.proximityActive ? 'text-amber-700' : 'text-muted-foreground'}`}
           >
-            {operation.proximityDetected ? 'Detected' : 'Clear'}
+            {systemData?.proximityActive ? 'Detected' : 'Clear'}
           </p>
         </div>
       </div>
@@ -346,12 +348,16 @@ const OperationCard = ({ operation }: { operation: OperationStatus }) => {
   )
 }
 
-export function Dashboard({ isConnected, receivedData }: DashboardProps) {
+export function Dashboard({ isConnected, receivedData, connectionId }: DashboardProps) {
+  const [systemData, setSystemData] =
+    useState<ReturnType<typeof window.api.SerialgetSystemStatus>>(null)
   // Get the latest system status from received data
+  const [systemStatus, setSystemStatus] = useState<BalloonStatus | null>(null)
+
   const latestData = receivedData.length > 0 ? receivedData[receivedData.length - 1] : null
+
   // const systemStatus: BalloonStatus | null = latestData?.data || null
   // if in dev, use mock data
-  const systemStatus: BalloonStatus | null = generateMockBalloonStatus()
   // let systemStatus: BalloonStatus | null
   // try {
   //   systemStatus = (latestData && JSON.parse(latestData)) || null
@@ -362,6 +368,21 @@ export function Dashboard({ isConnected, receivedData }: DashboardProps) {
 
   // Error handling with toast notifications
   const previousErrorRef = useRef<ErrorCode | null>(null)
+
+  // send GET STATUS command every half second if connected
+  useEffect(() => {
+    if (!isConnected) return
+    if (!connectionId) return
+    const interval = setInterval(async () => {
+      console.log('Requesting system status...')
+      await window.api.SerialsendCommand(connectionId, 'GET STATUS')
+      const status = window.api.SerialgetSystemStatus(connectionId)
+      setSystemStatus(generateMockBalloonStatus())
+      if (status) setSystemData(status)
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [isConnected, connectionId])
 
   useEffect(() => {
     if (systemStatus?.error.hasError && systemStatus.error.code !== previousErrorRef.current) {
@@ -416,7 +437,7 @@ export function Dashboard({ isConnected, receivedData }: DashboardProps) {
               <Card className="flex flex-col items-center transition-colors shadow-none md:border-none">
                 <div className="text-sm font-medium text-muted-foreground">Top Heater</div>
                 <Gauge
-                  value={parseFloat(systemStatus.temperature.topTemp.toFixed(2))}
+                  value={parseFloat(systemData?.topTemp.toFixed(2) ?? '88.88')}
                   min={0}
                   max={systemStatus.config.topTempThreshold}
                   label="°C"
@@ -439,7 +460,7 @@ export function Dashboard({ isConnected, receivedData }: DashboardProps) {
               <Card className="flex flex-col items-center transition-colors shadow-none md:border-none">
                 <div className="text-sm font-medium text-muted-foreground">Bottom Heater</div>
                 <Gauge
-                  value={parseFloat(systemStatus.temperature.bottomTemp.toFixed(2))}
+                  value={parseFloat(systemData?.bottomTemp.toFixed(2) ?? '88.88')}
                   min={0}
                   max={systemStatus.config.bottomTempThreshold}
                   label="°C"
@@ -462,7 +483,7 @@ export function Dashboard({ isConnected, receivedData }: DashboardProps) {
               <Card className="flex flex-col items-center transition-colors shadow-none md:border-none">
                 <div className="text-sm font-medium text-muted-foreground">Power Supply</div>
                 <Gauge
-                  value={parseFloat(systemStatus.temperature.powerSupplyTemp.toFixed(2))}
+                  value={parseFloat(systemData?.powerSupplyTemp.toFixed(2) ?? '88.88')}
                   min={0}
                   max={systemStatus.config.powerTempError + 20}
                   label="°C"
@@ -488,8 +509,10 @@ export function Dashboard({ isConnected, receivedData }: DashboardProps) {
                     : 'NORMAL'}
                 </Badge>
               </Card>
-              <VoltageCard power={systemStatus.power} />
-              <OperationCard operation={systemStatus.operation} />
+              <VoltageCard
+                power={parseFloat(systemData?.powerSupplyVoltage.toFixed(2) ?? '29.99')}
+              />
+              <OperationCard operation={systemStatus.operation} systemData={systemData} />
             </div>
           </div>
 
@@ -531,6 +554,7 @@ export function Dashboard({ isConnected, receivedData }: DashboardProps) {
               >
                 {systemStatus.error.hasError ? 'ERROR' : 'OK'}
               </Badge>
+              <pre>{JSON.stringify(systemData, null, 2)}</pre>
             </div>
           </div>
         </div>

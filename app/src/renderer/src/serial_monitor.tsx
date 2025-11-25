@@ -1,7 +1,9 @@
 import * as React from 'react'
-import { Button } from '@renderer/components/ui/button'
+import { Button, buttonVariants } from '@renderer/components/ui/button'
 import { Badge } from '@renderer/components/ui/badge'
 import { Empty, EmptyMedia, EmptyTitle, EmptyDescription } from '@renderer/components/ui/empty'
+import { Input } from '@renderer/components/ui/input'
+import { Switch } from '@renderer/components/ui/switch'
 import { Label } from '@renderer/components/ui/label'
 import { cn } from './lib/utils'
 // import logo
@@ -45,7 +47,7 @@ function MainLayout({
   connectToFirstDevice: () => Promise<void>
   disconnect: () => Promise<void>
   loadDevices: () => Promise<void>
-  sendCommand: () => Promise<void>
+  sendCommand: (command?: string) => Promise<void>
   setCommand: React.Dispatch<React.SetStateAction<string>>
   setSelectedPage: React.Dispatch<React.SetStateAction<'serial-monitor' | 'dashboard'>>
 }): React.JSX.Element {
@@ -97,7 +99,7 @@ function MainLayout({
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Sidebar */}
         <aside className="w-80 flex flex-col">
           {/* Device List */}
@@ -154,77 +156,131 @@ function MainLayout({
 
           {/* Command Interface */}
           <div className="p-4 flex flex-col pb-10">
-            <div className="flex items-center gap-2 mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Command Interface</h3>
+            <div className="flex items-center gap-2 mb-3">
+              <h3 className="text-lg font-semibold text-gray-900">Quick Commands</h3>
               {isConnected && <Badge variant="outline">Active</Badge>}
             </div>
 
             <div className="space-y-4 flex-1 flex flex-col">
-              {/* Command Input */}
-              <div className="space-y-3">
-                <Label htmlFor="command-input" className="text-sm font-medium">
-                  Send Command
-                </Label>
-                <div className="flex gap-2 px-0.5 relative">
-                  <input
-                    id="command-input"
-                    type="text"
-                    value={command}
-                    onChange={(e) => setCommand(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && sendCommand()}
-                    placeholder="Enter command to send..."
-                    className="flex-1 px-1 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                    disabled={!isConnected || loading}
-                  />
+              {/* All Commands in 2-Column Grid */}
+              <div className="grid grid-cols-2 gap-2">
+                {['status', 'config', 'version', 'error', 'help', 'reset'].map((cmd) => (
                   <Button
-                    onClick={sendCommand}
-                    disabled={!isConnected || loading || !command.trim()}
+                    key={cmd}
+                    onClick={async () => {
+                      // slight delay to ensure command state is updated before sending
+                      await sendCommand('GET ' + cmd.toUpperCase())
+                    }}
+                    disabled={!isConnected || loading}
                     size="sm"
-                    variant="default"
+                    variant="outline"
+                    className={cn(
+                      'text-xs h-8 capitalize',
+                      !isConnected || loading ? 'cursor-not-allowed' : ''
+                    )}
                   >
-                    Send
+                    {cmd}
                   </Button>
-                </div>
-              </div>
+                ))}
 
-              {/* Control Buttons */}
-              <div className="flex gap-3 py-2">
-                <Button
-                  onClick={clearData}
-                  disabled={receivedData.length === 0}
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                >
-                  Clear Console
-                </Button>
-              </div>
-
-              {/* Quick Commands */}
-              <div className="border-t border-gray-200 pt-4 mt-2">
-                <h4 className="text-lg font-extrabold text-gray-700 pb-1 ">Quick Commands</h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {['status', 'config', 'error', 'help', 'reset', 'version', 'ping'].map((cmd) => (
-                    <Button
-                      key={cmd}
-                      onClick={() => {
-                        setCommand('GET ' + cmd.toUpperCase())
-                        setTimeout(() => sendCommand(), 0)
-                      }}
+                {/* Manual Controls with Toggles */}
+                {/* {[
+                  { name: 'Pedal', cmd: 'MANUAL_PEDAL', default: false },
+                  { name: 'Proximity', cmd: 'MANUAL_PROXIMITY', default: false },
+                  { name: 'Top Heater', cmd: 'MANUAL_TOP_HEATER', default: true },
+                  { name: 'Bottom Heater', cmd: 'MANUAL_BOTTOM_HEATER', default: true }
+                ].map((control) => (
+                  <Label
+                    key={control.cmd}
+                    className="flex items-center justify-between px-2 py-1.5 border border-gray-200 rounded-md cursor-pointer hover:bg-gray-50"
+                  >
+                    <span className="text-xs text-gray-700">{control.name}</span>
+                    <Switch
                       disabled={!isConnected || loading}
-                      size="sm"
-                      variant="outline"
-                      className="text-xs h-8"
+                      defaultChecked={control.default}
+                      onCheckedChange={async (checked) => {
+                        await sendCommand(`SET ${control.cmd} ${checked ? 'ON' : 'OFF'}`)
+                      }}
+                    />
+                  </Label>
+                ))} */}
+
+                {[
+                  { name: 'Pedal', cmd: 'MANUAL_PEDAL', default: false },
+                  { name: 'Proximity', cmd: 'MANUAL_PROXIMITY', default: false },
+                  { name: 'Top Heater', cmd: 'MANUAL_TOP_HEATER', default: true },
+                  { name: 'Bottom Heater', cmd: 'MANUAL_BOTTOM_HEATER', default: true }
+                ].map((control) => (
+                  <div
+                    key={control.cmd}
+                    className={
+                      (buttonVariants({
+                        variant: 'default',
+                        size: 'sm'
+                      }),
+                      'text-xs text-gray-700 flex items-center justify-around px-2 py-1.5 border border-gray-200 rounded-md cursor-pointer hover:bg-gray-50')
+                    }
+                    //flex items-center justify-between px-2 py-1.5 border border-gray-200 rounded-md cursor-pointer hover:bg-gray-50')
+                  >
+                    <button
+                      className={cn(
+                        'border-r border-gray-300 flex-1 text-center text-black hover:text-gray-700 cursor-pointer',
+                        !isConnected || loading ? 'text-gray-500 cursor-not-allowed' : ''
+                      )}
+                      disabled={!isConnected || loading}
+                      onClick={async () => {
+                        // slight delay to ensure command state is updated before sending
+                        await sendCommand(`SET ${control.cmd} ON`)
+                      }}
                     >
-                      {cmd}
-                    </Button>
-                  ))}
-                </div>
+                      {control.name} <br /> ON
+                    </button>
+                    <button
+                      className={cn(
+                        'border-gray-300 flex-1 text-center text-black hover:text-gray-700 cursor-pointer',
+
+                        !isConnected || loading ? 'text-gray-500 cursor-not-allowed' : ''
+                      )}
+                      disabled={!isConnected || loading}
+                      onClick={async () => {
+                        await sendCommand(`SET ${control.cmd} OFF`)
+                      }}
+                    >
+                      {control.name}
+                      <br /> OFF
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </aside>
         {children}
+        {selectedPage === 'serial-monitor' && (
+          <div className="absolute bottom-5 right-7 left-87 inline-flex gap-2">
+            <Input
+              value={command}
+              onChange={(e) => setCommand(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && sendCommand()}
+              placeholder="Enter command..."
+              disabled={!isConnected}
+              className="w-full bottom-4 bg-[#222] focus-visible:ring-0 focus-visible:border-[#444] border-[#333] border-2 text-gray-300 placeholder-gray-500"
+            />
+
+            <button
+              onClick={() => sendCommand()}
+              className={buttonVariants({ variant: 'default', size: 'sm' })}
+            >
+              Send
+            </button>
+            <button
+              onClick={() => clearData()}
+              className={buttonVariants({ variant: 'default', size: 'sm' })}
+            >
+              Clear
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -236,7 +292,7 @@ export function Main({
 }: {
   isConnected: boolean
   receivedData: string[]
-}) {
+}): React.JSX.Element {
   return (
     <main className="flex-1 flex flex-col bg-[#1a1a1a] rounded-tl-2xl">
       {/* Main Console Area */}

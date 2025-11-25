@@ -245,10 +245,6 @@ export function isDeviceConnected(connectionId: string): boolean {
   return activeConnections.has(connectionId)
 }
 
-// Extra helper
-const castConfigValue = (value: string) => {
-  return value == 'T' ? true : value == 'F' ? false : isNaN(Number(value)) ? value : Number(value)
-}
 /**
  * Within a config string, it is structured as such:
  * CONFIG: key1=value1;key2=value2;...
@@ -257,25 +253,6 @@ const castConfigValue = (value: string) => {
  * @returns
  */
 function parseConfig(connection: ConnectionInfo) {
-  const KEYS = [
-    'opTime',
-    'coTime',
-    'topTempThreshold',
-    'bottomTempThreshold',
-    'temp1Offset',
-    'temp2Offset',
-    'menuResetDelay',
-    'timeCalibration',
-    'maxTempError',
-    'vccVoltageError',
-    'powerTempError',
-    'powerVccErrorEnabled',
-    'sysErrorEnabled',
-    'voltageCalibration',
-    'heaterErrorEnable',
-    'coolingDelay'
-  ]
-
   // find string starting with CONFIG:
   const configLine = connection.dataBuffer.find((str) => str.startsWith('CONFIG:'))
   if (configLine) {
@@ -345,6 +322,19 @@ export function readData(connectionId: string, clearBuffer: boolean = true): str
     console.log('[Serial] Buffer cleared') // Debug log
   }
   return data
+}
+
+/**
+ * Get the latest system status from a connection
+ * @param connectionId The connection ID returned by connect()
+ * @returns The most recent SystemData object, or null if not available
+ */
+export function getSystemStatus(connectionId: string): SystemData | null {
+  const connection = activeConnections.get(connectionId)
+  if (!connection) {
+    throw new Error(`Connection ${connectionId} not found`)
+  }
+  return connection.status || null
 }
 
 /**

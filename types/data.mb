@@ -13,7 +13,18 @@ SystemData {
 
   proximityActive: bool;
 
-  menuActive: bool;
-
   pedalActive: bool;
+
+	coolingFanActive: bool;
+
+	pressureValveActive: bool;
+
+	weldingTime: number;
+
+	coolingTime: number;
+}
+
+SystemVersion {
+	major: number;
+	minor: number;
 }

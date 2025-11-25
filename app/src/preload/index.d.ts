@@ -7,6 +7,8 @@ import type {
   sendCommand,
   readData,
   readLatestData,
+  getSystemConfig,
+  getSystemStatus,
   clearBuffer,
   disconnectAll,
   connectToFirstUSBDevice,
@@ -88,6 +90,8 @@ declare global {
       SerialsendCommand: typeof sendCommand
       SerialreadData: typeof readData
       SerialreadLatestData: typeof readLatestData
+      SerialgetSystemStatus: typeof getSystemStatus
+      SerialgetSystemConfig: typeof getSystemConfig
       SerialclearDataBuffer: typeof clearBuffer
       SerialdisconnectAll: typeof disconnectAll
       SerialconnectToFirstUSBDevice: typeof connectToFirstUSBDevice

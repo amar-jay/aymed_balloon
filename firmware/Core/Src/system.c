@@ -215,6 +215,9 @@ void MonitorSensors(void) {
         osMutexRelease(stateMutexHandle);
         osDelay(10);
       }
+
+			// TODO: cooling fan
+			// TODO: pressure valve
 }
 
 
