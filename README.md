@@ -19,6 +19,7 @@ These definitions ensure consistency in data exchange between the C-based firmwa
 
 ```
 minibuf ./types/data.mb ./types/config.mb -o ./firmware/Core/Types/ -c
+minibuf ./types/data.mb ./types/config.mb -o ./app/src/lib/types/ --ts
 ```
 
 ### TODO
