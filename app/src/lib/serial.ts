@@ -37,7 +37,7 @@ import {
   // ErrorCode,
   SystemConfig
 } from '../preload/typings'
-import { SystemDataParse, SystemData, SystemConfigParse } from './types/minibuf'
+import { SystemDataParse, SystemData, SystemConfigParse, SystemVersion } from './types/minibuf'
 
 export interface SerialDevice {
   path: string
@@ -58,6 +58,7 @@ interface ConnectionInfo {
   dataBuffer: string[] // Buffer to store received data
   config?: SystemConfig
   status?: SystemData
+  version?: SystemVersion
 }
 
 // Store active connections
@@ -335,6 +336,19 @@ export function getSystemStatus(connectionId: string): SystemData | null {
     throw new Error(`Connection ${connectionId} not found`)
   }
   return connection.status || null
+}
+
+/**
+ * Get the latest system version from a connection
+ * @param connectionId The connection ID returned by connect()
+ * @returns The most recent SystemVersion object, or null if not available
+ */
+export function getSystemVersion(connectionId: string): SystemVersion | null {
+  const connection = activeConnections.get(connectionId)
+  if (!connection) {
+    throw new Error(`Connection ${connectionId} not found`)
+  }
+  return connection.version || null
 }
 
 /**

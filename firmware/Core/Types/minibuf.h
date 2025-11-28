@@ -37,8 +37,8 @@ typedef struct {
     int32_t coTime;
     int32_t topTempThreshold;
     int32_t bottomTempThreshold;
-    float temp1Offset;
-    float temp2Offset;
+    float topTempOffset;
+    float bottomTempOffset;
     int32_t menuResetDelay;
     float timeCalibration;
     float maxTempError;

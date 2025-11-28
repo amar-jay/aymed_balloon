@@ -15,7 +15,8 @@ import type {
   findUSBDevices,
   getActiveConnections,
   getDevicePath,
-  isDeviceConnected
+  isDeviceConnected,
+  getSystemVersion
 } from '../lib/serial'
 
 export interface SystemConfig {
@@ -40,12 +41,12 @@ export interface SystemConfig {
   /** Temperature sensor 1 offset calibration (100-255)
    * TODO: remove not necessary
    */
-  temp1Offset: number
+  topTempOffset: number
 
   /** Temperature sensor 2 offset calibration (100-255)
    * TODO: remove not necessary
    */
-  temp2Offset: number
+  bottomTempOffset: number
 
   /** Menu auto-reset delay (seconds, 10-60) */
   menuResetDelay: number
@@ -92,6 +93,7 @@ declare global {
       SerialreadLatestData: typeof readLatestData
       SerialgetSystemStatus: typeof getSystemStatus
       SerialgetSystemConfig: typeof getSystemConfig
+      SerialgetSystemVersion: typeof getSystemVersion
       SerialclearDataBuffer: typeof clearBuffer
       SerialdisconnectAll: typeof disconnectAll
       SerialconnectToFirstUSBDevice: typeof connectToFirstUSBDevice

@@ -179,10 +179,10 @@ int mb_systemconfig_parse(const char* buf, systemconfig_t* out) {
             out->bottomTempThreshold = atoi(token);
         }
         if (i == 4) {
-            out->temp1Offset = atof(token);
+            out->topTempOffset = atof(token);
         }
         if (i == 5) {
-            out->temp2Offset = atof(token);
+            out->bottomTempOffset = atof(token);
         }
         if (i == 6) {
             out->menuResetDelay = atoi(token);
@@ -240,10 +240,10 @@ int mb_systemconfig_serialize(const systemconfig_t* in, char* buf, size_t buf_si
     len += snprintf(pos, buf_size - len, ";%d", in->bottomTempThreshold);
     if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
     pos = buf + len;
-    len += snprintf(pos, buf_size - len, ";%s%d.%0*d", in->temp1Offset < 0 ? "-" : "", abs((int)in->temp1Offset), mb_float_precision, (int)((fabsf(in->temp1Offset) - abs((int)in->temp1Offset)) * powf(10, mb_float_precision) + 0.5f));
+    len += snprintf(pos, buf_size - len, ";%s%d.%0*d", in->topTempOffset < 0 ? "-" : "", abs((int)in->topTempOffset), mb_float_precision, (int)((fabsf(in->topTempOffset) - abs((int)in->topTempOffset)) * powf(10, mb_float_precision) + 0.5f));
     if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
     pos = buf + len;
-    len += snprintf(pos, buf_size - len, ";%s%d.%0*d", in->temp2Offset < 0 ? "-" : "", abs((int)in->temp2Offset), mb_float_precision, (int)((fabsf(in->temp2Offset) - abs((int)in->temp2Offset)) * powf(10, mb_float_precision) + 0.5f));
+    len += snprintf(pos, buf_size - len, ";%s%d.%0*d", in->bottomTempOffset < 0 ? "-" : "", abs((int)in->bottomTempOffset), mb_float_precision, (int)((fabsf(in->bottomTempOffset) - abs((int)in->bottomTempOffset)) * powf(10, mb_float_precision) + 0.5f));
     if (len >= buf_size) return MB_ERR_BUFFER_TOO_SMALL;
     pos = buf + len;
     len += snprintf(pos, buf_size - len, ";%d", in->menuResetDelay);

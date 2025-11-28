@@ -17,7 +17,8 @@ import {
   findUSBDevices,
   getActiveConnections,
   getDevicePath,
-  isDeviceConnected
+  isDeviceConnected,
+  getSystemVersion
 } from '../lib/serial'
 
 // Custom APIs for renderer
@@ -34,6 +35,7 @@ const api = {
   SerialreadLatestData: readLatestData,
   SerialgetSystemStatus: getSystemStatus,
   SerialgetSystemConfig: getSystemConfig,
+  SerialgetSystemVersion: getSystemVersion,
   SerialclearDataBuffer: clearBuffer,
   SerialdisconnectAll: disconnectAll,
   SerialconnectToFirstUSBDevice: connectToFirstUSBDevice,

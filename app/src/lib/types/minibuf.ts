@@ -28,8 +28,8 @@ export interface SystemConfig {
   coTime: number;
   topTempThreshold: number;
   bottomTempThreshold: number;
-  temp1Offset: number;
-  temp2Offset: number;
+  topTempOffset: number;
+  bottomTempOffset: number;
   menuResetDelay: number;
   timeCalibration: number;
   maxTempError: number;
@@ -183,8 +183,8 @@ export function SystemConfigParse(str: string): SystemConfig {
     coTime: 0,
     topTempThreshold: 0,
     bottomTempThreshold: 0,
-    temp1Offset: 0.0,
-    temp2Offset: 0.0,
+    topTempOffset: 0.0,
+    bottomTempOffset: 0.0,
     menuResetDelay: 0,
     timeCalibration: 0.0,
     maxTempError: 0.0,
@@ -211,10 +211,10 @@ export function SystemConfigParse(str: string): SystemConfig {
       result.bottomTempThreshold = parseInt(values[i]);
     }
     if (i === 4) {
-      result.temp1Offset = parseFloat(values[i]);
+      result.topTempOffset = parseFloat(values[i]);
     }
     if (i === 5) {
-      result.temp2Offset = parseFloat(values[i]);
+      result.bottomTempOffset = parseFloat(values[i]);
     }
     if (i === 6) {
       result.menuResetDelay = parseInt(values[i]);
@@ -264,9 +264,9 @@ export function SystemConfigSerialize(obj: SystemConfig): string {
   str += ';';
   str += `${obj.bottomTempThreshold}`;
   str += ';';
-  str += `${obj.temp1Offset.toFixed(floatPrecision)}`;
+  str += `${obj.topTempOffset.toFixed(floatPrecision)}`;
   str += ';';
-  str += `${obj.temp2Offset.toFixed(floatPrecision)}`;
+  str += `${obj.bottomTempOffset.toFixed(floatPrecision)}`;
   str += ';';
   str += `${obj.menuResetDelay}`;
   str += ';';

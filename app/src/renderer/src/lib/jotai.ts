@@ -38,8 +38,8 @@ export const defaultConfig: SystemConfig = {
   coTime: 5, // 5 seconds cooling time
   topTempThreshold: 180, // 180°C typical welding temperature
   bottomTempThreshold: 170, // 170°C slightly lower
-  temp1Offset: 128, // 0 offset (128 = 0 for signed byte)
-  temp2Offset: 128, // 0 offset
+  topTempOffset: 128, // 0 offset (128 = 0 for signed byte)
+  bottomTempOffset: 128, // 0 offset
   menuResetDelay: 30, // 30 seconds
   timeCalibration: 100, // 100ms calibration
   maxTempError: 10, // 10°C error tolerance

@@ -19,7 +19,6 @@ function MainLayout({
   devices,
   isConnected,
   loading,
-  receivedData,
   status,
   selectedPage,
   clearData,
@@ -35,7 +34,6 @@ function MainLayout({
   devices: SerialDevice[]
   connectionId: string | null
   isConnected: boolean
-  receivedData: string[]
   command: string
   loading: boolean
   status: string
@@ -162,7 +160,7 @@ function MainLayout({
             <div className="space-y-4 flex-1 flex flex-col">
               {/* All Commands in 2-Column Grid */}
               <div className="grid grid-cols-2 gap-2">
-                {['status', 'config', 'version', 'error', 'help', 'reset'].map((cmd) => (
+                {['status', 'config', 'version', 'error'].map((cmd) => (
                   <Button
                     key={cmd}
                     onClick={async () => {
@@ -181,28 +179,7 @@ function MainLayout({
                   </Button>
                 ))}
 
-                {/* Manual Controls with Toggles */}
-                {/* {[
-                  { name: 'Pedal', cmd: 'MANUAL_PEDAL', default: false },
-                  { name: 'Proximity', cmd: 'MANUAL_PROXIMITY', default: false },
-                  { name: 'Top Heater', cmd: 'MANUAL_TOP_HEATER', default: true },
-                  { name: 'Bottom Heater', cmd: 'MANUAL_BOTTOM_HEATER', default: true }
-                ].map((control) => (
-                  <Label
-                    key={control.cmd}
-                    className="flex items-center justify-between px-2 py-1.5 border border-gray-200 rounded-md cursor-pointer hover:bg-gray-50"
-                  >
-                    <span className="text-xs text-gray-700">{control.name}</span>
-                    <Switch
-                      disabled={!isConnected || loading}
-                      defaultChecked={control.default}
-                      onCheckedChange={async (checked) => {
-                        await sendCommand(`SET ${control.cmd} ${checked ? 'ON' : 'OFF'}`)
-                      }}
-                    />
-                  </Label>
-                ))} */}
-
+                {/* Manual ON/OFF Controls */}
                 {[
                   { name: 'Pedal', cmd: 'MANUAL_PEDAL', default: false },
                   { name: 'Proximity', cmd: 'MANUAL_PROXIMITY', default: false },
