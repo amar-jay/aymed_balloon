@@ -45,11 +45,16 @@ export const defaultConfig: SystemConfig = {
   maxTempError: 10, // 10°C error tolerance
   vccVoltageError: 1.0, // 1V error tolerance
   powerTempError: 5, // 5°C power temp error
-	powerVccErrorEnabled: true, // power VCC error enabled
-	sysErrorEnabled: true, // system error enabled
+  powerVccErrorEnabled: true, // power VCC error enabled
+  sysErrorEnabled: true, // system error enabled
   voltageCalibration: 50, // 50mV calibration
   heaterErrorEnable: 1, // Heater error checking enabled
-  coolingDelay: 2 // 2 seconds cooling delay
+  coolingDelay: 2, // 2 seconds cooling delay
+  useInternalADC: true // Use internal ADC
 }
 // Storage key: 'settings', default: {}
 export const settingsAtom = atomWithStorage<SystemConfig>('settings', defaultConfig)
+
+// This controls how many past data points are stored for graphing
+// Storage key: 'historyLimit', default: 240
+export const historyLimitAtom = atomWithStorage<number>('historyLimit', 240)

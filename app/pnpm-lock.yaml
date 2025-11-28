@@ -71,6 +71,9 @@ importers:
       scichart:
         specifier: ^4.0.920
         version: 4.0.920
+      scichart-react:
+        specifier: ^1.0.0
+        version: 1.0.0(react@19.2.0)(scichart@4.0.920)
       serialport:
         specifier: ^13.0.0
         version: 13.0.0
@@ -3190,6 +3193,12 @@ packages:
 
   scheduler@0.27.0:
     resolution: {integrity: sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q==}
+
+  scichart-react@1.0.0:
+    resolution: {integrity: sha512-fadf70hDbK1W9lSgNV28ovc+3W75MBOwshZ2+Wdr0oTtpGnzIkEDfVCkutaHa4UylzzpcB2jrYeyawKk3iqq7w==}
+    peerDependencies:
+      react: '>=16.8.0'
+      scichart: '>=4.0.828'
 
   scichart@4.0.920:
     resolution: {integrity: sha512-9gytVA4d8XQ33C0bTQ/TyXGqG0vH3bslGKy4Gq2hWgNUFx20h+TwpfW/zHHk7uAWTZ8MouTkCpxv9LwTe4GpCw==}
@@ -6962,6 +6971,11 @@ snapshots:
   sax@1.4.3: {}
 
   scheduler@0.27.0: {}
+
+  scichart-react@1.0.0(react@19.2.0)(scichart@4.0.920):
+    dependencies:
+      react: 19.2.0
+      scichart: 4.0.920
 
   scichart@4.0.920: {}
 

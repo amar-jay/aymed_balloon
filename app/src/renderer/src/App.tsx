@@ -1,14 +1,15 @@
 import * as React from 'react'
-import { MainLayout, Main } from './serial_monitor'
+import { Main } from './serial_monitor'
 import { useSerial } from './use-serial'
 import { Dashboard } from './dashboard'
-import { currentPathAtom} from './lib/jotai'
+import { currentPathAtom } from './lib/jotai'
 import { useAtom } from 'jotai/react'
 import { Toaster } from './components/ui/sonner'
+import { MainLayout } from './layout'
 
 function App(): React.JSX.Element {
   const serial = useSerial()
-	const [currentPath, setCurrentPath] = useAtom(currentPathAtom)
+  const [currentPath, setCurrentPath] = useAtom(currentPathAtom)
 
   return (
     <>
@@ -17,7 +18,11 @@ function App(): React.JSX.Element {
           <Main isConnected={serial.isConnected} receivedData={serial.receivedData} />
         )}
         {currentPath === 'dashboard' && (
-          <Dashboard isConnected={serial.isConnected} receivedData={serial.receivedData} connectionId={serial.connectionId} />
+          <Dashboard
+            isConnected={serial.isConnected}
+            receivedData={serial.receivedData}
+            connectionId={serial.connectionId}
+          />
         )}
         {/* <div></div> */}
       </MainLayout>
@@ -27,4 +32,3 @@ function App(): React.JSX.Element {
 }
 
 export default App
-
