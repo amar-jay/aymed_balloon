@@ -3,7 +3,31 @@
  * Generates professional PDF reports for quality control and compliance
  */
 
-import type { SessionData, WeldEvent } from './session-manager'
+import { SystemConfig } from 'src/lib/types/minibuf'
+interface SessionData {
+  id: string
+  operatorName: string
+  batchNumber?: string
+  productType?: string
+  startTime: Date
+  endTime?: Date
+  welds: WeldEvent[]
+  totalWelds: number
+  successfulWelds: number
+  failedWelds: number
+  status: 'active' | 'completed' | 'aborted'
+  config: SystemConfig
+  notes?: string
+}
+interface WeldEvent {
+  timestamp: Date
+  duration: number // in seconds
+  topTemp: number // in °C
+  bottomTemp: number // in °C
+  voltage: number // in V
+  coolingTime: number // in seconds
+  success: boolean
+}
 
 export class PDFGenerator {
   /**
@@ -22,7 +46,7 @@ export class PDFGenerator {
     printWindow.document.close()
 
     // Wait for content to load
-    await new Promise(resolve => setTimeout(resolve, 500))
+    await new Promise((resolve) => setTimeout(resolve, 500))
 
     // Trigger print dialog
     printWindow.print()
@@ -34,13 +58,14 @@ export class PDFGenerator {
    * Generate HTML content for the report
    */
   private static generateHTML(session: SessionData): string {
-    const duration = session.endTime 
-      ? (session.endTime.getTime() - session.startTime.getTime()) / 60000 
+    const duration = session.endTime
+      ? (session.endTime.getTime() - session.startTime.getTime()) / 60000
       : 0
 
-    const successRate = session.totalWelds > 0 
-      ? ((session.successfulWelds / session.totalWelds) * 100).toFixed(1)
-      : '0.0'
+    const successRate =
+      session.totalWelds > 0
+        ? ((session.successfulWelds / session.totalWelds) * 100).toFixed(1)
+        : '0.0'
 
     return `
 <!DOCTYPE html>
@@ -312,14 +337,18 @@ export class PDFGenerator {
   
   ${this.generateWeldsTable(session.welds)}
   
-  ${session.notes ? `
+  ${
+    session.notes
+      ? `
   <div class="section">
     <h2>Notes</h2>
     <p style="padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
       ${session.notes}
     </p>
   </div>
-  ` : ''}
+  `
+      : ''
+  }
   
   <div class="signature-line">
     <div class="signature">
@@ -358,7 +387,9 @@ export class PDFGenerator {
       `
     }
 
-    const rows = welds.map((weld, index) => `
+    const rows = welds
+      .map(
+        (weld, index) => `
       <tr>
         <td>${index + 1}</td>
         <td>${this.formatTime(weld.timestamp)}</td>
@@ -371,7 +402,9 @@ export class PDFGenerator {
           ${weld.success ? '✓ PASS' : '✗ FAIL'}
         </td>
       </tr>
-    `).join('')
+    `
+      )
+      .join('')
 
     return `
     <div class="section">
@@ -429,7 +462,7 @@ export class PDFGenerator {
     const json = JSON.stringify(session, null, 2)
     const blob = new Blob([json], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
-    
+
     const a = document.createElement('a')
     a.href = url
     a.download = `${session.id}.json`

@@ -1,6 +1,6 @@
 // jotai state managment funcs
 import { atomWithStorage } from 'jotai/utils'
-import { SystemConfig } from '../../../preload/typings'
+import { SystemConfig } from 'src/lib/types/minibuf'
 
 // ============================================================================
 
@@ -51,7 +51,8 @@ export const defaultConfig: SystemConfig = {
   heaterErrorEnable: 1, // Heater error checking enabled
   coolingDelay: 2, // 2 seconds cooling delay
   useInternalADC: true // Use internal ADC
-}
+} satisfies SystemConfig
+
 // Storage key: 'settings', default: {}
 export const settingsAtom = atomWithStorage<SystemConfig>('settings', defaultConfig)
 
