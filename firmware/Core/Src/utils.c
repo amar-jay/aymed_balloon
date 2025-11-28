@@ -35,8 +35,8 @@ void print_config(BalloonConfig_t* cfg) {
         mb_cfg.coTime = cfg->cotime;
         mb_cfg.topTempThreshold = cfg->top_temp_threshold;
         mb_cfg.bottomTempThreshold = cfg->bottom_temp_threshold;
-        mb_cfg.temp1Offset = (float)cfg->temp1_offset;
-        mb_cfg.temp2Offset = (float)cfg->temp2_offset;
+        mb_cfg.temp1Offset = (float)cfg->top_temp_offset;
+        mb_cfg.temp2Offset = (float)cfg->bottom_temp_offset;
         mb_cfg.menuResetDelay = cfg->menu_reset_delay;
         mb_cfg.timeCalibration = (float)cfg->time_calibration;
         mb_cfg.maxTempError = (float)cfg->max_temp_error;
@@ -47,6 +47,7 @@ void print_config(BalloonConfig_t* cfg) {
         mb_cfg.voltageCalibration = (float)cfg->voltage_calibration;
         mb_cfg.heaterErrorEnable = (float)cfg->heater_error_enable;
         mb_cfg.coolingDelay = cfg->cooling_delay;
+        mb_cfg.useInternalADC = cfg->use_internal_adc;
 
         osSemaphoreRelease(configMutexHandle);
     }
@@ -86,11 +87,11 @@ void print_status(BalloonState_t* state) {
 
         data.topHeaterActive = (HAL_GPIO_ReadPin(TOP_HEATER1_GPIO_Port, TOP_HEATER1_Pin) == GPIO_PIN_SET);
         data.bottomHeaterActive = (HAL_GPIO_ReadPin(BOTTOM_HEATER1_GPIO_Port, BOTTOM_HEATER1_Pin) == GPIO_PIN_SET);
+				data.coolingFanActive = (HAL_GPIO_ReadPin(COOLER_FAN_GPIO_Port, COOLER_FAN_Pin) == GPIO_PIN_SET);
+				data.pressureValveActive = (HAL_GPIO_ReadPin(PRESSURE_VALVE_GPIO_Port, PRESSURE_VALVE_Pin) == GPIO_PIN_SET);
 
         data.pedalActive = state->pedal;
         data.proximityActive = state->proximity;
-				// TODO: cooling fan
-				// TODO: pressure valve
         data.menuActive = state->menu_active;
         data.powerSupplyVoltage = (float)state->vcc;
 
@@ -119,6 +120,33 @@ void print_status(BalloonState_t* state) {
     }
 }
 
+void print_version() {
+		systemversion_t mb_version;
+		mb_version.major = VERSION_MAJOR;
+		mb_version.minor = VERSION_MINOR;
+		mb_version.patch = VERSION_PATCH;
+		char version_uart_buffer[64];
+		strcpy(version_uart_buffer, "VERSION: "); // prepend prefix
+
+		size_t prefix_len = strlen(version_uart_buffer);
+		if (mb_systemversion_serialize(&mb_version, (uint8_t*)(version_uart_buffer + prefix_len),
+																sizeof(version_uart_buffer) - prefix_len - 2) == MB_OK)
+		{
+				// Add CRLF
+				strlcat(version_uart_buffer, "\r\n", sizeof(version_uart_buffer));
+
+				// Send via UART under semaphore protection
+				if(osSemaphoreAcquire(uartSemaphoreHandle, osWaitForever) == osOK) {
+						HAL_UART_Transmit(&huart4, (uint8_t*)version_uart_buffer, strlen(version_uart_buffer), 1000);
+						osSemaphoreRelease(uartSemaphoreHandle);
+				}
+				version_uart_buffer[0] = '\0';
+		} else {
+				usb_printf("[DEBUG] Version serialization failed\r\n");
+				osDelay(100);;
+		}
+}
+
 
 void handle_commands(const char *key, const char *value, BalloonConfig_t* config, BalloonState_t* state)
 {
@@ -137,10 +165,121 @@ void handle_commands(const char *key, const char *value, BalloonConfig_t* config
             else if (strcmp(value, "OFF") == 0) {
                 state->proximity = 0;
             }
-        } else if (strcmp(key, "MANUAL_FAN") == 0) {}
-				else if (strcmp(key, "MANUAL_VALVE") == 0) {}
+        } 
+				else if (strcmp(key, "MANUAL_PRESSURE") == 0) {
+					HAL_GPIO_WritePin(
+						PRESSURE_VALVE_GPIO_Port, PRESSURE_VALVE_Pin, (
+							(strcmp(value, "ON") == 0) ? GPIO_PIN_SET : GPIO_PIN_RESET): (
+								(strcmp(value, "OFF") == 0) ? GPIO_PIN_RESET : HAL_GPIO_ReadPin(PRESSURE_VALVE_GPIO_Port, PRESSURE_VALVE_Pin)
+						)
+					);
+				}
+				else if (strcmp(key, "MANUAL_COOLING") == 0) {
+					HAL_GPIO_WritePin(
+						COOLER_FAN_GPIO_Port, COOLER_FAN_Pin, (
+							(strcmp(value, "ON") == 0) ? GPIO_PIN_SET : GPIO_PIN_RESET): (
+								(strcmp(value, "OFF") == 0) ? GPIO_PIN_RESET : HAL_GPIO_ReadPin(COOLER_FAN_GPIO_Port, COOLER_FAN_Pin)
+						)
+					);
+				}
+				else if (strcmp(key, "MANUAL_TOP_HEATER") == 0) {
+					HAL_GPIO_WritePin(
+						TOP_HEATER1_GPIO_Port, TOP_HEATER1_Pin,
+						(strcmp(value, "ON") == 0) ? GPIO_PIN_SET : (
+							(strcmp(value, "OFF") == 0) ? GPIO_PIN_RESET : HAL_GPIO_ReadPin(TOP_HEATER1_GPIO_Port, TOP_HEATER1_Pin))
+						);
+				}
+				else if (strcmp(key, "MANUAL_BOTTOM_HEATER") == 0) {
+					HAL_GPIO_WritePin(
+						BOTTOM_HEATER1_GPIO_Port, BOTTOM_HEATER1_Pin,
+						(strcmp(value, "ON") == 0) ? GPIO_PIN_SET : (
+							(strcmp(value, "OFF") == 0) ? GPIO_PIN_RESET : HAL_GPIO_ReadPin(BOTTOM_HEATER1_GPIO_Port, BOTTOM_HEATER1_Pin)
+						);
+					);
+				}
         osSemaphoreRelease(stateMutexHandle);
     }
+    if (osSemaphoreAcquire(configMutexHandle, 1000) == osOK) {
+			  // SET CONFIG_OPTIME
+				if (strcmp(key, "CONFIG_OPTIME") == 0) {
+					uint8_t optime = atoi(value);
+					if (optime >= 1 && optime <= 100) {
+						config.optime = optime;
+						BalloonConfig_Update(VAR_OPTIME, optime);
+					} else {
+						usb_printf("ERROR: Invalid OPTIME value. Must be between 1 and 100.\r\n");
+					}
+				}
+				// SET CONFIG_COTIME
+				else if (strcmp(key, "CONFIG_COTIME") == 0) {
+					uint8_t cotime = atoi(value);
+					if (cotime >= 1 && cotime <= 100) {
+						config.cotime = cotime;
+						BalloonConfig_Update(VAR_COTIME, cotime);
+					} else {
+						usb_printf("ERROR: Invalid COTIME value. Must be between 1 and 100.\r\n");
+					}
+				}
+				// SET CONFIG_TOP_TEMP_THRESHOLD
+				else if (strcmp(key, "CONFIG_TOP_TEMP_THRESHOLD") == 0) {
+					uint8_t top_temp = atoi(value);
+					if (top_temp > 50 && top_temp < 200) {
+						config.top_temp_threshold = top_temp;
+						BalloonConfig_Update(VAR_TOP_TEMP_THRESHOLD, top_temp);
+					} else {
+						usb_printf("ERROR: Invalid TOP_TEMP_THRESHOLD value. Must be between 1 and 100.\r\n");
+					}
+				}
+				// SET CONFIG_BOTTOM_TEMP_THRESHOLD
+				else if (strcmp(key, "CONFIG_BOTTOM_TEMP_THRESHOLD") == 0) {
+					uint8_t bottom_temp = atoi(value);
+					if (bottom_temp > 50 && bottom_temp < 200) {
+						config.bottom_temp_threshold = bottom_temp;
+						BalloonConfig_Update(VAR_BOTTOM_TEMP_THRESHOLD, bottom_temp);
+					} else {
+						usb_printf("ERROR: Invalid BOTTOM_TEMP_THRESHOLD value. Must be between 1 and 100.\r\n");
+					}
+				}
+
+				// SET CONFIG_TEMP1_OFFSET
+				else if (strcmp(key, "CONFIG_TEMP1_OFFSET") == 0) {
+					uint8_t top_temp_offset = atoi(value);
+					if (top_temp_offset < 500) {
+						config.top_temp_offset = top_temp_offset;
+						BalloonConfig_Update(VAR_TOP_TEMP_OFFSET, top_temp_offset);
+					} else {
+						usb_printf("ERROR: Invalid TEMP1_OFFSET value. Must be less than 100.\r\n");
+					}
+				}
+
+				// SET CONFIG_TEMP2_OFFSET
+				else if (strcmp(key, "CONFIG_TEMP2_OFFSET") == 0) {
+					uint8_t bottom_temp_offset = atoi(value);
+					if (bottom_temp_offset < 500) {
+						config.bottom_temp_offset = bottom_temp_offset;
+						BalloonConfig_Update(VAR_BOTTOM_TEMP_OFFSET, bottom_temp_offset);
+					} else {
+						usb_printf("ERROR: Invalid TEMP2_OFFSET value. Must be less than 100.\r\n");
+					}
+				}
+
+				// SET CONFIG_MAX_TEMP_ERROR
+				else if (strcmp(key, "CONFIG_MAX_TEMP_ERROR") == 0) {
+					uint8_t max_temp_error = atoi(value);
+					if (max_temp_error <= 100) {
+						config.max_temp_error = max_temp_error;
+						BalloonConfig_Update(VAR_MAX_TEMP_ERROR, max_temp_error);
+					} else {
+						usb_printf("ERROR: Invalid MAX_TEMP_ERROR value. Must be between 0 and 100.\r\n");
+					}
+				}
+
+				// SET RESET CONFIG
+				if (strcmp(key, "RESET") == 0 && strcmp(value, "CONFIG") == 0) {
+					BalloonConfig_ForceReset();
+				}
+				osSemaphoreRelease(configMutexHandle);
+		}
 }
 
 
@@ -161,9 +300,6 @@ void process_command(const char *input, BalloonConfig_t* config, BalloonState_t*
         	// I DONT HAVE A FUCKING CLUE WHY IT WONT WORK WITHOUT THIS VARIABLE. DONT REMOVE IT!!!
             char msg[128];
             handle_commands(param1, param2, config, state);
-
-//            snprintf(msg, sizeof(msg), "Parsed SET with %s, %s\r\n", param1, param2);
-//            usb_printf(msg); // Use usb_printf for thread-safe printing
         } else {
              usb_printf("ERROR: Invalid SET command format\r\n");
         }
@@ -188,8 +324,9 @@ void process_command(const char *input, BalloonConfig_t* config, BalloonState_t*
                 PrintError(state->error);
             }
 
-//            snprintf(msg, sizeof(msg), "Parsed GET with key: %s\r\n", key);
-//            usb_printf(msg);
+						else if (strcmp(key, "VERSION") == 0) {
+							  print_version();
+						}
         } else {
             usb_printf("ERROR: Invalid GET command format\r\n");
         }

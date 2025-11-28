@@ -29,8 +29,8 @@ void BalloonConfig_Init(void) {
 				balloonConfig.cotime               = 5;
 				balloonConfig.top_temp_threshold   = 110;
 				balloonConfig.bottom_temp_threshold= 110;
-				balloonConfig.temp1_offset         = 220;
-				balloonConfig.temp2_offset         = 220;
+				balloonConfig.top_temp_offset         = 0;
+				balloonConfig.bottom_temp_offset         = 0;
 				balloonConfig.menu_reset_delay     = 15;
 				balloonConfig.time_calibration     = 100;
 				balloonConfig.max_temp_error       = 150;
@@ -42,10 +42,16 @@ void BalloonConfig_Init(void) {
 				balloonConfig.heater_error_enable  = 5;
 				balloonConfig.cooling_delay        = 75;
 				balloonConfig.first_boot           = 0xA5;
+				balloonConfig.use_internal_adc     = 0;
 
 				BalloonConfig_SaveAll(); // write defaults
 			} else {
 				BalloonConfig_Load(); // load saved data
+				// Validate EEPROM integrity
+				if (!BalloonConfig_Validate()) {
+					usb_printf("Flash integrity check failed, using defaults\r\n");
+					BalloonConfig_ForceReset();
+				}
 			}
 	} else {
 		usb_printf("ERROR: EEPROM Read Failed - Using Defaults\r\n");
@@ -60,8 +66,8 @@ void BalloonConfig_Load(void) {
     EE_ReadVariable(VAR_COTIME, &val);                balloonConfig.cotime = val;
     EE_ReadVariable(VAR_TOP_TEMP_THRESHOLD, &val);    balloonConfig.top_temp_threshold = val;
     EE_ReadVariable(VAR_BOTTOM_TEMP_THRESHOLD, &val); balloonConfig.bottom_temp_threshold = val;
-    EE_ReadVariable(VAR_TEMP1_OFFSET, &val);          balloonConfig.temp1_offset = val;
-    EE_ReadVariable(VAR_TEMP2_OFFSET, &val);          balloonConfig.temp2_offset = val;
+    EE_ReadVariable(VAR_TOP_TEMP_OFFSET, &val);          balloonConfig.top_temp_offset = val;
+    EE_ReadVariable(VAR_BOTTOM_TEMP_OFFSET, &val);          balloonConfig.bottom_temp_offset = val;
     EE_ReadVariable(VAR_MENU_RESET_DELAY, &val);      balloonConfig.menu_reset_delay = val;
     EE_ReadVariable(VAR_TIME_CALIBRATION, &val);      balloonConfig.time_calibration = val;
     EE_ReadVariable(VAR_MAX_TEMP_ERROR, &val);        balloonConfig.max_temp_error = val;
@@ -73,6 +79,7 @@ void BalloonConfig_Load(void) {
     EE_ReadVariable(VAR_HEATER_ERROR_ENABLE, &val);   balloonConfig.heater_error_enable = val;
     EE_ReadVariable(VAR_COOLING_DELAY, &val);         balloonConfig.cooling_delay = val;
     EE_ReadVariable(VAR_FIRST_BOOT, &val);            balloonConfig.first_boot = val;
+		EE_ReadVariable(VAR_USE_INTERNAL_ADC, &val);      balloonConfig.use_internal_adc = val;
 }
 
 void BalloonConfig_SaveAll(void) {
@@ -80,8 +87,8 @@ void BalloonConfig_SaveAll(void) {
     EE_WriteVariable(VAR_COTIME, balloonConfig.cotime);
     EE_WriteVariable(VAR_TOP_TEMP_THRESHOLD, balloonConfig.top_temp_threshold);
     EE_WriteVariable(VAR_BOTTOM_TEMP_THRESHOLD, balloonConfig.bottom_temp_threshold);
-    EE_WriteVariable(VAR_TEMP1_OFFSET, balloonConfig.temp1_offset);
-    EE_WriteVariable(VAR_TEMP2_OFFSET, balloonConfig.temp2_offset);
+    EE_WriteVariable(VAR_TOP_TEMP_OFFSET, balloonConfig.top_temp_offset);
+    EE_WriteVariable(VAR_BOTTOM_TEMP_OFFSET, balloonConfig.bottom_temp_offset);
     EE_WriteVariable(VAR_MENU_RESET_DELAY, balloonConfig.menu_reset_delay);
     EE_WriteVariable(VAR_TIME_CALIBRATION, balloonConfig.time_calibration);
     EE_WriteVariable(VAR_MAX_TEMP_ERROR, balloonConfig.max_temp_error);
@@ -93,6 +100,7 @@ void BalloonConfig_SaveAll(void) {
     EE_WriteVariable(VAR_HEATER_ERROR_ENABLE, balloonConfig.heater_error_enable);
     EE_WriteVariable(VAR_COOLING_DELAY, balloonConfig.cooling_delay);
     EE_WriteVariable(VAR_FIRST_BOOT, balloonConfig.first_boot);
+		EE_WriteVariable(VAR_USE_INTERNAL_ADC, balloonConfig.use_internal_adc);
 }
 
 void BalloonConfig_Update(uint16_t varID, uint8_t value) {
@@ -104,8 +112,8 @@ void BalloonConfig_Update(uint16_t varID, uint8_t value) {
         case VAR_COTIME: balloonConfig.cotime = value; break;
         case VAR_TOP_TEMP_THRESHOLD: balloonConfig.top_temp_threshold = value; break;
         case VAR_BOTTOM_TEMP_THRESHOLD: balloonConfig.bottom_temp_threshold = value; break;
-        case VAR_TEMP1_OFFSET: balloonConfig.temp1_offset = value; break;
-        case VAR_TEMP2_OFFSET: balloonConfig.temp2_offset = value; break;
+        case VAR_TOP_TEMP_OFFSET: balloonConfig.top_temp_offset = value; break;
+        case VAR_BOTTOM_TEMP_OFFSET: balloonConfig.bottom_temp_offset = value; break;
         case VAR_MENU_RESET_DELAY: balloonConfig.menu_reset_delay = value; break;
         case VAR_TIME_CALIBRATION: balloonConfig.time_calibration = value; break;
         case VAR_MAX_TEMP_ERROR: balloonConfig.max_temp_error = value; break;
@@ -117,10 +125,32 @@ void BalloonConfig_Update(uint16_t varID, uint8_t value) {
         case VAR_HEATER_ERROR_ENABLE: balloonConfig.heater_error_enable = value; break;
         case VAR_COOLING_DELAY: balloonConfig.cooling_delay = value; break;
         case VAR_FIRST_BOOT: balloonConfig.first_boot = value; break;
+				case VAR_USE_INTERNAL_ADC: balloonConfig.use_internal_adc = value; break;
+				default: break; // Unknown varID
     }
 }
 
 void BalloonConfig_ForceReset(void) {
 	EE_WriteVariable(VAR_FIRST_BOOT, 0xA5);
 	BalloonConfig_Init();
+}
+
+uint8_t BalloonConfig_Validate(void) {
+    // Check if values are within reasonable ranges
+    if (balloonConfig.optime < 1 || balloonConfig.optime > 100) return 0;
+    if (balloonConfig.cotime < 1 || balloonConfig.cotime > 100) return 0;
+    if (balloonConfig.top_temp_threshold < 50 || balloonConfig.top_temp_threshold > 200) return 0;
+    if (balloonConfig.bottom_temp_threshold < 50 || balloonConfig.bottom_temp_threshold > 200) return 0;
+    if (balloonConfig.top_temp_offset > 500) return 0; // assuming offset is small
+    if (balloonConfig.bottom_temp_offset > 500) return 0;
+    if (balloonConfig.menu_reset_delay < 1 || balloonConfig.menu_reset_delay > 60) return 0;
+    if (balloonConfig.time_calibration < 50 || balloonConfig.time_calibration > 150) return 0;
+    if (balloonConfig.max_temp_error < 100 || balloonConfig.max_temp_error > 250) return 0;
+    if (balloonConfig.vcc_voltage_error < 10 || balloonConfig.vcc_voltage_error > 50) return 0;
+    if (balloonConfig.power_temp_error < 20 || balloonConfig.power_temp_error > 100) return 0;
+    if (balloonConfig.voltage_calibration < 100 || balloonConfig.voltage_calibration > 150) return 0;
+    if (balloonConfig.heater_error_enable > 50) return 0;
+    if (balloonConfig.cooling_delay < 10 || balloonConfig.cooling_delay > 200) return 0;
+    if (balloonConfig.use_internal_adc > 1) return 0;
+    return 1; // valid
 }

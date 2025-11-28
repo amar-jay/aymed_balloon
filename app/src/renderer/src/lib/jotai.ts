@@ -19,8 +19,8 @@ export const baudRateAtom = atomWithStorage<number>('baudRate', 115200)
 //   cotime: number
 //   top_temp_threshold: number
 //   bottom_temp_threshold: number
-//   temp1_offset: number
-//   temp2_offset: number
+//   top_temp_offset: number
+//   bottom_temp_offset: number
 //   menu_reset_delay: number
 //   time_calibration: number
 //   max_temp_error: number

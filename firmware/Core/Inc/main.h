@@ -97,6 +97,10 @@ void Error_Handler(void);
 /* USER CODE BEGIN Private defines */
 #define RX_BUFFER_SIZE 64
 
+
+#define VERSION_MAJOR 0
+#define VERSION_MINOR 1
+#define VERSION_PATCH 4
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

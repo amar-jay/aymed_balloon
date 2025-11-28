@@ -25,7 +25,7 @@ extern BalloonConfig_t balloonConfig; // Will be used later. is this right? sinc
 BalloonState_t balloonState;
 
 extern UART_HandleTypeDef huart4;
-extern ADC_HandleTypeDef hadc1;
+extern ADC_HandleTypeDef hadc2;
 
 extern osSemaphoreId_t uartSemaphoreHandle;
 extern osMutexId_t configMutexHandle;
@@ -73,13 +73,34 @@ static inline double compute_ntc_temperature(float v_out_mv)
     return temp_K - 273.15;
 }
 
+// Internal ADC read function
+float ReadInternalADC(uint32_t channel) {
+    ADC_ChannelConfTypeDef sConfig = {0};
+    sConfig.Channel = channel;
+    sConfig.Rank = 1;
+    sConfig.SamplingTime = ADC_SAMPLETIME_15CYCLES; // longer for accuracy
+
+    if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK) {
+        return -1.0f;
+    }
+
+    HAL_ADC_Start(&hadc2);
+    if (HAL_ADC_PollForConversion(&hadc2, 100) == HAL_OK) {
+        uint32_t raw = HAL_ADC_GetValue(&hadc2);
+        return (raw * 3.3f) / 4096.0f * 1000.0f; // convert to mV
+    }
+    return -1.0f;
+}
+
+static ADS1115_HandleTypeDef ads1115_instance;
+
 double ComputeTopHeaterTemperature(float mv)
 {
     double baseTempC = compute_ntc_temperature(mv);
 
     double offset = 0;
     if (osMutexAcquire(configMutexHandle, osWaitForever) == osOK) {
-        offset = balloonConfig.temp1_offset;
+        offset = balloonConfig.top_temp_offset;
         osMutexRelease(configMutexHandle);
     }
 
@@ -92,7 +113,7 @@ double ComputeBottomHeaterTemperature(float mv)
 
     double offset = 0;
     if (osMutexAcquire(configMutexHandle, osWaitForever) == osOK) {
-        offset = balloonConfig.temp2_offset;
+        offset = balloonConfig.bottom_temp_offset;
         osMutexRelease(configMutexHandle);
     }
 
@@ -164,60 +185,101 @@ void PrintError(ErrorCode_t code) {
 
 // -------------------------------------------
 void MonitorSensors(void) {
-	float value;
-	char msg[64];
-	osMutexAcquire(stateMutexHandle, 100);
-	  if (ads1115_read_P0NG(&balloonState.ads1115, &value) == HAL_OK) {
-		  balloonState.temp1 = (int16_t)ComputeTopHeaterTemperature(value);
-		  snprintf(msg, sizeof(msg), "Current Temperature of A0: %d\r\n", balloonState.temp1);
-		  usb_printf(msg);
-	  }
-	  osMutexRelease(stateMutexHandle);
-	  osDelay(10);
+    float value;
 
-	  osMutexAcquire(stateMutexHandle, 100);
-	  if (ads1115_read_P1NG(&balloonState.ads1115, &value) == HAL_OK) {
-		  balloonState.temp2 = (int16_t)ComputeBottomHeaterTemperature(value);
-		  snprintf(msg, sizeof(msg), "Current Temperature of A1: %d\r\n", balloonState.temp2);
-		  usb_printf(msg);
-	  }
-	  osMutexRelease(stateMutexHandle);
-	  osDelay(10);
+    // --- Local variables to store all results BEFORE taking mutex ---
+    int16_t temp1 = 0;
+    int16_t temp2 = 0;
+    int16_t temp3 = 0;
+    uint16_t vcc  = 0;
+    uint8_t  proximity = 0;
+    uint8_t  pedal     = 0;
+    uint8_t  cooling_fan     = 0;
+    uint8_t  pressure_valve     = 0;
 
-	  osMutexAcquire(stateMutexHandle, 100);
-	  if (ads1115_read_P2NG(&balloonState.ads1115, &value) == HAL_OK) {
-		  balloonState.temp3 = (int16_t)ComputePowerSupplyTemperature(value);
-		  snprintf(msg, sizeof(msg), "Current Temperature of A2: %d\r\n", balloonState.temp3);
-		  usb_printf(msg);
-	  }
-	  osMutexRelease(stateMutexHandle);
-	  osDelay(10);
+    uint8_t use_internal = 0;
+    if (osMutexAcquire(configMutexHandle, 100) == osOK) {
+        use_internal = balloonConfig.use_internal_adc;
+        osMutexRelease(configMutexHandle);
+    }
 
-	  osMutexAcquire(stateMutexHandle, 100);
-	  if (ads1115_read_P3NG(&balloonState.ads1115, &value) == HAL_OK) {
-		  balloonState.vcc = (uint16_t)value; 
-		  snprintf(msg, sizeof(msg), "Current Value of A3: %d\r\n", balloonState.vcc);
-		  usb_printf(msg);
-	  }
-	  osMutexRelease(stateMutexHandle);
-	  osDelay(10);
+    // --- Sensor reads: prefer internal ADC if enabled, else ADS1115 ---
+    // Temp1
+    if (use_internal) {
+        float mv = ReadInternalADC(ADC_CHANNEL_14);
+        if (mv > 0) temp1 = (int16_t)ComputeTopHeaterTemperature(mv);
+        else temp1 = 0; // invalid
+    } else if (balloonState.ads1115 == NULL) {
+        temp1 = 0; // invalid
+    } else if (ads1115_read_P0NG(balloonState.ads1115, &value) == HAL_OK) {
+        temp1 = (int16_t)ComputeTopHeaterTemperature(value);
+    } else {
+        temp1 = 0; // invalid
+    }
 
-      // monitor proximity sensor (gpio)
-      if (osMutexAcquire(stateMutexHandle, 100) == osOK) {
-        balloonState.proximity = HAL_GPIO_ReadPin(PROXIMITY_SENSOR_GPIO_Port, PROXIMITY_SENSOR_Pin);
-        osMutexRelease(stateMutexHandle);
-        osDelay(10);
-      }
+    // Temp2
+    if (use_internal) {
+        float mv = ReadInternalADC(ADC_CHANNEL_15);
+        if (mv > 0) temp2 = (int16_t)ComputeBottomHeaterTemperature(mv);
+        else temp2 = 0; // invalid
+    } else if (balloonState.ads1115 == NULL) {
+        temp2 = 0; // invalid
+    } else if (ads1115_read_P1NG(balloonState.ads1115, &value) == HAL_OK) {
+        temp2 = (int16_t)ComputeBottomHeaterTemperature(value);
+    } else {
+        temp2 = 0; // invalid
+    }
 
-      // pedal state
-      if (osMutexAcquire(stateMutexHandle, 100) == osOK) {
-        balloonState.pedal = HAL_GPIO_ReadPin(PEDAL_SWITCH_GPIO_Port, PEDAL_SWITCH_Pin);
-        osMutexRelease(stateMutexHandle);
-        osDelay(10);
-      }
+    // Temp3
+    if (use_internal) {
+        float mv = ReadInternalADC(ADC_CHANNEL_8);
+        if (mv > 0) temp3 = (int16_t)ComputePowerSupplyTemperature(mv);
+        else temp3 = 0; // invalid
+    } else if (balloonState.ads1115 == NULL) {
+        temp3 = 0; // invalid
+    } else if (ads1115_read_P2NG(balloonState.ads1115, &value) == HAL_OK) {
+        temp3 = (int16_t)ComputePowerSupplyTemperature(value);
+    } else {
+        temp3 = 0; // invalid
+    }
 
-			// TODO: cooling fan
-			// TODO: pressure valve
+    // VCC
+    if (use_internal) {
+        float mv = ReadInternalADC(ADC_CHANNEL_9);
+        if (mv > 0) vcc = (uint16_t)(mv / 3.3 * 100); // rough conversion
+        else vcc = 0;
+    } else if (balloonState.ads1115 == NULL) {
+        vcc = 0; // invalid
+    } else if (ads1115_read_P3NG(balloonState.ads1115, &value) == HAL_OK) {
+        vcc = (uint16_t)value;
+    } else {
+        vcc = 0;
+    }
+
+    // --- GPIO reads (also no mutex needed yet) ---
+    proximity = HAL_GPIO_ReadPin(PROXIMITY_SENSOR_GPIO_Port, PROXIMITY_SENSOR_Pin);
+    pedal     = HAL_GPIO_ReadPin(PEDAL_SWITCH_GPIO_Port,  PEDAL_SWITCH_Pin);
+		pressure_valve = HAL_GPIO_ReadPin(PRESSURE_VALVE_GPIO_Port, PRESSURE_VALVE_Pin);
+		cooling_fan   = HAL_GPIO_ReadPin(COOLER_FAN_GPIO_Port, COOLER_FAN_Pin);
+
+    // --- NOW do a SINGLE SHORT mutex-protected update ---
+    osMutexAcquire(stateMutexHandle, osWaitForever);
+
+    balloonState.temp1 = temp1;
+    balloonState.temp2 = temp2;
+    balloonState.temp3 = temp3;
+    balloonState.vcc   = vcc;
+    balloonState.proximity = proximity;
+    balloonState.pedal     = pedal;
+		balloonState.cooling_fan = cooling_fan;
+		balloonState.pressure_valve = pressure_valve;
+
+    osMutexRelease(stateMutexHandle);
+
+    // --- Printing outside the lock ---
+    usb_printf("DEBUG: T1:%d T2:%d T3:%d V:%d Prox:%d Ped:%d CF:%d PV:%d\r\n",
+             temp1, temp2, temp3, vcc, proximity, pedal, cooling_fan, pressure_valve);
+    osDelay(10);
 }
 
 
@@ -244,6 +306,17 @@ void ControlHeater(void){
 	  HAL_GPIO_WritePin(BOTTOM_HEATER1_GPIO_Port, BOTTOM_HEATER1_Pin, GPIO_PIN_RESET);
 	  HAL_GPIO_WritePin(BOTTOM_HEATER2_GPIO_Port, BOTTOM_HEATER2_Pin, GPIO_PIN_RESET);
 	}
+
+	// If either of the heater tempretures is above threshold, enable cooling fan
+	if(
+		(balloonState.temp1 > balloonConfig.top_temp_threshold) ||
+		(balloonState.temp2 > balloonConfig.bottom_temp_threshold)
+	) {
+	  HAL_GPIO_WritePin(COOLER_FAN_GPIO_Port, COOLER_FAN_Pin, GPIO_PIN_SET);
+	} else {
+	  HAL_GPIO_WritePin(COOLER_FAN_GPIO_Port, COOLER_FAN_Pin, GPIO_PIN_RESET);
+	}
+
 
 	osMutexRelease(configMutexHandle);
 	osMutexRelease(stateMutexHandle);
@@ -326,7 +399,12 @@ void LogCallbackHandler()
 // Initialize the system and start RX interrupt
 void BalloonSystemInit(void)
 {
-//    balloonState.ads1115 = ads1115_hal_init(&hi2c1, ADS1115_DEFAULT_CONFIG());
     BalloonConfig_Init();
+    if (balloonConfig.use_internal_adc == 0) {
+        ads1115_instance = ads1115_hal_init(&hi2c1, ADS1115_DEFAULT_CONFIG());
+        balloonState.ads1115 = &ads1115_instance;
+    } else {
+        balloonState.ads1115 = NULL;
+    }
 }
 

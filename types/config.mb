@@ -30,4 +30,6 @@ SystemConfig {
   heaterErrorEnable: float;
 
   coolingDelay: number;
+
+	useInternalADC: bool;
 }

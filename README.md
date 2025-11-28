@@ -16,3 +16,14 @@ The desktop application provides a user-friendly interface to monitor and contro
 The firmware and application communicate over UART using **MiniBuf**, a lightweight serialization format. The shared message definitions are located in the `types/` directory.
 
 These definitions ensure consistency in data exchange between the C-based firmware and the TypeScript-based application.
+
+```
+minibuf ./types/data.mb ./types/config.mb -o ./firmware/Core/Types/ -c
+```
+
+### TODO
+
+- [x] Manual Controls / Reading for Cooling and Pressure
+- [x] Config Setting to use internal/external ADC for Temperature readings
+- [-] Persistent Settings Storage in Application (Flash for Firmware)
+- [x] Reading and writing version info between app and firmware

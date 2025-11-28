@@ -3,8 +3,6 @@ import { Button, buttonVariants } from '@renderer/components/ui/button'
 import { Badge } from '@renderer/components/ui/badge'
 import { Empty, EmptyMedia, EmptyTitle, EmptyDescription } from '@renderer/components/ui/empty'
 import { Input } from '@renderer/components/ui/input'
-import { Switch } from '@renderer/components/ui/switch'
-import { Label } from '@renderer/components/ui/label'
 import { cn } from './lib/utils'
 // import logo
 import logo from '@renderer/assets/logo.jpeg?asset'
@@ -208,6 +206,8 @@ function MainLayout({
                 {[
                   { name: 'Pedal', cmd: 'MANUAL_PEDAL', default: false },
                   { name: 'Proximity', cmd: 'MANUAL_PROXIMITY', default: false },
+                  { name: 'Cooling', cmd: 'MANUAL_COOLING', default: true },
+                  { name: 'Pressure', cmd: 'MANUAL_PRESSURE', default: true },
                   { name: 'Top Heater', cmd: 'MANUAL_TOP_HEATER', default: true },
                   { name: 'Bottom Heater', cmd: 'MANUAL_BOTTOM_HEATER', default: true }
                 ].map((control) => (

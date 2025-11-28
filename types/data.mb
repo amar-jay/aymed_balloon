@@ -27,4 +27,5 @@ SystemData {
 SystemVersion {
 	major: number;
 	minor: number;
+	patch: number;
 }
