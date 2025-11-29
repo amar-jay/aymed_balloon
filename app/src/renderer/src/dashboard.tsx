@@ -9,6 +9,9 @@ import { useAtom } from 'jotai/react'
 import { historyLimitAtom } from './lib/jotai'
 import VoltageCard from './components/voltage-card'
 import { OperationCard } from './components/operation-card'
+import { ActiveSessionPanel } from './components/active-session-panel'
+import { useSessions } from './use-sessions'
+import { toast } from 'sonner'
 
 interface DashboardProps {
   isConnected: boolean
@@ -60,7 +63,10 @@ export function Dashboard({ isConnected, receivedData, connectionId }: Dashboard
   const [version, setVersion] = useState<string | null>(null)
   const [config, setConfig] = useState<SystemConfig | null>(null)
   const [HISTORY_LIMIT] = useAtom(historyLimitAtom)
-  const latestData = receivedData.length > 0 ? receivedData[receivedData.length - 1] : null
+  if (connectionId) {
+    const latestData = window.api.SerialgetSystemStatus(connectionId)
+    if (latestData) setSystemData(latestData)
+  }
 
   // it is meant to be used in the temp graphs later
   const [pastSystemData, setPastSystemData] = useState<SystemData[]>([])
@@ -93,7 +99,7 @@ export function Dashboard({ isConnected, receivedData, connectionId }: Dashboard
     // if (!isConnected) return
     // if (!connectionId) return
     const interval = setInterval(async () => {
-      console.log('Requesting system status...')
+      console.log('Requesting FAKE system status...')
       const fake_status = generateMockBalloonStatus()
       const mockData: SystemData = {
         bottomHeaterActive: fake_status.data.bottomHeaterActive,

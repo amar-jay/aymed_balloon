@@ -1,7 +1,6 @@
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
-import { ChevronLeft, Save, Power, FileDown, Trash2, PowerOff, Edit } from 'lucide-react'
+import { ChevronLeft, Power, FileDown, Trash2, PowerOff, Edit } from 'lucide-react'
 
 interface SessionHeaderProps {
   children?: React.ReactNode

@@ -33,8 +33,13 @@
  */
 
 import { SerialPort, ReadlineParser } from 'serialport'
-import { SystemConfig } from '../preload/index.d'
-import { SystemDataParse, SystemData, SystemConfigParse, SystemVersion } from './types/minibuf'
+import {
+  SystemConfig,
+  SystemDataParse,
+  SystemData,
+  SystemConfigParse,
+  SystemVersion
+} from './types/minibuf'
 
 export interface SerialDevice {
   path: string

@@ -5,24 +5,18 @@ import { useCallback, useEffect, useState } from 'react'
 import { useSessionById } from './use-sessions'
 import { SessionHeader } from './components/SessionHeader'
 import { QuickStats } from './components/QuickStats'
-import { SessionDetails } from './components/SessionDetails'
-import { PerformanceMetrics } from './components/PerformanceMetrics'
-import { PerformanceOverview } from './components/PerformanceOverview'
 import { WeldsTable } from './components/WeldsTable'
-import { Activity } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-  DialogTrigger
+	DialogTitle
 } from './components/ui/dialog'
 import { Button } from './components/ui/button'
 import { Input } from './components/ui/input'
 import { Label } from './components/ui/label'
-import { toast } from 'sonner'
 
 export function WeldSession({ sessionId }: { sessionId: string }) {
   const { session, goToAllSessions, updateSession, deleteSession, endSession, generatePDF } =
@@ -119,6 +113,7 @@ export function WeldSession({ sessionId }: { sessionId: string }) {
             startSession={session.startSession}
           />
         </SessionHeader>
+
         {/* Dialog to edit company and operator name */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="sm:max-w-[425px]">

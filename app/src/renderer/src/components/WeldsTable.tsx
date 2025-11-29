@@ -1,13 +1,6 @@
 import { Badge } from './ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from './ui/table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import {
   Activity,
@@ -38,9 +31,9 @@ interface WeldsTableProps {
 
 export function WeldsTable({ welds, totalWelds }: WeldsTableProps) {
   return (
-    <Card className="border-2 shadow-xl shadow-black/5 pt-3">
-      <CardHeader className="py-0">
-        <div className="flex border-b pb-3">
+    <Card className="border-2 shadow-xl shadow-black/5 pt-3 gap-0">
+      <CardHeader className="py-0 border-b">
+        <div className="flex">
           <div>
             <CardTitle className="flex items-center gap-3 text-xl">
               <div className="p-2 rounded-lg bg-primary/10">
@@ -57,7 +50,7 @@ export function WeldsTable({ welds, totalWelds }: WeldsTableProps) {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="px-5 pt-0">
         {totalWelds > 0 ? (
           <div className="overflow-x-auto">
             <Table>
@@ -95,7 +88,7 @@ export function WeldsTable({ welds, totalWelds }: WeldsTableProps) {
                     </div>
                   </TableHead>
                   <TableHead className="font-bold">Status</TableHead>
-                  <TableHead className="font-bold">Error Details</TableHead>
+                  <TableHead className="font-bold flex-1">Error Details</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -109,8 +102,8 @@ export function WeldsTable({ welds, totalWelds }: WeldsTableProps) {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <div className="p-1 rounded bg-orange-500/10">
-                          <Thermometer className="h-3 w-3 text-orange-600 dark:text-orange-400" />
+                        <div className="p-1 rounded bg-[#FF6B6B]/10 ">
+                          <Thermometer className="h-3 w-3 text-[#FF6B6B] dark:text-[#FF6B6B]" />
                         </div>
                         <span className="font-medium">{weld.topHeaterTemperature}°C</span>
                       </div>
@@ -118,7 +111,7 @@ export function WeldsTable({ welds, totalWelds }: WeldsTableProps) {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <div className="p-1 rounded bg-blue-500/10">
-                          <Thermometer className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                          <Thermometer className="h-3 w-3 text-[#4ECDC4] dark:text-[#4ECDC4]" />
                         </div>
                         <span className="font-medium">{weld.bottomHeaterTemperature}°C</span>
                       </div>
@@ -155,10 +148,10 @@ export function WeldsTable({ welds, totalWelds }: WeldsTableProps) {
                       ) : (
                         <Badge
                           variant="destructive"
-                          className="font-semibold border-red-500/30"
+                          className="font-semibold border-red-500/30 gap-3"
                         >
-                          <XCircle className="h-3 w-3 mr-1.5" />
-                          Failed
+                          <XCircle className="h-3 w-3" />
+                          <span>Failed</span>
                         </Badge>
                       )}
                     </TableCell>
@@ -166,7 +159,7 @@ export function WeldsTable({ welds, totalWelds }: WeldsTableProps) {
                       {weld.error ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <div className="flex items-center gap-2 text-red-600 dark:text-red-400 max-w-[250px] cursor-help group">
+                            <div className="flex flex-1 items-center gap-2 text-red-600 dark:text-red-400 max-w-[250px] cursor-help group">
                               <AlertCircle className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform" />
                               <span className="truncate font-medium">{weld.error}</span>
                             </div>

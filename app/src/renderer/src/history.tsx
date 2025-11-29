@@ -15,7 +15,6 @@ import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from './components/ui
 import { NativeSelect, NativeSelectOption } from './components/ui/native-select'
 import { useSessions } from './use-sessions'
 import {
-  Plus,
   Trash2,
   Calendar,
   Building2,
@@ -26,10 +25,7 @@ import {
   Search,
   Filter,
   ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
   X,
-  ArrowUpAz,
   ArrowUpNarrowWide,
   ArrowDownNarrowWide
 } from 'lucide-react'
@@ -39,9 +35,9 @@ type SortDirection = 'asc' | 'desc'
 type StatusFilter = 'all' | 'active' | 'completed'
 
 export function History(): React.JSX.Element {
-  const { sessions, goToSession, createSession, deleteSession } = useSessions()
-  const [newSessionName, setNewSessionName] = React.useState('')
-  const [companyName, setCompanyName] = React.useState('')
+  const { sessions, goToSession, deleteSession } = useSessions()
+  // const [newSessionName, setNewSessionName] = React.useState('')
+  // const [companyName, setCompanyName] = React.useState('')
 
   // Filter and sort state
   const [searchQuery, setSearchQuery] = React.useState('')
@@ -50,23 +46,23 @@ export function History(): React.JSX.Element {
   const [sortField, setSortField] = React.useState<SortField>('date')
   const [sortDirection, setSortDirection] = React.useState<SortDirection>('desc')
 
-  const onCreateSession = async () => {
-    if (!newSessionName.trim()) return
+  // const onCreateSession = async () => {
+  //   if (!newSessionName.trim()) return
 
-    await createSession({
-      operatorName: newSessionName,
-      companyName: companyName || 'Unknown',
-      startSession: new Date().toISOString(),
-      welds: [],
-      averageTopHeaterTemperature: 0,
-      averageBottomHeaterTemperature: 0,
-      averagePowerSupplyVoltage: 0,
-      successCount: 0,
-      failureCount: 0
-    })
-    setNewSessionName('')
-    setCompanyName('')
-  }
+  //   await createSession({
+  //     operatorName: newSessionName,
+  //     companyName: companyName || 'Unknown',
+  //     startSession: new Date().toISOString(),
+  //     welds: [],
+  //     averageTopHeaterTemperature: 0,
+  //     averageBottomHeaterTemperature: 0,
+  //     averagePowerSupplyVoltage: 0,
+  //     successCount: 0,
+  //     failureCount: 0
+  //   })
+  //   setNewSessionName('')
+  //   setCompanyName('')
+  // }
 
   const validSessions = sessions.filter((session) => session.id != null)
 
@@ -157,12 +153,6 @@ export function History(): React.JSX.Element {
 
   return (
     <div className="flex-1 px-6 py-6 space-y-6">
-      {/* <div className="flex items-center justify-between"> */}
-      {/* <div> */}
-      {/* <h2 className="text-3xl font-bold tracking-tight">Weld History</h2> */}
-      {/* <p className="text-muted-foreground mt-1">Manage and view all welding sessions</p> */}
-      {/* </div> */}
-      {/* </div> */}
 
       {/* <Card>
         <CardHeader>

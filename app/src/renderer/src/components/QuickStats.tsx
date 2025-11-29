@@ -55,11 +55,11 @@ export function QuickStats({
           Avg Temp
         </div>
         <p className="text-lg font-bold text-muted-foreground">
-          <span className="text-orange-600" aria-label="Top Temp">
+          <span className="text-[#FF6B6B]" aria-label="Top Temp">
             {averageTopHeaterTemperature?.toFixed(1) || 0}°C
           </span>{' '}
           /{' '}
-          <span className="text-blue-600" aria-label="Bottom Temp">
+          <span className="text-cyan-600" aria-label="Bottom Temp">
             {averageBottomHeaterTemperature?.toFixed(1) || 0}°C
           </span>
         </p>
@@ -70,7 +70,9 @@ export function QuickStats({
           <TrendingUp className="h-3.5 w-3.5" />
           Voltage
         </div>
-        <p className="text-lg font-bold">{averagePowerSupplyVoltage?.toFixed(1) || 0}V</p>
+        <p className="text-lg font-bold">
+          {averagePowerSupplyVoltage?.toFixed(1) || 0}V
+        </p>
       </div>
 
       <div className="bg-background/60 backdrop-blur-sm rounded-lg p-3 border border-border/50">
