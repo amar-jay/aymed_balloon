@@ -1,118 +1,218 @@
 import React, { useCallback, useMemo } from 'react'
 import { currentPathAtom } from './lib/jotai'
 import { useAtom } from 'jotai/react'
-// use the session-related APIs exposed in the preload script
+import { toast } from 'sonner'
+import type { Session, Weld } from '../../preload/index.d'
+
+/**
+ * This hook provides session data and actions for all sessions. It includes
+ * functions to create, delete, update sessions, generate PDFs, and navigate
+ * to specific session details.
+ * @returns \{ sessions, createSession, deleteSession, updateSession, generatePDF, goToSession \}
+ */
 export function useSessions() {
   const [, setCurrentPath] = useAtom(currentPathAtom)
-  const [sessions, setSessions] = React.useState<
-    NonNullable<Awaited<ReturnType<typeof window.api.DBgetSessions>>>
-  >([])
+  const [sessions, setSessions] = React.useState<Session[]>([])
 
-  React.useEffect(() => {
-    const fetchSession = async () => {
-      const fetchedSessions = await window.api.DBgetSessions()
-      if (fetchedSessions) {
-        setSessions(fetchedSessions)
-      }
+  const fetchSessions = React.useCallback(async () => {
+    const fetchedSessions = await window.api.DBgetSessions()
+    if (fetchedSessions) {
+      setSessions(fetchedSessions)
     }
-    fetchSession()
   }, [])
+
+  // load once
+  React.useEffect(() => {
+    fetchSessions()
+  }, [fetchSessions])
 
   const handleGoToSession = useCallback(
     (sessionId: number) => {
-      // Implement navigation to session detail view
-      console.log(`Navigating to session with ID: ${sessionId}`)
       setCurrentPath(`sessions/${sessionId}`)
-      // Example: navigate(`/sessions/${sessionId}`);
     },
     [setCurrentPath]
   )
 
   const handleCreateSession = React.useCallback(
-    async (sessionId: number) => {
-      // Implement save session logic here
-      const newSessionId = await window.api.DBcreateSession(`Session ${sessionId}`, {})
-      handleGoToSession(newSessionId as number)
-      return newSessionId
+    async (session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>) => {
+      try {
+        const newSessionId = await window.api.DBcreateSession(session)
+
+        toast.success('Session created successfully')
+
+        // refresh list after creation
+        await fetchSessions()
+
+        // handleGoToSession(newSessionId as number)
+        return newSessionId
+      } catch (error) {
+        toast.error('Failed to create session')
+        throw error
+      }
     },
-    [handleGoToSession]
+    [fetchSessions]
   )
 
   const handleDeleteSession = React.useCallback(
     async (sessionId: number) => {
-      // Implement delete session logic here
-      window.api.DBdeleteSession(sessionId)
-      setCurrentPath('sessions')
+      try {
+        await window.api.DBdeleteSession(sessionId)
+        toast.success('Session deleted successfully')
+
+        await fetchSessions()
+      } catch {
+        toast.error('Failed to delete session')
+      }
     },
-    [setCurrentPath]
+    [fetchSessions]
   )
 
   const handleUpdateSession = React.useCallback(
-    async (sessionId: number, name: string, data: unknown) => {
-      return window.api.DBupdateSession(sessionId, name, data)
+    async (sessionId: number, session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>) => {
+      try {
+        const result = await window.api.DBupdateSession(sessionId, session)
+        toast.success('Session updated successfully')
+
+        // refresh whole list so UI stays in sync
+        await fetchSessions()
+
+        return result
+      } catch (error) {
+        toast.error('Failed to update session')
+        throw error
+      }
     },
-    []
+    [fetchSessions]
   )
 
   const handleGeneratePDF = React.useCallback(async (sessionId: number) => {
-    return window.api.DBgenerateSessionPDF(sessionId)
+    try {
+      const result = await window.api.DBgenerateSessionPDF(sessionId)
+      toast.success('PDF generated successfully')
+      return result
+    } catch (error) {
+      toast.error('Failed to generate PDF')
+      throw error
+    }
   }, [])
 
-  const memoizedSessions = useMemo(() => sessions, [sessions])
-
   return {
-    sessions: memoizedSessions,
+    sessions,
     createSession: handleCreateSession,
     deleteSession: handleDeleteSession,
     updateSession: handleUpdateSession,
+    refreshSession: fetchSessions,
     generatePDF: handleGeneratePDF,
     goToSession: handleGoToSession
   }
 }
 
 type RemoveUndefined<T> = T extends undefined ? never : T | null
-export function useSessionsById(sessionId: number) {
-  const [session, setSession] =
-    React.useState<RemoveUndefined<Awaited<ReturnType<typeof window.api.DBgetSession>>>>(null)
-  React.useEffect(() => {
-    const fetchSession = async () => {
-      const fetchedSession = await window.api.DBgetSession(sessionId)
-      if (fetchedSession) {
-        setSession(fetchedSession)
-      }
-    }
-    fetchSession()
+
+export function useSessionById(sessionId: number) {
+  const [, setCurrentPath] = useAtom(currentPathAtom)
+
+  type SafeSession = RemoveUndefined<Session>
+
+  const [session, setSession] = React.useState<SafeSession>(null)
+
+  const fetchSession = useCallback(async () => {
+    const fetched = await window.api.DBgetSession(sessionId)
+    if (fetched) setSession(fetched)
   }, [sessionId])
-  // Generate PDF for a session
-  const generatePDF = async () => {
+
+  React.useEffect(() => {
+    fetchSession()
+  }, [fetchSession])
+
+  // PDF generation
+  const generatePDF = useCallback(async () => {
     try {
       const filePath = await window.api.DBgenerateSessionPDF(sessionId)
       if (filePath) {
-        console.log('PDF saved to:', filePath)
-        // Optionally show a success message or open the PDF
+        toast.success('PDF saved successfully')
       } else {
-        console.log('PDF generation cancelled')
+        toast.info('PDF generation cancelled')
       }
-    } catch (error) {
-      console.error('Failed to generate PDF:', error)
+    } catch {
+      toast.error('Failed to generate PDF')
     }
-  }
+  }, [sessionId])
 
-  const updateSession = async (name: string, data: unknown) => {
-    try {
-      const success = await window.api.DBupdateSession(sessionId, name, data)
-      if (success) {
-        const updatedSession = await window.api.DBgetSession(sessionId)
-        if (updatedSession) {
-          setSession(updatedSession)
+  // Update session
+  const updateSession = useCallback(
+    async (session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>) => {
+      try {
+        const success = await window.api.DBupdateSession(sessionId, session)
+        if (success) {
+          await fetchSession()
+          toast.success('Session updated successfully')
         }
+        return success
+      } catch {
+        toast.error('Failed to update session')
+        return false
+      }
+    },
+    [sessionId, fetchSession]
+  )
+
+  // Add weld to session
+  const addWeld = useCallback(
+    async (weld: Omit<Weld, 'id' | 'createdAt'>) => {
+      try {
+        const weldId = await window.api.DBaddWeldToSession(sessionId, weld)
+        await fetchSession()
+        toast.success('Weld added successfully')
+        return weldId
+      } catch {
+        toast.error('Failed to add weld')
+        return null
+      }
+    },
+    [sessionId, fetchSession]
+  )
+
+  // End session
+  const endSession = useCallback(async () => {
+    try {
+      const success = await window.api.DBendSession(sessionId)
+      if (success) {
+        await fetchSession()
+        toast.success('Session ended successfully')
       }
       return success
-    } catch (error) {
-      console.error('Failed to update session:', error)
+    } catch {
+      toast.error('Failed to end session')
       return false
     }
-  }
+  }, [sessionId, fetchSession])
+
+  // Delete
+  const deleteSession = useCallback(async () => {
+    try {
+      await window.api.DBdeleteSession(sessionId)
+      toast.success('Session deleted successfully')
+      setCurrentPath('sessions')
+    } catch {
+      toast.error('Failed to delete session')
+    }
+  }, [sessionId, setCurrentPath])
+
+  const goToAllSessions = useCallback(() => {
+    setCurrentPath('sessions')
+  }, [setCurrentPath])
+
   const memoizedSession = useMemo(() => session, [session])
-  return { session: memoizedSession, generatePDF, updateSession }
+
+  return {
+    session: memoizedSession,
+    refresh: fetchSession,
+    generatePDF,
+    updateSession,
+    addWeld,
+    endSession,
+    deleteSession,
+    goToAllSessions
+  }
 }

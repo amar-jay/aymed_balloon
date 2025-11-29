@@ -20,13 +20,8 @@ import {
   isDeviceConnected,
   getSystemVersion
 } from '../lib/serial'
-import {
-  createSession,
-  deleteSessionById,
-  getSessionById,
-  getSessions,
-  updateSessionById
-} from '../lib/db'
+import { Session, Weld } from '../lib/types/session'
+import './index.d'
 
 // Custom APIs for renderer
 const api = {
@@ -52,13 +47,25 @@ const api = {
   SerialisDeviceConnected: isDeviceConnected,
 
   // Session APIs
-  DBgetSessions: () => Promise.resolve(getSessions()),
-  DBgetSession: (id: number) => Promise.resolve(getSessionById(id)),
-  DBcreateSession: (session: { name: string; data: unknown }) => Promise.resolve(createSession(session.name, session.data)),
-  DBupdateSession: (id: number, name: string, data: unknown) => Promise.resolve(updateSessionById(id, name, data)),
-  DBdeleteSession: (id: number) => Promise.resolve(deleteSessionById(id)),
-  DBgenerateSessionPDF: (sessionId: number) => ipcRenderer.invoke('generate-session-pdf', sessionId)
-}
+  DBgetSessions: (): Promise<Session[]> => ipcRenderer.invoke('db:sessions:getAll'),
+  DBgetSession: (id: number): Promise<Session | undefined> =>
+    ipcRenderer.invoke('db:sessions:get', id),
+  DBcreateSession: (session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>): Promise<number> =>
+    ipcRenderer.invoke('db:sessions:create', session),
+  DBupdateSession: (
+    id: number,
+    session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<boolean> => ipcRenderer.invoke('db:sessions:update', id, session),
+  DBdeleteSession: (id: number): Promise<boolean> => ipcRenderer.invoke('db:sessions:delete', id),
+  DBaddWeldToSession: (
+    sessionId: number,
+    weld: Omit<Weld, 'id' | 'createdAt'>
+  ): Promise<number> => ipcRenderer.invoke('db:sessions:addWeld', sessionId, weld),
+  DBendSession: (sessionId: number): Promise<boolean> =>
+    ipcRenderer.invoke('db:sessions:end', sessionId),
+  DBgenerateSessionPDF: (sessionId: number): Promise<string | null> =>
+    ipcRenderer.invoke('db:sessions:generatePDF', sessionId)
+} satisfies Window['api']
 
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise

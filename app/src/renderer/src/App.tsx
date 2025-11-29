@@ -6,6 +6,8 @@ import { currentPathAtom } from './lib/jotai'
 import { useAtom } from 'jotai/react'
 import { Toaster } from './components/ui/sonner'
 import { MainLayout } from './layout'
+import { History } from './history'
+import { WeldSession } from './session'
 
 function App(): React.JSX.Element {
   const serial = useSerial()
@@ -24,8 +26,10 @@ function App(): React.JSX.Element {
             connectionId={serial.connectionId}
           />
         )}
-        {currentPath === 'sessions' && <div>Sessions List to be implemented</div>}
-        {/* <div></div> */}
+        {currentPath === 'sessions' && <History />}
+        {currentPath.startsWith('sessions/') && (
+          <WeldSession sessionId={currentPath.split('/')[1]} />
+        )}
       </MainLayout>
       <Toaster />
     </>

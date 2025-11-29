@@ -18,13 +18,7 @@ import type {
   isDeviceConnected,
   getSystemVersion
 } from '../lib/serial'
-import {
-  createSession,
-  deleteSessionById,
-  getSessionById,
-  getSessions,
-  updateSessionById
-} from '../lib/db'
+import type { Session, Weld } from '../lib/types/session'
 
 export interface SystemConfig {
   /** Operation/welding time (seconds, 5-60) */
@@ -86,6 +80,11 @@ export interface SystemConfig {
   coolingDelay: number
 }
 
+//create type to prepend parameters with event  type
+// type PrependEventParameter<T extends (...args: any[]) => any> = (
+// 	event: Electron.IpcMainInvokeEvent,
+// 	...args: Parameters<T>
+// ) => ReturnType<T>
 declare global {
   interface Window {
     electron: ElectronAPI
@@ -111,12 +110,22 @@ declare global {
       SerialisDeviceConnected: typeof isDeviceConnected
 
       // Session APIs
-      DBgetSessions: typeof getSessions
-      DBgetSession: typeof getSessionById
-      DBcreateSession: typeof createSession
-      DBupdateSession: typeof updateSessionById
-      DBdeleteSession: typeof deleteSessionById
-      DBgenerateSessionPDF: (sessionId: number) => Promise<unknown>
+      DBgetSessions: () => Promise<Session[]>
+      DBgetSession: (id: number) => Promise<Session | undefined>
+      DBcreateSession: (session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>) => Promise<number>
+      DBupdateSession: (
+        id: number,
+        session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>
+      ) => Promise<boolean>
+      DBdeleteSession: (id: number) => Promise<boolean>
+      DBaddWeldToSession: (
+        sessionId: number,
+        weld: Omit<Weld, 'id' | 'createdAt'>
+      ) => Promise<number>
+      DBendSession: (sessionId: number) => Promise<boolean>
+      DBgenerateSessionPDF: (sessionId: number) => Promise<string | null>
     }
   }
 }
+
+export type { Session, Weld }

@@ -3,144 +3,444 @@ import { join } from 'path'
 import Database from 'better-sqlite3'
 import PDFDocument from 'pdfkit'
 import fs from 'fs'
-import { Session } from './types/session'
+import { Session, Weld, computeSessionStats } from './types/session'
 
-// Initialize SQLite database
-const dbPath = join(app.getPath('userData'), 'aymed-balloon-makinesi.db')
-const db = new Database(dbPath)
-function initializeDatabase() {
+// Database row types (how data is stored in SQLite)
+interface SessionRow {
+  id: number
+  operator_name: string
+  company_name: string
+  created_at: string
+  updated_at: string
+  start_session: string
+  end_session: string | null
+  average_top_heater_temperature: number
+  average_bottom_heater_temperature: number
+  average_power_supply_voltage: number
+  success_count: number
+  failure_count: number
+}
+
+interface WeldRow {
+  id: number
+  session_id: number
+  top_heater_temperature: number
+  bottom_heater_temperature: number
+  power_supply_voltage: number
+  welding_duration: number
+  cooling_duration: number
+  is_successful: number // SQLite stores boolean as 0/1
+  error: string | null
+  created_at: string
+}
+
+function initializeDatabase(): Database.Database {
+  // Initialize SQLite database
+  const dbPath = join(app.getPath('userData'), 'aymed-balloon-makinesi.db')
+  const db = new Database(dbPath)
+
   // Create sessions table if it doesn't exist
   db.exec(`
-	  CREATE TABLE IF NOT EXISTS sessions (
-	    id INTEGER PRIMARY KEY AUTOINCREMENT,
-	    name TEXT NOT NULL,
-	    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-	    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-	    data TEXT
-	  )
-	`)
+    CREATE TABLE IF NOT EXISTS sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      operator_name TEXT NOT NULL,
+      company_name TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      start_session DATETIME NOT NULL,
+      end_session DATETIME,
+      average_top_heater_temperature REAL DEFAULT 0,
+      average_bottom_heater_temperature REAL DEFAULT 0,
+      average_power_supply_voltage REAL DEFAULT 0,
+      success_count INTEGER DEFAULT 0,
+      failure_count INTEGER DEFAULT 0
+    )
+  `)
 
-  // Check if name column exists, if not drop and recreate table
+  // Create welds table if it doesn't exist
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS welds (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id INTEGER NOT NULL,
+      top_heater_temperature REAL NOT NULL,
+      bottom_heater_temperature REAL NOT NULL,
+      power_supply_voltage REAL NOT NULL,
+      welding_duration REAL NOT NULL,
+      cooling_duration REAL NOT NULL,
+      is_successful INTEGER NOT NULL DEFAULT 1,
+      error TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+    )
+  `)
+
+  // Migration: Check if old schema exists and migrate
   const tableInfo = db
     .prepare<{ name: string }[], { name: string }>('PRAGMA table_info(sessions)')
     .all()
-  const hasNameColumn = tableInfo.some((col: { name: string }) => col.name === 'name')
-  if (!hasNameColumn) {
-    db.exec('DROP TABLE sessions')
+  const hasOperatorNameColumn = tableInfo.some((col: { name: string }) => col.name === 'operator_name')
+  
+  // If using old schema (has 'name' column but not 'operator_name'), drop and recreate
+  const hasOldNameColumn = tableInfo.some((col: { name: string }) => col.name === 'name')
+  if (hasOldNameColumn && !hasOperatorNameColumn) {
+    db.exec('DROP TABLE IF EXISTS welds')
+    db.exec('DROP TABLE IF EXISTS sessions')
     db.exec(`
-	    CREATE TABLE sessions (
-	      id INTEGER PRIMARY KEY AUTOINCREMENT,
-	      name TEXT NOT NULL,
-	      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-	      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-	      data TEXT
-	    )
-	  `)
+      CREATE TABLE sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        operator_name TEXT NOT NULL,
+        company_name TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        start_session DATETIME NOT NULL,
+        end_session DATETIME,
+        average_top_heater_temperature REAL DEFAULT 0,
+        average_bottom_heater_temperature REAL DEFAULT 0,
+        average_power_supply_voltage REAL DEFAULT 0,
+        success_count INTEGER DEFAULT 0,
+        failure_count INTEGER DEFAULT 0
+      )
+    `)
+    db.exec(`
+      CREATE TABLE welds (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id INTEGER NOT NULL,
+        top_heater_temperature REAL NOT NULL,
+        bottom_heater_temperature REAL NOT NULL,
+        power_supply_voltage REAL NOT NULL,
+        welding_duration REAL NOT NULL,
+        cooling_duration REAL NOT NULL,
+        is_successful INTEGER NOT NULL DEFAULT 1,
+        error TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+      )
+    `)
   }
+
+  // Enable foreign keys
+  db.exec('PRAGMA foreign_keys = ON')
+
+  return db
 }
 
-// Prepare statements for CRUD operations
-const insertSession = db.prepare<[string, string]>(
-  'INSERT INTO sessions (name, data) VALUES (?, ?)'
-)
-const getAllSessions = db.prepare<[], Session>('SELECT * FROM sessions ORDER BY created_at DESC') // type may be Session[]
-const _getSessionById = db.prepare<[number], Session>('SELECT * FROM sessions WHERE id = ?')
-const updateSession = db.prepare<[string, string, number], Session>(
-  'UPDATE sessions SET name = ?, data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-)
-const deleteSession = db.prepare<[number]>('DELETE FROM sessions WHERE id = ?')
-
-const getSessions = () => {
-  return getAllSessions.all()
-}
-
-const getSessionById = (id: number): Session | undefined => {
-  return _getSessionById.get(id)
-}
-
-const createSession = (name: string, data: unknown) => {
-  const result = insertSession.run(name, JSON.stringify(data))
-  return result.lastInsertRowid
-}
-
-const updateSessionById = (id: number, name: string, data: unknown) => {
-  updateSession.run(name, JSON.stringify(data), id)
-  return true
-}
-
-const deleteSessionById = (id: number) => {
-  deleteSession.run(id)
-  return true
-}
-
-const generateSessionPDF = async (sessionId: number) => {
-  const session = getSessionById(sessionId)
-  if (!session) {
-    throw new Error('Session not found')
-  }
-  if (!session.data) {
-    throw new Error('Session has no data')
-  }
-	if (!session.created_at || !session.updated_at) {
-		throw new Error('Session is missing timestamp information')
-	}
-
-  const { filePath } = await dialog.showSaveDialog(BrowserWindow.getFocusedWindow()!, {
-    title: 'Save Session PDF',
-    defaultPath: `session-${session.id}-${session.name.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
-    filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
+function setupDatabaseHandlers(db: Database.Database) {
+  // Helper to convert row to Session object
+  const rowToSession = (row: SessionRow, welds: Weld[]): Session => ({
+    id: row.id,
+    operatorName: row.operator_name,
+    companyName: row.company_name,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    startSession: row.start_session,
+    endSession: row.end_session || undefined,
+    welds,
+    averageTopHeaterTemperature: row.average_top_heater_temperature,
+    averageBottomHeaterTemperature: row.average_bottom_heater_temperature,
+    averagePowerSupplyVoltage: row.average_power_supply_voltage,
+    successCount: row.success_count,
+    failureCount: row.failure_count
   })
 
-  if (!filePath) {
-    return null // User cancelled
+  // Helper to convert weld row to Weld object
+  const rowToWeld = (row: WeldRow): Weld => ({
+    id: row.id,
+    topHeaterTemperature: row.top_heater_temperature,
+    bottomHeaterTemperature: row.bottom_heater_temperature,
+    powerSupplyVoltage: row.power_supply_voltage,
+    weldingDuration: row.welding_duration,
+    coolingDuration: row.cooling_duration,
+    isSuccessful: row.is_successful === 1,
+    error: row.error || undefined,
+    createdAt: row.created_at
+  })
+
+  // Prepare statements for session operations
+  const insertSession = db.prepare<
+    [string, string, string, string | null, number, number, number, number, number]
+  >(
+    `INSERT INTO sessions (operator_name, company_name, start_session, end_session, 
+     average_top_heater_temperature, average_bottom_heater_temperature, 
+     average_power_supply_voltage, success_count, failure_count) 
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  )
+
+  const getAllSessionRows = db.prepare<[], SessionRow>(
+    'SELECT * FROM sessions ORDER BY created_at DESC'
+  )
+
+  const getSessionRowById = db.prepare<[number], SessionRow>(
+    'SELECT * FROM sessions WHERE id = ?'
+  )
+
+  const updateSessionRow = db.prepare<
+    [string, string, string, string | null, number, number, number, number, number, number]
+  >(
+    `UPDATE sessions SET operator_name = ?, company_name = ?, start_session = ?, end_session = ?,
+     average_top_heater_temperature = ?, average_bottom_heater_temperature = ?,
+     average_power_supply_voltage = ?, success_count = ?, failure_count = ?,
+     updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+  )
+
+  const deleteSessionRow = db.prepare<[number]>('DELETE FROM sessions WHERE id = ?')
+
+  // Prepare statements for weld operations
+  const insertWeld = db.prepare<
+    [number, number, number, number, number, number, number, string | null]
+  >(
+    `INSERT INTO welds (session_id, top_heater_temperature, bottom_heater_temperature,
+     power_supply_voltage, welding_duration, cooling_duration, is_successful, error)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  )
+
+  const getWeldsBySessionId = db.prepare<[number], WeldRow>(
+    'SELECT * FROM welds WHERE session_id = ? ORDER BY created_at ASC'
+  )
+
+  const deleteWeldsBySessionId = db.prepare<[number]>(
+    'DELETE FROM welds WHERE session_id = ?'
+  )
+
+  // Get all sessions with their welds
+  const getSessions = (): Session[] => {
+    const sessionRows = getAllSessionRows.all()
+    return sessionRows.map((row) => {
+      const weldRows = getWeldsBySessionId.all(row.id)
+      const welds = weldRows.map(rowToWeld)
+      return rowToSession(row, welds)
+    })
   }
 
-  const doc = new PDFDocument()
-  const stream = fs.createWriteStream(filePath)
-  doc.pipe(stream)
+  // Get a single session by ID with its welds
+  const getSessionById = (id: number): Session | undefined => {
+    const row = getSessionRowById.get(id)
+    if (!row) return undefined
+    const weldRows = getWeldsBySessionId.all(id)
+    const welds = weldRows.map(rowToWeld)
+    return rowToSession(row, welds)
+  }
 
-  // PDF content
-  doc.fontSize(20).text('Session Report', { align: 'center' })
-  doc.moveDown()
+  // Create a new session with welds
+  const createSession = (session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>): number => {
+    const stats = computeSessionStats(session.welds)
+    
+    const result = insertSession.run(
+      session.operatorName,
+      session.companyName,
+      session.startSession,
+      session.endSession || null,
+      stats.averageTopHeaterTemperature,
+      stats.averageBottomHeaterTemperature,
+      stats.averagePowerSupplyVoltage,
+      stats.successCount,
+      stats.failureCount
+    )
 
-  doc.fontSize(14).text(`Session Name: ${session.name}`)
-  doc.text(`Created: ${new Date(session.created_at).toLocaleString()}`)
-  doc.text(`Last Updated: ${new Date(session.updated_at).toLocaleString()}`)
-  doc.moveDown()
+    const sessionId = result.lastInsertRowid as number
 
-  doc.fontSize(16).text('Session Data:')
-  doc.moveDown()
+    // Insert all welds
+    for (const weld of session.welds) {
+      insertWeld.run(
+        sessionId,
+        weld.topHeaterTemperature,
+        weld.bottomHeaterTemperature,
+        weld.powerSupplyVoltage,
+        weld.weldingDuration,
+        weld.coolingDuration,
+        weld.isSuccessful ? 1 : 0,
+        weld.error || null
+      )
+    }
 
-  // Format the data nicely
-  const data = JSON.parse(session.data)
-  if (typeof data === 'object' && data !== null) {
-    Object.entries(data).forEach(([key, value]) => {
-      doc.fontSize(12).text(`${key}: ${JSON.stringify(value, null, 2)}`)
+    return sessionId
+  }
+
+  // Update a session and its welds
+  const updateSessionById = (
+    id: number,
+    session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>
+  ): boolean => {
+    const stats = computeSessionStats(session.welds)
+
+    updateSessionRow.run(
+      session.operatorName,
+      session.companyName,
+      session.startSession,
+      session.endSession || null,
+      stats.averageTopHeaterTemperature,
+      stats.averageBottomHeaterTemperature,
+      stats.averagePowerSupplyVoltage,
+      stats.successCount,
+      stats.failureCount,
+      id
+    )
+
+    // Delete existing welds and re-insert
+    deleteWeldsBySessionId.run(id)
+    for (const weld of session.welds) {
+      insertWeld.run(
+        id,
+        weld.topHeaterTemperature,
+        weld.bottomHeaterTemperature,
+        weld.powerSupplyVoltage,
+        weld.weldingDuration,
+        weld.coolingDuration,
+        weld.isSuccessful ? 1 : 0,
+        weld.error || null
+      )
+    }
+
+    return true
+  }
+
+  // Add a single weld to an existing session
+  const addWeldToSession = (sessionId: number, weld: Omit<Weld, 'id' | 'createdAt'>): number => {
+    const result = insertWeld.run(
+      sessionId,
+      weld.topHeaterTemperature,
+      weld.bottomHeaterTemperature,
+      weld.powerSupplyVoltage,
+      weld.weldingDuration,
+      weld.coolingDuration,
+      weld.isSuccessful ? 1 : 0,
+      weld.error || null
+    )
+
+    // Update session statistics
+    const weldRows = getWeldsBySessionId.all(sessionId)
+    const welds = weldRows.map(rowToWeld)
+    const stats = computeSessionStats(welds)
+    const sessionRow = getSessionRowById.get(sessionId)
+
+    if (sessionRow) {
+      updateSessionRow.run(
+        sessionRow.operator_name,
+        sessionRow.company_name,
+        sessionRow.start_session,
+        sessionRow.end_session,
+        stats.averageTopHeaterTemperature,
+        stats.averageBottomHeaterTemperature,
+        stats.averagePowerSupplyVoltage,
+        stats.successCount,
+        stats.failureCount,
+        sessionId
+      )
+    }
+
+    return result.lastInsertRowid as number
+  }
+
+  // End a session (set end time)
+  const endSession = (sessionId: number): boolean => {
+    const sessionRow = getSessionRowById.get(sessionId)
+    if (!sessionRow) return false
+
+    const weldRows = getWeldsBySessionId.all(sessionId)
+    const welds = weldRows.map(rowToWeld)
+    const stats = computeSessionStats(welds)
+
+    updateSessionRow.run(
+      sessionRow.operator_name,
+      sessionRow.company_name,
+      sessionRow.start_session,
+      new Date().toISOString(),
+      stats.averageTopHeaterTemperature,
+      stats.averageBottomHeaterTemperature,
+      stats.averagePowerSupplyVoltage,
+      stats.successCount,
+      stats.failureCount,
+      sessionId
+    )
+
+    return true
+  }
+
+  const deleteSessionById = (id: number): boolean => {
+    deleteSessionRow.run(id)
+    return true
+  }
+
+  const generateSessionPDF = async (sessionId: number) => {
+    const session = getSessionById(sessionId)
+    if (!session) {
+      throw new Error('Session not found')
+    }
+    if (!session.createdAt || !session.updatedAt) {
+      throw new Error('Session is missing timestamp information')
+    }
+
+    const sessionName = `${session.operatorName}-${session.companyName}`.replace(/[^a-zA-Z0-9]/g, '_')
+    const { filePath } = await dialog.showSaveDialog(BrowserWindow.getFocusedWindow()!, {
+      title: 'Save Session PDF',
+      defaultPath: `session-${session.id}-${sessionName}.pdf`,
+      filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
+    })
+
+    if (!filePath) {
+      return null // User cancelled
+    }
+
+    const doc = new PDFDocument()
+    const stream = fs.createWriteStream(filePath)
+    doc.pipe(stream)
+
+    // PDF content - TODO: Improve PDF generation later
+    doc.fontSize(20).text('Session Report', { align: 'center' })
+    doc.moveDown()
+
+    doc.fontSize(14).text(`Operator: ${session.operatorName}`)
+    doc.text(`Company: ${session.companyName}`)
+    doc.text(`Created: ${new Date(session.createdAt).toLocaleString()}`)
+    doc.text(`Last Updated: ${new Date(session.updatedAt).toLocaleString()}`)
+    doc.text(`Start: ${new Date(session.startSession).toLocaleString()}`)
+    if (session.endSession) {
+      doc.text(`End: ${new Date(session.endSession).toLocaleString()}`)
+    }
+    doc.moveDown()
+
+    doc.fontSize(16).text('Session Statistics:')
+    doc.fontSize(12).text(`Average Top Heater Temperature: ${session.averageTopHeaterTemperature.toFixed(2)}`)
+    doc.text(`Average Bottom Heater Temperature: ${session.averageBottomHeaterTemperature.toFixed(2)}`)
+    doc.text(`Average Power Supply Voltage: ${session.averagePowerSupplyVoltage.toFixed(2)}`)
+    doc.text(`Success Count: ${session.successCount}`)
+    doc.text(`Failure Count: ${session.failureCount}`)
+    doc.moveDown()
+
+    doc.fontSize(16).text(`Welds (${session.welds.length}):`)
+    doc.moveDown()
+
+    session.welds.forEach((weld, index) => {
+      doc.fontSize(12).text(`Weld ${index + 1}: ${weld.isSuccessful ? 'Success' : 'Failed'}`)
+      doc.fontSize(10).text(`  Top Heater: ${weld.topHeaterTemperature}°C, Bottom Heater: ${weld.bottomHeaterTemperature}°C`)
+      doc.text(`  Voltage: ${weld.powerSupplyVoltage}V, Welding: ${weld.weldingDuration}s, Cooling: ${weld.coolingDuration}s`)
+      if (weld.error) {
+        doc.text(`  Error: ${weld.error}`)
+      }
       doc.moveDown(0.5)
     })
-  } else {
-    doc.fontSize(12).text(JSON.stringify(data, null, 2))
+
+    doc.end()
+
+    return new Promise((resolve, reject) => {
+      stream.on('finish', () => resolve(filePath))
+      stream.on('error', reject)
+    })
   }
 
-  doc.end()
-
-  return new Promise((resolve, reject) => {
-    stream.on('finish', () => resolve(filePath))
-    stream.on('error', reject)
-  })
+  return {
+    getSessions,
+    getSessionById,
+    createSession,
+    updateSessionById,
+    deleteSessionById,
+    addWeldToSession,
+    endSession,
+    generateSessionPDF
+  }
 }
 
-const closeDatabase = () => {
+function closeDatabase(db: Database.Database) {
   db.close()
 }
 
-export {
-  initializeDatabase,
-  getSessions,
-  getSessionById,
-  createSession,
-  updateSessionById,
-  deleteSessionById,
-  generateSessionPDF,
-  closeDatabase
-}
+export { initializeDatabase, setupDatabaseHandlers, closeDatabase }
