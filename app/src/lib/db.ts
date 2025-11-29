@@ -77,8 +77,10 @@ function initializeDatabase(): Database.Database {
   const tableInfo = db
     .prepare<{ name: string }[], { name: string }>('PRAGMA table_info(sessions)')
     .all()
-  const hasOperatorNameColumn = tableInfo.some((col: { name: string }) => col.name === 'operator_name')
-  
+  const hasOperatorNameColumn = tableInfo.some(
+    (col: { name: string }) => col.name === 'operator_name'
+  )
+
   // If using old schema (has 'name' column but not 'operator_name'), drop and recreate
   const hasOldNameColumn = tableInfo.some((col: { name: string }) => col.name === 'name')
   if (hasOldNameColumn && !hasOperatorNameColumn) {
@@ -168,9 +170,7 @@ function setupDatabaseHandlers(db: Database.Database) {
     'SELECT * FROM sessions ORDER BY created_at DESC'
   )
 
-  const getSessionRowById = db.prepare<[number], SessionRow>(
-    'SELECT * FROM sessions WHERE id = ?'
-  )
+  const getSessionRowById = db.prepare<[number], SessionRow>('SELECT * FROM sessions WHERE id = ?')
 
   const updateSessionRow = db.prepare<
     [string, string, string, string | null, number, number, number, number, number, number]
@@ -196,9 +196,7 @@ function setupDatabaseHandlers(db: Database.Database) {
     'SELECT * FROM welds WHERE session_id = ? ORDER BY created_at ASC'
   )
 
-  const deleteWeldsBySessionId = db.prepare<[number]>(
-    'DELETE FROM welds WHERE session_id = ?'
-  )
+  const deleteWeldsBySessionId = db.prepare<[number]>('DELETE FROM welds WHERE session_id = ?')
 
   // Get all sessions with their welds
   const getSessions = (): Session[] => {
@@ -222,7 +220,7 @@ function setupDatabaseHandlers(db: Database.Database) {
   // Create a new session with welds
   const createSession = (session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>): number => {
     const stats = computeSessionStats(session.welds)
-    
+
     const result = insertSession.run(
       session.operatorName,
       session.companyName,
@@ -260,6 +258,7 @@ function setupDatabaseHandlers(db: Database.Database) {
     session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>
   ): boolean => {
     const stats = computeSessionStats(session.welds)
+    console.log('Updating session:', id, session.operatorName, session.companyName)
 
     updateSessionRow.run(
       session.operatorName,
@@ -368,7 +367,10 @@ function setupDatabaseHandlers(db: Database.Database) {
       throw new Error('Session is missing timestamp information')
     }
 
-    const sessionName = `${session.operatorName}-${session.companyName}`.replace(/[^a-zA-Z0-9]/g, '_')
+    const sessionName = `${session.operatorName}-${session.companyName}`.replace(
+      /[^a-zA-Z0-9]/g,
+      '_'
+    )
     const { filePath } = await dialog.showSaveDialog(BrowserWindow.getFocusedWindow()!, {
       title: 'Save Session PDF',
       defaultPath: `session-${session.id}-${sessionName}.pdf`,

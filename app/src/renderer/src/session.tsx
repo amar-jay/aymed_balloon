@@ -12,7 +12,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-	DialogTitle
+  DialogTitle
 } from './components/ui/dialog'
 import { Button } from './components/ui/button'
 import { Input } from './components/ui/input'
@@ -25,8 +25,6 @@ export function WeldSession({ sessionId }: { sessionId: string }) {
   const [operatorName, setOperatorName] = useState('')
   const [companyName, setCompanyName] = useState('')
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [tempOperatorName, setTempOperatorName] = useState('')
-  const [tempCompanyName, setTempCompanyName] = useState('')
 
   // sync name when session changes
   useEffect(() => {
@@ -34,7 +32,7 @@ export function WeldSession({ sessionId }: { sessionId: string }) {
     setOperatorName(session.operatorName || '')
     setCompanyName(session.companyName || '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.id])
+  }, [session?.operatorName, session?.companyName])
 
   const handleSave = useCallback(async () => {
     if (!session) return
@@ -50,22 +48,18 @@ export function WeldSession({ sessionId }: { sessionId: string }) {
       successCount: session.successCount,
       failureCount: session.failureCount
     })
-  }, [session, operatorName, companyName, updateSession])
+    console.log('Saved session changes:', operatorName, companyName)
+  }, [session, updateSession, operatorName, companyName])
 
-  const handleOpenEditDialog = useCallback(() => {
-    setTempOperatorName(operatorName)
-    setTempCompanyName(companyName)
-    setIsEditDialogOpen(true)
-  }, [operatorName, companyName])
+  const handleOpenEditDialog = useCallback(() => {}, [])
 
   const handleSaveEditDialog = useCallback(async () => {
-    setOperatorName(tempOperatorName)
-    setCompanyName(tempCompanyName)
+    setOperatorName(operatorName)
+    setCompanyName(companyName)
     setIsEditDialogOpen(false)
     handleSave()
     // The actual save will happen when the user clicks the Save button in the header
-  }, [tempOperatorName, tempCompanyName, handleSave])
-
+  }, [operatorName, companyName, handleSave])
   const handleCancelEditDialog = useCallback(() => {
     setIsEditDialogOpen(false)
   }, [])
@@ -89,7 +83,7 @@ export function WeldSession({ sessionId }: { sessionId: string }) {
   const durationMinutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60))
 
   return (
-    <div className="min-h-screen flex-1 bg-accent-foreground/5 rounded-l-2xl">
+    <div className="min-h-screen flex-1 grow bg-accent-foreground/5 rounded-l-2xl">
       <div className="px-8 py-8 space-y-8 mx-auto">
         {/* Hero Header Section */}
         <SessionHeader
@@ -98,7 +92,7 @@ export function WeldSession({ sessionId }: { sessionId: string }) {
           onEndSession={endSession}
           onGeneratePDF={generatePDF}
           onDelete={deleteSession}
-          onEdit={handleOpenEditDialog}
+          onEdit={() => setIsEditDialogOpen(true)}
           operatorName={operatorName}
           companyName={companyName}
         >
@@ -130,8 +124,8 @@ export function WeldSession({ sessionId }: { sessionId: string }) {
                 </Label>
                 <Input
                   id="operator-name"
-                  value={tempOperatorName}
-                  onChange={(e) => setTempOperatorName(e.target.value)}
+                  value={operatorName}
+                  onChange={(e) => setOperatorName(e.target.value)}
                   className="col-span-3"
                   placeholder="Enter operator name"
                 />
@@ -142,8 +136,8 @@ export function WeldSession({ sessionId }: { sessionId: string }) {
                 </Label>
                 <Input
                   id="company-name"
-                  value={tempCompanyName}
-                  onChange={(e) => setTempCompanyName(e.target.value)}
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
                   className="col-span-3"
                   placeholder="Enter company name"
                 />
