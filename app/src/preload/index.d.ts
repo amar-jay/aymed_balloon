@@ -18,6 +18,13 @@ import type {
   isDeviceConnected,
   getSystemVersion
 } from '../lib/serial'
+import {
+  createSession,
+  deleteSessionById,
+  getSessionById,
+  getSessions,
+  updateSessionById
+} from '../lib/db'
 
 export interface SystemConfig {
   /** Operation/welding time (seconds, 5-60) */
@@ -83,6 +90,7 @@ declare global {
   interface Window {
     electron: ElectronAPI
     api: {
+      // Serial APIs
       listSerialPorts: () => Promise<string[]>
       SeriallistUSBPorts: typeof listUSBPorts
       SeriallistPorts: typeof listPorts
@@ -101,6 +109,14 @@ declare global {
       SerialgetActiveConnections: typeof getActiveConnections
       SerialgetDevicePath: typeof getDevicePath
       SerialisDeviceConnected: typeof isDeviceConnected
+
+      // Session APIs
+      DBgetSessions: typeof getSessions
+      DBgetSession: typeof getSessionById
+      DBcreateSession: typeof createSession
+      DBupdateSession: typeof updateSessionById
+      DBdeleteSession: typeof deleteSessionById
+      DBgenerateSessionPDF: (sessionId: number) => Promise<unknown>
     }
   }
 }

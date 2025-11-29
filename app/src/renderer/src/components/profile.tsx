@@ -10,13 +10,14 @@ import {
 } from '@renderer/components/ui/dropdown-menu'
 import { Settings, LogOut, Dot } from 'lucide-react'
 import { SettingsDialog } from './settings-dialog'
+import { currentPathType } from '@renderer/lib/jotai'
 
 function Profile({
   selectedPage,
   setSelectedPage
 }: {
-  selectedPage: 'serial-monitor' | 'dashboard'
-  setSelectedPage: (page: 'serial-monitor' | 'dashboard') => void
+  selectedPage: currentPathType 
+  setSelectedPage: (page: currentPathType) => void
 }): React.JSX.Element {
   const [showSettings, setShowSettings] = React.useState(false)
 
@@ -44,6 +45,11 @@ function Profile({
           <DropdownMenuItem onClick={() => setSelectedPage('serial-monitor')}>
             <span>Serial Monitor</span>
             {selectedPage === 'serial-monitor' && <Dot className="mr-2 h-4 w-4" />}
+          </DropdownMenuItem>
+
+          <DropdownMenuItem onClick={() => setSelectedPage('sessions')}>
+            <span>History</span>
+            {selectedPage === 'sessions' && <Dot className="mr-2 h-4 w-4" />}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setShowSettings(true)}>

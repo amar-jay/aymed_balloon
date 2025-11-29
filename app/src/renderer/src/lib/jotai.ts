@@ -8,7 +8,7 @@ import { SystemConfig } from 'src/lib/types/minibuf'
 
 // These atoms are automatically synced with localStorage
 // Storage key: 'currentPath', default: 'serial-monitor'
-type currentPathType = 'serial-monitor' | 'dashboard'
+export type currentPathType = 'serial-monitor' | 'dashboard' | `sessions/${number}` | 'sessions'
 export const currentPathAtom = atomWithStorage<currentPathType>('currentPath', 'serial-monitor')
 
 // Storage key: 'baudRate', default: 115200

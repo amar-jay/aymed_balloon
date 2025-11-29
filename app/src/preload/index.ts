@@ -1,4 +1,4 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import { SerialPort as NodeSerialPort } from 'serialport'
 import {
@@ -20,6 +20,13 @@ import {
   isDeviceConnected,
   getSystemVersion
 } from '../lib/serial'
+import {
+  createSession,
+  deleteSessionById,
+  getSessionById,
+  getSessions,
+  updateSessionById
+} from '../lib/db'
 
 // Custom APIs for renderer
 const api = {
@@ -42,7 +49,15 @@ const api = {
   SerialfindUSBDevices: findUSBDevices,
   SerialgetActiveConnections: getActiveConnections,
   SerialgetDevicePath: getDevicePath,
-  SerialisDeviceConnected: isDeviceConnected
+  SerialisDeviceConnected: isDeviceConnected,
+
+  // Session APIs
+  DBgetSessions: () => Promise.resolve(getSessions()),
+  DBgetSession: (id: number) => Promise.resolve(getSessionById(id)),
+  DBcreateSession: (session: { name: string; data: unknown }) => Promise.resolve(createSession(session.name, session.data)),
+  DBupdateSession: (id: number, name: string, data: unknown) => Promise.resolve(updateSessionById(id, name, data)),
+  DBdeleteSession: (id: number) => Promise.resolve(deleteSessionById(id)),
+  DBgenerateSessionPDF: (sessionId: number) => ipcRenderer.invoke('generate-session-pdf', sessionId)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

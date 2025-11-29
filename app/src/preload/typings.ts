@@ -4,6 +4,14 @@
  * Serial Communication Data Structures
  */
 
+// NEVER DELETE THIS TYPE HERE!!!!!
+export interface Session {
+  id?: string
+  name: string
+  created_at?: string
+  updated_at?: string
+  data: unknown
+}
 // ============================================================================
 // ENUMS
 // ============================================================================

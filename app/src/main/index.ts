@@ -1,6 +1,8 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { initializeDatabase, generateSessionPDF, closeDatabase } from '../lib/db'
+
 import icon from '../../resources/logo.jpeg?asset'
 
 function createWindow(): void {
@@ -49,6 +51,9 @@ app.whenReady().then(() => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
+  // Initialize the database
+  initializeDatabase()
+
   if (is.dev) {
     // Default open or close DevTools by F12 in development
     // and ignore CommandOrControl + R in production.
@@ -60,6 +65,11 @@ app.whenReady().then(() => {
 
   // IPC test
   ipcMain.on('ping', () => 'pong')
+
+  // IPC handlers for sessions PDF generation
+  ipcMain.handle('generate-session-pdf', async (event, sessionId) => {
+    return generateSessionPDF(sessionId)
+  })
 
   createWindow()
 
@@ -77,6 +87,10 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('before-quit', () => {
+  return closeDatabase()
 })
 
 // In this file you can include the rest of your app's specific main process

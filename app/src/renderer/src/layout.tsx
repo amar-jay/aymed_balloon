@@ -11,6 +11,7 @@ import usb from '@renderer/assets/usb2.svg?asset'
 import { RefreshCcw } from 'lucide-react'
 import { SerialDevice } from './use-serial'
 import { Profile } from './components/profile'
+import { currentPathType } from './lib/jotai'
 
 export function MainLayout({
   children,
@@ -37,7 +38,7 @@ export function MainLayout({
   command: string
   loading: boolean
   status: string
-  selectedPage: 'serial-monitor' | 'dashboard'
+  selectedPage: currentPathType
   clearData: () => void
   connectToDevice: (devicePath: string) => Promise<void>
   connectToFirstDevice: () => Promise<void>
@@ -45,7 +46,7 @@ export function MainLayout({
   loadDevices: () => Promise<void>
   sendCommand: (command?: string) => Promise<void>
   setCommand: React.Dispatch<React.SetStateAction<string>>
-  setSelectedPage: React.Dispatch<React.SetStateAction<'serial-monitor' | 'dashboard'>>
+  setSelectedPage: React.Dispatch<React.SetStateAction<currentPathType>>
 }): React.JSX.Element {
   return (
     <div className="h-screen w-screen bg-gray-50 flex flex-col">

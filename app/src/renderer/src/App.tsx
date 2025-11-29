@@ -24,6 +24,7 @@ function App(): React.JSX.Element {
             connectionId={serial.connectionId}
           />
         )}
+        {currentPath === 'sessions' && <div>Sessions List to be implemented</div>}
         {/* <div></div> */}
       </MainLayout>
       <Toaster />
