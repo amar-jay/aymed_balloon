@@ -33,10 +33,7 @@
  */
 
 import { SerialPort, ReadlineParser } from 'serialport'
-import {
-  // ErrorCode,
-  SystemConfig
-} from '../preload/typings'
+import { SystemConfig } from '../preload/index.d'
 import { SystemDataParse, SystemData, SystemConfigParse, SystemVersion } from './types/minibuf'
 
 export interface SerialDevice {
