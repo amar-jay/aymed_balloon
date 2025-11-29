@@ -28,7 +28,10 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  X
+  X,
+  ArrowUpAz,
+  ArrowUpNarrowWide,
+  ArrowDownNarrowWide
 } from 'lucide-react'
 
 type SortField = 'date' | 'operator' | 'company' | 'welds' | 'success' | 'failures'
@@ -153,15 +156,15 @@ export function History(): React.JSX.Element {
   }
 
   return (
-    <div className="w-full px-6 py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Weld History</h2>
-          <p className="text-muted-foreground mt-1">Manage and view all welding sessions</p>
-        </div>
-      </div>
+    <div className="flex-1 px-6 py-6 space-y-6">
+      {/* <div className="flex items-center justify-between"> */}
+      {/* <div> */}
+      {/* <h2 className="text-3xl font-bold tracking-tight">Weld History</h2> */}
+      {/* <p className="text-muted-foreground mt-1">Manage and view all welding sessions</p> */}
+      {/* </div> */}
+      {/* </div> */}
 
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle>Create New Session</CardTitle>
           <CardDescription>
@@ -212,13 +215,14 @@ export function History(): React.JSX.Element {
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>  */}
 
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Sessions</CardTitle>
+              {/* <CardTitle>Sessions</CardTitle> */}
+              <CardTitle className="text-2xl font-bold tracking-tight">Weld History</CardTitle>
               <CardDescription>
                 {validSessions.length === 0
                   ? 'No sessions found. Create your first session above.'
@@ -228,11 +232,11 @@ export function History(): React.JSX.Element {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4 mb-6">
+          <div className="space-y-4 mb-6  text-muted-foreground">
             <div className="flex flex-wrap gap-4 items-end">
               <div className="flex-1 min-w-[200px] space-y-2">
                 <label className="text-sm font-medium flex items-center gap-2">
-                  <Search className="h-4 w-4" />
+                  <Search className="h-4 w-4 " />
                   Search
                 </label>
                 <Input
@@ -293,26 +297,23 @@ export function History(): React.JSX.Element {
                     <NativeSelectOption value="failures">Failures</NativeSelectOption>
                   </NativeSelect>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="icon"
                     onClick={toggleSortDirection}
                     title={`Sort ${sortDirection === 'asc' ? 'Ascending' : 'Descending'}`}
                   >
                     {sortDirection === 'asc' ? (
-                      <ArrowUp className="h-4 w-4" />
+                      <ArrowUpNarrowWide className="h-4 w-4" />
                     ) : (
-                      <ArrowDown className="h-4 w-4" />
+                      <ArrowDownNarrowWide className="h-4 w-4" />
                     )}
+                  </Button>
+
+                  <Button variant="ghost" onClick={clearFilters} disabled={!hasActiveFilters}>
+                    <X className="h-4 w-4 mr-2" />
                   </Button>
                 </div>
               </div>
-
-              {hasActiveFilters && (
-                <Button variant="outline" onClick={clearFilters} className="shrink-0">
-                  <X className="h-4 w-4 mr-2" />
-                  Clear Filters
-                </Button>
-              )}
             </div>
           </div>
 

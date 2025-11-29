@@ -1,9 +1,8 @@
 import { app, BrowserWindow, dialog } from 'electron'
 import { join } from 'path'
 import Database from 'better-sqlite3'
-import PDFDocument from 'pdfkit'
-import fs from 'fs'
 import { Session, Weld, computeSessionStats } from './types/session'
+import { generateSessionPDF as createPDFReport } from './pdf-generator'
 
 // Database row types (how data is stored in SQLite)
 interface SessionRow {
@@ -380,51 +379,13 @@ function setupDatabaseHandlers(db: Database.Database) {
       return null // User cancelled
     }
 
-    const doc = new PDFDocument()
-    const stream = fs.createWriteStream(filePath)
-    doc.pipe(stream)
-
-    // PDF content - TODO: Improve PDF generation later
-    doc.fontSize(20).text('Session Report', { align: 'center' })
-    doc.moveDown()
-
-    doc.fontSize(14).text(`Operator: ${session.operatorName}`)
-    doc.text(`Company: ${session.companyName}`)
-    doc.text(`Created: ${new Date(session.createdAt).toLocaleString()}`)
-    doc.text(`Last Updated: ${new Date(session.updatedAt).toLocaleString()}`)
-    doc.text(`Start: ${new Date(session.startSession).toLocaleString()}`)
-    if (session.endSession) {
-      doc.text(`End: ${new Date(session.endSession).toLocaleString()}`)
-    }
-    doc.moveDown()
-
-    doc.fontSize(16).text('Session Statistics:')
-    doc.fontSize(12).text(`Average Top Heater Temperature: ${session.averageTopHeaterTemperature.toFixed(2)}`)
-    doc.text(`Average Bottom Heater Temperature: ${session.averageBottomHeaterTemperature.toFixed(2)}`)
-    doc.text(`Average Power Supply Voltage: ${session.averagePowerSupplyVoltage.toFixed(2)}`)
-    doc.text(`Success Count: ${session.successCount}`)
-    doc.text(`Failure Count: ${session.failureCount}`)
-    doc.moveDown()
-
-    doc.fontSize(16).text(`Welds (${session.welds.length}):`)
-    doc.moveDown()
-
-    session.welds.forEach((weld, index) => {
-      doc.fontSize(12).text(`Weld ${index + 1}: ${weld.isSuccessful ? 'Success' : 'Failed'}`)
-      doc.fontSize(10).text(`  Top Heater: ${weld.topHeaterTemperature}°C, Bottom Heater: ${weld.bottomHeaterTemperature}°C`)
-      doc.text(`  Voltage: ${weld.powerSupplyVoltage}V, Welding: ${weld.weldingDuration}s, Cooling: ${weld.coolingDuration}s`)
-      if (weld.error) {
-        doc.text(`  Error: ${weld.error}`)
-      }
-      doc.moveDown(0.5)
+    // Use the professional PDF generator
+    await createPDFReport({
+      filePath,
+      session
     })
 
-    doc.end()
-
-    return new Promise((resolve, reject) => {
-      stream.on('finish', () => resolve(filePath))
-      stream.on('error', reject)
-    })
+    return filePath
   }
 
   return {
