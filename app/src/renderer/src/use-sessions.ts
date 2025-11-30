@@ -205,6 +205,7 @@ export function useSessionById(sessionId: number) {
 
   const memoizedSession = useMemo(() => session, [session])
 
+
   return {
     session: memoizedSession,
     refresh: fetchSession,

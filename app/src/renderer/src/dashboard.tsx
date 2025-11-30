@@ -9,9 +9,8 @@ import { useAtom } from 'jotai/react'
 import { historyLimitAtom } from './lib/jotai'
 import VoltageCard from './components/voltage-card'
 import { OperationCard } from './components/operation-card'
-import { ActiveSessionPanel } from './components/active-session-panel'
-import { useSessions } from './use-sessions'
-import { toast } from 'sonner'
+import { CreateSessionForm } from './components/CreateSessionForm'
+import { ActiveSessionPanel } from './components/ActiveSessionPanel'
 
 interface DashboardProps {
   isConnected: boolean
@@ -67,6 +66,7 @@ export function Dashboard({ isConnected, receivedData, connectionId }: Dashboard
     const latestData = window.api.SerialgetSystemStatus(connectionId)
     if (latestData) setSystemData(latestData)
   }
+  const [sessionId, setSessionId] = useState<number | null>(null)
 
   // it is meant to be used in the temp graphs later
   const [pastSystemData, setPastSystemData] = useState<SystemData[]>([])
@@ -250,20 +250,29 @@ export function Dashboard({ isConnected, receivedData, connectionId }: Dashboard
             <>
               {/* Temperature Graphs Section */}
               <TempGraph pastSystemData={pastSystemData} />
-              <div className="rounded-lg border dark:border-border p-4 space-y-2 transition-colors">
-                <h4 className="text-sm text-muted-foreground">System Status</h4>
-                <Badge
-                  variant={config?.sysErrorEnabled ? 'destructive' : 'outline'}
-                  className={cn(!config?.sysErrorEnabled && 'bg-green-600/80 text-white text-lg')}
-                >
-                  {config?.sysErrorEnabled ? 'ERROR' : 'OK'}
-                </Badge>
-                <h4 className="text-sm text-muted-foreground mt-2">System Data:</h4>
-                <p className="text-sm">{JSON.stringify(systemData, null, 2)}</p>
-                <h4 className="text-sm text-muted-foreground mt-2">System Config:</h4>
-                <p className="text-sm">{JSON.stringify(config, null, 2)}</p>
-                <h4 className="text-sm text-muted-foreground mt-2">Firmware Version:</h4>
-                <p className="text-sm">{version}</p>
+
+              <div className="grid grid-cols-2 gap-2">
+                {sessionId ? (
+                  <ActiveSessionPanel sessionId={sessionId} setSessionId={setSessionId}/>
+                ) : (
+                  <CreateSessionForm setSessionId={setSessionId} />
+                )}
+                <div className="rounded-lg border dark:border-border p-4 space-y-2 transition-colors">
+                  <h4 className="text-sm text-muted-foreground">System Status</h4>
+                  <Badge
+                    variant={config?.sysErrorEnabled ? 'destructive' : 'outline'}
+                    className={cn(
+                      !config?.sysErrorEnabled && 'bg-green-600/80 text-white',
+                      'w-[50px]'
+                    )}
+                  >
+                    {config?.sysErrorEnabled ? 'ERROR' : 'OK'}
+                  </Badge>
+                  <h4 className="text-sm text-muted-foreground mt-2">System Data:</h4>
+                  <p className="text-xs">{JSON.stringify(systemData, null, 2)}</p>
+                  <h4 className="text-sm text-muted-foreground mt-2">System Config:</h4>
+                  <p className="text-xs">{JSON.stringify(config, null, 2)}</p>
+                </div>
               </div>
             </>
           )}
