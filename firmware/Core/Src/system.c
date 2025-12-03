@@ -164,31 +164,42 @@ void PrintError(ErrorCode_t code) {
 
 // -------------------------------------------
 void MonitorSensors(void) {
-	float value;
+	float valueA = 10;
+	float valueB = 01;
+	float valueC = 10;
+	float value = 01;
 	char msg[64];
+	usb_printf("Checking temperature....");
+	osDelay(10);
 	osMutexAcquire(stateMutexHandle, 100);
-	  if (ads1115_read_P0NG(&balloonState.ads1115, &value) == HAL_OK) {
-		  balloonState.temp1 = (int16_t)ComputeTopHeaterTemperature(value);
-		  snprintf(msg, sizeof(msg), "Current Temperature of A0: %d\r\n", balloonState.temp1);
+	  if (ads1115_read_P0NG(&balloonState.ads1115, &valueA) == HAL_OK) {
+		  balloonState.temp1 = (int16_t)ComputeTopHeaterTemperature(valueA);
+		  snprintf(msg, sizeof(msg), "Current Temperature of A0: %d %d\r\n", balloonState.temp1, valueA*100);
 		  usb_printf(msg);
+//	  } else {
+//		  usb_printf("Temp A0 error\r\n");
 	  }
 	  osMutexRelease(stateMutexHandle);
 	  osDelay(10);
 
 	  osMutexAcquire(stateMutexHandle, 100);
-	  if (ads1115_read_P1NG(&balloonState.ads1115, &value) == HAL_OK) {
-		  balloonState.temp2 = (int16_t)ComputeBottomHeaterTemperature(value);
-		  snprintf(msg, sizeof(msg), "Current Temperature of A1: %d\r\n", balloonState.temp2);
+	  if (ads1115_read_P1NG(&balloonState.ads1115, &valueB) == HAL_OK) {
+		  balloonState.temp2 = (int16_t)ComputeBottomHeaterTemperature(valueB);
+		  snprintf(msg, sizeof(msg), "Current Temperature of A1: %d %d\r\n", balloonState.temp2, -1*valueB);
 		  usb_printf(msg);
+//	  } else {
+//		  usb_printf("Temp A1 error");
 	  }
 	  osMutexRelease(stateMutexHandle);
 	  osDelay(10);
 
 	  osMutexAcquire(stateMutexHandle, 100);
-	  if (ads1115_read_P2NG(&balloonState.ads1115, &value) == HAL_OK) {
-		  balloonState.temp3 = (int16_t)ComputePowerSupplyTemperature(value);
-		  snprintf(msg, sizeof(msg), "Current Temperature of A2: %d\r\n", balloonState.temp3);
+	  if (ads1115_read_P2NG(&balloonState.ads1115, &valueC) == HAL_OK) {
+		  balloonState.temp3 = (int16_t)ComputePowerSupplyTemperature(valueC);
+		  snprintf(msg, sizeof(msg), "Current Temperature of A2: %d %d\r\n", balloonState.temp3, valueC*100);
 		  usb_printf(msg);
+//	  } else {
+//		  usb_printf("Temp A2 error");
 	  }
 	  osMutexRelease(stateMutexHandle);
 	  osDelay(10);
@@ -198,23 +209,25 @@ void MonitorSensors(void) {
 		  balloonState.vcc = (uint16_t)value; 
 		  snprintf(msg, sizeof(msg), "Current Value of A3: %d\r\n", balloonState.vcc);
 		  usb_printf(msg);
+//	  } else {
+//		  usb_printf("Temp A3 error\r\n");
 	  }
 	  osMutexRelease(stateMutexHandle);
 	  osDelay(10);
 
-      // monitor proximity sensor (gpio)
-      if (osMutexAcquire(stateMutexHandle, 100) == osOK) {
-        balloonState.proximity = HAL_GPIO_ReadPin(PROXIMITY_SENSOR_GPIO_Port, PROXIMITY_SENSOR_Pin);
-        osMutexRelease(stateMutexHandle);
-        osDelay(10);
-      }
+//      // monitor proximity sensor (gpio)
+//      if (osMutexAcquire(stateMutexHandle, 100) == osOK) {
+//        balloonState.proximity = HAL_GPIO_ReadPin(PROXIMITY_SENSOR_GPIO_Port, PROXIMITY_SENSOR_Pin);
+//        osMutexRelease(stateMutexHandle);
+//        osDelay(10);
+//      }
 
       // pedal state
-      if (osMutexAcquire(stateMutexHandle, 100) == osOK) {
-        balloonState.pedal = HAL_GPIO_ReadPin(PEDAL_SWITCH_GPIO_Port, PEDAL_SWITCH_Pin);
-        osMutexRelease(stateMutexHandle);
-        osDelay(10);
-      }
+//      if (osMutexAcquire(stateMutexHandle, 100) == osOK) {
+//        balloonState.pedal = HAL_GPIO_ReadPin(PEDAL_SWITCH_GPIO_Port, PEDAL_SWITCH_Pin);
+//        osMutexRelease(stateMutexHandle);
+//        osDelay(10);
+//      }
 }
 
 
@@ -323,7 +336,7 @@ void LogCallbackHandler()
 // Initialize the system and start RX interrupt
 void BalloonSystemInit(void)
 {
-//    balloonState.ads1115 = ads1115_hal_init(&hi2c1, ADS1115_DEFAULT_CONFIG());
+    balloonState.ads1115 = ads1115_hal_init(&hi2c1, ADS1115_DEFAULT_CONFIG());
     BalloonConfig_Init();
 }
 

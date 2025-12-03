@@ -406,9 +406,6 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(PROXIMITY_SENSOR_GPIO_Port, PROXIMITY_SENSOR_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, BUZZER_Pin|BOTTOM_HEATER2_Pin|TOP_HEATER2_Pin|BOTTOM_HEATER1_Pin
                           |TOP_HEATER1_Pin|COOLER_FAN_Pin|PRESSURE_VALVE_Pin, GPIO_PIN_RESET);
 
@@ -420,9 +417,8 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : PROXIMITY_SENSOR_Pin */
   GPIO_InitStruct.Pin = PROXIMITY_SENSOR_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(PROXIMITY_SENSOR_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : BUZZER_Pin BOTTOM_HEATER2_Pin TOP_HEATER2_Pin BOTTOM_HEATER1_Pin

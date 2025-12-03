@@ -58,9 +58,14 @@ void StartLog(void *argument){
 }
 void StartSensor(void *argument){for (;;) {
 	MonitorSensors();
-	osDelay(1);
+	osDelay(100);
 }};
-void StartHeater(void *argument){for (;;) {ControlHeater(); osDelay(100);}};
+
+void StartHeater(void *argument){
+	for (;;) {
+//	ControlHeater();
+		osDelay(1);
+}}
 
 /* USER CODE END PD */
 
