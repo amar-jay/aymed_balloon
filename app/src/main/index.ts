@@ -1,6 +1,9 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { initializeDatabase, closeDatabase, setupDatabaseHandlers } from '../lib/db'
+import { Session, Weld } from '../lib/types/session'
+
 import icon from '../../resources/logo.jpeg?asset'
 
 function createWindow(): void {
@@ -42,12 +45,17 @@ function createWindow(): void {
   }
 }
 
+let db: ReturnType<typeof initializeDatabase>
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
+
+  // Initialize the database
+  db = initializeDatabase()
 
   if (is.dev) {
     // Default open or close DevTools by F12 in development
@@ -60,6 +68,43 @@ app.whenReady().then(() => {
 
   // IPC test
   ipcMain.on('ping', () => 'pong')
+
+  const {
+    createSession,
+    deleteSessionById,
+    getSessionById,
+    getSessions,
+    updateSessionById,
+    addWeldToSession,
+    endSession,
+    generateSessionPDF
+  } = setupDatabaseHandlers(db)
+
+  ipcMain.handle('db:sessions:getAll', async () => getSessions())
+  ipcMain.handle('db:sessions:get', async (_, id: number) => getSessionById(id))
+  ipcMain.handle(
+    'db:sessions:create',
+    async (_, session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>) => createSession(session)
+  )
+  ipcMain.handle(
+    'db:sessions:update',
+    async (_, id: number, session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>) =>
+      updateSessionById(id, session)
+  )
+  ipcMain.handle('db:sessions:delete', async (_, id: number) => deleteSessionById(id))
+  ipcMain.handle(
+    'db:sessions:addWeld',
+    async (_, sessionId: number, weld: Omit<Weld, 'id' | 'createdAt'>) =>
+      addWeldToSession(sessionId, weld)
+  )
+  ipcMain.handle('db:sessions:end', async (_, sessionId: number) => endSession(sessionId))
+  ipcMain.handle('db:sessions:generatePDF', async (_, sessionId: number) =>
+    generateSessionPDF(sessionId)
+  )
+  // IPC handlers for sessions PDF generation
+  // ipcMain.handle('generate-session-pdf', async (event, sessionId) => {
+  //   return generateSessionPDF(sessionId)
+  // })
 
   createWindow()
 
@@ -77,6 +122,11 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('before-quit', () => {
+  if (db) return closeDatabase(db)
+  else return Promise.resolve()
 })
 
 // In this file you can include the rest of your app's specific main process

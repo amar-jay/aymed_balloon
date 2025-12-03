@@ -21,6 +21,7 @@ export const useSerial = () => {
   const [loading, setLoading] = React.useState(false)
   const [baudrate] = React.useState(115200)
 
+
   // Function to add data to the received data list
   const addReceivedData = React.useCallback((data: string) => {
     setReceivedData((prev) => [...prev.slice(-49), data]) // Keep last 50 messages
@@ -36,6 +37,13 @@ export const useSerial = () => {
         const bufferedData = await window.api.SerialreadData(connectionId, true)
         if (bufferedData && bufferedData.length > 0) {
           bufferedData.forEach((data) => {
+            if (data.trim() === '') return
+            if (data.startsWith('ERROR:')) {
+              toast.error('Serial Error', { description: data })
+            }
+            if (data.startsWith('[LOG] Parsed config successfully')) {
+              toast.success('MCU Config Updated', { description: data })
+            }
             addReceivedData(`[${new Date().toLocaleTimeString()}] ${data}`)
           })
         }
@@ -113,13 +121,14 @@ export const useSerial = () => {
   }
 
   // Send command
-  const sendCommand = async (): Promise<void> => {
-    if (!connectionId || !command.trim()) return
+  const sendCommand = async (_command?: string): Promise<void> => {
+    const commandToSend = _command ?? command
+    if (!connectionId || !commandToSend.trim()) return
 
     setLoading(true)
     try {
-      await window.api.SerialsendCommand(connectionId, command)
-      addReceivedData(`> ${command}`)
+      await window.api.SerialsendCommand(connectionId, commandToSend)
+      addReceivedData(`> ${commandToSend}`)
       setCommand('')
     } catch (error) {
       addReceivedData(`Send error: ${(error as Error).message}`)

@@ -150,8 +150,8 @@ export function SettingsDialog({
                     </Field>
                     <Field>
                       <FieldLabel>
-                        Temp1 Offset:{' '}
-                        {config.temp1Offset > 127 ? config.temp1Offset - 256 : config.temp1Offset}
+                        Top Temp Offset:{' '}
+                        {config.topTempOffset > 127 ? config.topTempOffset - 256 : config.topTempOffset}
                         °C
                       </FieldLabel>
                       <FieldContent>
@@ -159,9 +159,9 @@ export function SettingsDialog({
                           min={0}
                           max={255}
                           step={1}
-                          value={[config.temp1Offset]}
+                          value={[config.topTempOffset]}
                           onValueChange={(value) =>
-                            setConfig((prev) => ({ ...prev, temp1Offset: value[0] }))
+                            setConfig((prev) => ({ ...prev, topTempOffset: value[0] }))
                           }
                           className="w-full"
                         />
@@ -169,8 +169,8 @@ export function SettingsDialog({
                     </Field>
                     <Field>
                       <FieldLabel>
-                        Temp2 Offset:{' '}
-                        {config.temp2Offset > 127 ? config.temp2Offset - 256 : config.temp2Offset}
+                        Bottom Temp Offset:{' '}
+                        {config.bottomTempOffset > 127 ? config.bottomTempOffset - 256 : config.bottomTempOffset}
                         °C
                       </FieldLabel>
                       <FieldContent>
@@ -178,9 +178,9 @@ export function SettingsDialog({
                           min={0}
                           max={255}
                           step={1}
-                          value={[config.temp2Offset]}
+                          value={[config.bottomTempOffset]}
                           onValueChange={(value) =>
-                            setConfig((prev) => ({ ...prev, temp2Offset: value[0] }))
+                            setConfig((prev) => ({ ...prev, bottomTempOffset: value[0] }))
                           }
                           className="w-full"
                         />

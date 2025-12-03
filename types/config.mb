@@ -7,9 +7,9 @@ SystemConfig {
 
   bottomTempThreshold: number;
 
-  temp1Offset: float;
+  topTempOffset: float;
 
-  temp2Offset: float;
+  bottomTempOffset: float;
 
   menuResetDelay: number;
 
@@ -30,4 +30,6 @@ SystemConfig {
   heaterErrorEnable: float;
 
   coolingDelay: number;
+
+	useInternalADC: bool;
 }

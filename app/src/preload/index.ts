@@ -1,4 +1,4 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import { SerialPort as NodeSerialPort } from 'serialport'
 import {
@@ -9,14 +9,19 @@ import {
   sendCommand,
   readData,
   readLatestData,
+  getSystemConfig,
+  getSystemStatus,
   clearBuffer,
   disconnectAll,
   connectToFirstUSBDevice,
   findUSBDevices,
   getActiveConnections,
   getDevicePath,
-  isDeviceConnected
+  isDeviceConnected,
+  getSystemVersion
 } from '../lib/serial'
+import { Session, Weld } from '../lib/types/session'
+import './index.d'
 
 // Custom APIs for renderer
 const api = {
@@ -30,14 +35,37 @@ const api = {
   SerialsendCommand: sendCommand,
   SerialreadData: readData,
   SerialreadLatestData: readLatestData,
+  SerialgetSystemStatus: getSystemStatus,
+  SerialgetSystemConfig: getSystemConfig,
+  SerialgetSystemVersion: getSystemVersion,
   SerialclearDataBuffer: clearBuffer,
   SerialdisconnectAll: disconnectAll,
   SerialconnectToFirstUSBDevice: connectToFirstUSBDevice,
   SerialfindUSBDevices: findUSBDevices,
   SerialgetActiveConnections: getActiveConnections,
   SerialgetDevicePath: getDevicePath,
-  SerialisDeviceConnected: isDeviceConnected
-}
+  SerialisDeviceConnected: isDeviceConnected,
+
+  // Session APIs
+  DBgetSessions: (): Promise<Session[]> => ipcRenderer.invoke('db:sessions:getAll'),
+  DBgetSession: (id: number): Promise<Session | undefined> =>
+    ipcRenderer.invoke('db:sessions:get', id),
+  DBcreateSession: (session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>): Promise<number> =>
+    ipcRenderer.invoke('db:sessions:create', session),
+  DBupdateSession: (
+    id: number,
+    session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<boolean> => ipcRenderer.invoke('db:sessions:update', id, session),
+  DBdeleteSession: (id: number): Promise<boolean> => ipcRenderer.invoke('db:sessions:delete', id),
+  DBaddWeldToSession: (
+    sessionId: number,
+    weld: Omit<Weld, 'id' | 'createdAt'>
+  ): Promise<number> => ipcRenderer.invoke('db:sessions:addWeld', sessionId, weld),
+  DBendSession: (sessionId: number): Promise<boolean> =>
+    ipcRenderer.invoke('db:sessions:end', sessionId),
+  DBgenerateSessionPDF: (sessionId: number): Promise<string | null> =>
+    ipcRenderer.invoke('db:sessions:generatePDF', sessionId)
+} satisfies Window['api']
 
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise

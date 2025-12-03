@@ -4,6 +4,14 @@
  * Serial Communication Data Structures
  */
 
+// NEVER DELETE THIS TYPE HERE!!!!!
+export interface Session {
+  id?: string
+  name: string
+  created_at?: string
+  updated_at?: string
+  data: unknown
+}
 // ============================================================================
 // ENUMS
 // ============================================================================
@@ -148,72 +156,72 @@ export interface ErrorInfo {
 // SYSTEM CONFIGURATION
 // ============================================================================
 
-export interface SystemConfig {
-  /** Operation/welding time (seconds, 5-60) */
-  opTime: number
+// export interface SystemConfig {
+//   /** Operation/welding time (seconds, 5-60) */
+//   opTime: number
 
-  /** Cooling time (seconds, 3-30) */
-  coTime: number
+//   /** Cooling time (seconds, 3-30) */
+//   coTime: number
 
-  /** Top heater temperature setpoint (°C, 20-150)
-   *
-   * This is defined for the user UI and represents the maximum gauge
-   */
-  topTempThreshold: number
+//   /** Top heater temperature setpoint (°C, 20-150)
+//    *
+//    * This is defined for the user UI and represents the maximum gauge
+//    */
+//   topTempThreshold: number
 
-  /** Bottom heater temperature setpoint (°C, 20-150)
-   *
-   * This is defined for the user UI and represents the maximum gauge
-   */
-  bottomTempThreshold: number
+//   /** Bottom heater temperature setpoint (°C, 20-150)
+//    *
+//    * This is defined for the user UI and represents the maximum gauge
+//    */
+//   bottomTempThreshold: number
 
-  /** Temperature sensor 1 offset calibration (100-255)
-   * TODO: remove not necessary
-   */
-  temp1Offset: number
+//   /** Temperature sensor 1 offset calibration (100-255)
+//    * TODO: remove not necessary
+//    */
+//   topTempOffset: number
 
-  /** Temperature sensor 2 offset calibration (100-255)
-   * TODO: remove not necessary
-   */
-  temp2Offset: number
+//   /** Temperature sensor 2 offset calibration (100-255)
+//    * TODO: remove not necessary
+//    */
+//   bottomTempOffset: number
 
-  /** Menu auto-reset delay (seconds, 10-60) */
-  menuResetDelay: number
+//   /** Menu auto-reset delay (seconds, 10-60) */
+//   menuResetDelay: number
 
-  /** Time calibration offset (0-255) */
-  timeCalibration: number
+//   /** Time calibration offset (0-255) */
+//   timeCalibration: number
 
-  /** Maximum temperature error threshold (°C, 125-175) */
-  maxTempError: number
+//   /** Maximum temperature error threshold (°C, 125-175) */
+//   maxTempError: number
 
-  /** VCC voltage error threshold (V, 12-32) */
-  vccVoltageError: number
+//   /** VCC voltage error threshold (V, 12-32) */
+//   vccVoltageError: number
 
-  /** Power temperature error threshold (°C, 25-75) */
-  powerTempError: number
+//   /** Power temperature error threshold (°C, 25-75) */
+//   powerTempError: number
 
-  /** Power VCC error checking enabled */
-  powerVccErrorEnabled: boolean
+//   /** Power VCC error checking enabled */
+//   powerVccErrorEnabled: boolean
 
-  /** System error checking enabled */
-  sysErrorEnabled: boolean
+//   /** System error checking enabled */
+//   sysErrorEnabled: boolean
 
-  /** Voltage calibration value (0-250) */
-  voltageCalibration: number
+//   /** Voltage calibration value (0-250) */
+//   voltageCalibration: number
 
-  /** Heater differential error threshold (°C, 5-50) */
-  heaterErrorEnable: number
+//   /** Heater differential error threshold (°C, 5-50) */
+//   heaterErrorEnable: number
 
-  /** Cooling delay (0-250) */
-  coolingDelay: number
-}
+//   /** Cooling delay (0-250) */
+//   coolingDelay: number
+// }
 // export interface SystemConfig {
 //   optime: number
 //   cotime: number
 //   top_temp_threshold: number
 //   bottom_temp_threshold: number
-//   temp1_offset: number
-//   temp2_offset: number
+//   top_temp_offset: number
+//   bottom_temp_offset: number
 //   menu_reset_delay: number
 //   time_calibration: number
 //   max_temp_error: number
@@ -249,7 +257,7 @@ export interface MenuStatus {
 // SYSTEM STATUS (Complete State)
 // ============================================================================
 
-export interface SystemStatus {
+export interface BalloonStatus {
   /** Temperature data */
   temperature: TemperatureData
 
@@ -266,7 +274,7 @@ export interface SystemStatus {
   menu: MenuStatus
 
   /** System configuration */
-  config: SystemConfig
+  // config: SystemConfig
 
   /** System uptime (seconds) */
   uptime: number
@@ -359,7 +367,7 @@ export interface TelemetryPacket {
   sequence: number
 
   /** Data payload */
-  data: SystemStatus | SystemConfig | ErrorStatus | SystemEvent
+  data: BalloonStatus | ErrorStatus | SystemEvent
 
   /** Timestamp */
   timestamp: Date
@@ -479,7 +487,7 @@ export interface HistoryRecord {
 
 export interface DashboardState {
   /** Current system status */
-  systemStatus: SystemStatus
+  BalloonStatus: BalloonStatus
 
   /** Connection status */
   connected: boolean
@@ -588,7 +596,7 @@ export interface SerialConfig {
 }
 
 export interface TelemetryData {
-  data: SystemStatus
+  data: BalloonStatus
   timestamp: Date
 }
 
@@ -686,12 +694,6 @@ export const ERROR_DESCRIPTIONS: Record<ErrorCode, ErrorInfo> = {
 // ============================================================================
 // UTILITY TYPES
 // ============================================================================
-
-/** Type for partial configuration updates */
-export type ConfigUpdate = Partial<SystemConfig>
-
-/** Type for status updates */
-export type StatusUpdate = Partial<SystemStatus>
 
 /** Type guard for checking if a value is an ErrorCode */
 export function isErrorCode(value: string | ErrorCode): value is ErrorCode {

@@ -90,7 +90,7 @@ typedef struct {
   uint8_t standby_blink;
   uint32_t menu_timeout;
 
-  ADS1115_HandleTypeDef ads1115;
+  ADS1115_HandleTypeDef *ads1115;
 } BalloonState_t;
 
 /** Compute temperature in °C from ADC value (bridge output)

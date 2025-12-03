@@ -67,6 +67,7 @@ void StartHeater(void *argument){
 		osDelay(1);
 }}
 
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -86,6 +87,24 @@ void StartHeater(void *argument){
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
+void StartLog(void *argument){
+  EE_Init();
+  BalloonConfig_Init(); // Load config from EEPROM or set defaults
+
+  for (;;) {
+
+		LogCallbackHandler();
+		osDelay(1);
+		MonitorError();
+
+    osDelay(1); // Print every 2 seconds
+  }
+}
+void StartSensor(void *argument){for (;;) {
+	MonitorSensors();
+	osDelay(1);
+}};
+void StartHeater(void *argument){for (;;) {ControlHeater(); osDelay(100);}};
 
 /* USER CODE END Application */
 

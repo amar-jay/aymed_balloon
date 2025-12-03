@@ -19,17 +19,26 @@ typedef struct {
     bool bottomHeaterActive;
     float powerSupplyVoltage;
     bool proximityActive;
-    bool menuActive;
     bool pedalActive;
+    bool coolingFanActive;
+    bool pressureValveActive;
+    int32_t weldingTime;
+    int32_t coolingTime;
 } systemdata_t;
+
+typedef struct {
+    int32_t major;
+    int32_t minor;
+    int32_t patch;
+} systemversion_t;
 
 typedef struct {
     int32_t opTime;
     int32_t coTime;
     int32_t topTempThreshold;
     int32_t bottomTempThreshold;
-    float temp1Offset;
-    float temp2Offset;
+    float topTempOffset;
+    float bottomTempOffset;
     int32_t menuResetDelay;
     float timeCalibration;
     float maxTempError;
@@ -40,10 +49,14 @@ typedef struct {
     float voltageCalibration;
     float heaterErrorEnable;
     int32_t coolingDelay;
+    bool useInternalADC;
 } systemconfig_t;
 
 int mb_systemdata_parse(const char* buf, systemdata_t* out);
 int mb_systemdata_serialize(const systemdata_t* in, char* buf, size_t buf_size);
+
+int mb_systemversion_parse(const char* buf, systemversion_t* out);
+int mb_systemversion_serialize(const systemversion_t* in, char* buf, size_t buf_size);
 
 int mb_systemconfig_parse(const char* buf, systemconfig_t* out);
 int mb_systemconfig_serialize(const systemconfig_t* in, char* buf, size_t buf_size);

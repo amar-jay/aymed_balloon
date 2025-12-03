@@ -7,14 +7,18 @@ import type {
   sendCommand,
   readData,
   readLatestData,
+  getSystemConfig,
+  getSystemStatus,
   clearBuffer,
   disconnectAll,
   connectToFirstUSBDevice,
   findUSBDevices,
   getActiveConnections,
   getDevicePath,
-  isDeviceConnected
+  isDeviceConnected,
+  getSystemVersion
 } from '../lib/serial'
+import type { Session, Weld } from '../lib/types/session'
 
 export interface SystemConfig {
   /** Operation/welding time (seconds, 5-60) */
@@ -38,12 +42,12 @@ export interface SystemConfig {
   /** Temperature sensor 1 offset calibration (100-255)
    * TODO: remove not necessary
    */
-  temp1Offset: number
+  topTempOffset: number
 
   /** Temperature sensor 2 offset calibration (100-255)
    * TODO: remove not necessary
    */
-  temp2Offset: number
+  bottomTempOffset: number
 
   /** Menu auto-reset delay (seconds, 10-60) */
   menuResetDelay: number
@@ -76,10 +80,16 @@ export interface SystemConfig {
   coolingDelay: number
 }
 
+//create type to prepend parameters with event  type
+// type PrependEventParameter<T extends (...args: any[]) => any> = (
+// 	event: Electron.IpcMainInvokeEvent,
+// 	...args: Parameters<T>
+// ) => ReturnType<T>
 declare global {
   interface Window {
     electron: ElectronAPI
     api: {
+      // Serial APIs
       listSerialPorts: () => Promise<string[]>
       SeriallistUSBPorts: typeof listUSBPorts
       SeriallistPorts: typeof listPorts
@@ -88,6 +98,9 @@ declare global {
       SerialsendCommand: typeof sendCommand
       SerialreadData: typeof readData
       SerialreadLatestData: typeof readLatestData
+      SerialgetSystemStatus: typeof getSystemStatus
+      SerialgetSystemConfig: typeof getSystemConfig
+      SerialgetSystemVersion: typeof getSystemVersion
       SerialclearDataBuffer: typeof clearBuffer
       SerialdisconnectAll: typeof disconnectAll
       SerialconnectToFirstUSBDevice: typeof connectToFirstUSBDevice
@@ -95,6 +108,24 @@ declare global {
       SerialgetActiveConnections: typeof getActiveConnections
       SerialgetDevicePath: typeof getDevicePath
       SerialisDeviceConnected: typeof isDeviceConnected
+
+      // Session APIs
+      DBgetSessions: () => Promise<Session[]>
+      DBgetSession: (id: number) => Promise<Session | undefined>
+      DBcreateSession: (session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>) => Promise<number>
+      DBupdateSession: (
+        id: number,
+        session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>
+      ) => Promise<boolean>
+      DBdeleteSession: (id: number) => Promise<boolean>
+      DBaddWeldToSession: (
+        sessionId: number,
+        weld: Omit<Weld, 'id' | 'createdAt'>
+      ) => Promise<number>
+      DBendSession: (sessionId: number) => Promise<boolean>
+      DBgenerateSessionPDF: (sessionId: number) => Promise<string | null>
     }
   }
 }
+
+export type { Session, Weld }
