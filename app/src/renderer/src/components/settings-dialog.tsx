@@ -151,7 +151,9 @@ export function SettingsDialog({
                     <Field>
                       <FieldLabel>
                         Top Temp Offset:{' '}
-                        {config.topTempOffset > 127 ? config.topTempOffset - 256 : config.topTempOffset}
+                        {config.topTempOffset > 127
+                          ? config.topTempOffset - 256
+                          : config.topTempOffset}
                         °C
                       </FieldLabel>
                       <FieldContent>
@@ -170,7 +172,9 @@ export function SettingsDialog({
                     <Field>
                       <FieldLabel>
                         Bottom Temp Offset:{' '}
-                        {config.bottomTempOffset > 127 ? config.bottomTempOffset - 256 : config.bottomTempOffset}
+                        {config.bottomTempOffset > 127
+                          ? config.bottomTempOffset - 256
+                          : config.bottomTempOffset}
                         °C
                       </FieldLabel>
                       <FieldContent>

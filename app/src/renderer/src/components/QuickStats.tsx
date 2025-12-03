@@ -70,9 +70,7 @@ export function QuickStats({
           <TrendingUp className="h-3.5 w-3.5" />
           Voltage
         </div>
-        <p className="text-lg font-bold">
-          {averagePowerSupplyVoltage?.toFixed(1) || 0}V
-        </p>
+        <p className="text-lg font-bold">{averagePowerSupplyVoltage?.toFixed(1) || 0}V</p>
       </div>
 
       <div className="bg-background/60 backdrop-blur-sm rounded-lg p-3 border border-border/50">

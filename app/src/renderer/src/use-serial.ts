@@ -21,7 +21,6 @@ export const useSerial = () => {
   const [loading, setLoading] = React.useState(false)
   const [baudrate] = React.useState(115200)
 
-
   // Function to add data to the received data list
   const addReceivedData = React.useCallback((data: string) => {
     setReceivedData((prev) => [...prev.slice(-49), data]) // Keep last 50 messages

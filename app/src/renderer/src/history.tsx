@@ -153,7 +153,6 @@ export function History(): React.JSX.Element {
 
   return (
     <div className="flex-1 px-6 py-6 space-y-6">
-
       {/* <Card>
         <CardHeader>
           <CardTitle>Create New Session</CardTitle>

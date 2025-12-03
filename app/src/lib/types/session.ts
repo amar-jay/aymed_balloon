@@ -27,7 +27,9 @@ export interface Session {
 }
 
 // Helper function to compute session statistics from welds
-export function computeSessionStats(welds: Weld[]): Pick<
+export function computeSessionStats(
+  welds: Weld[]
+): Pick<
   Session,
   | 'averageTopHeaterTemperature'
   | 'averageBottomHeaterTemperature'

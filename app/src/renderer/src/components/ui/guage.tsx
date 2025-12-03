@@ -61,7 +61,7 @@ export function Gauge({
   }
 
   const color = getColor(inverseColor ? 1 - normalized : normalized)
-	const label_parts = label.split(' ')
+  const label_parts = label.split(' ')
 
   return (
     <div className={cn('inline-flex flex-col items-center', className)}>

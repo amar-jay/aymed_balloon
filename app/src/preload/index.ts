@@ -57,10 +57,8 @@ const api = {
     session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<boolean> => ipcRenderer.invoke('db:sessions:update', id, session),
   DBdeleteSession: (id: number): Promise<boolean> => ipcRenderer.invoke('db:sessions:delete', id),
-  DBaddWeldToSession: (
-    sessionId: number,
-    weld: Omit<Weld, 'id' | 'createdAt'>
-  ): Promise<number> => ipcRenderer.invoke('db:sessions:addWeld', sessionId, weld),
+  DBaddWeldToSession: (sessionId: number, weld: Omit<Weld, 'id' | 'createdAt'>): Promise<number> =>
+    ipcRenderer.invoke('db:sessions:addWeld', sessionId, weld),
   DBendSession: (sessionId: number): Promise<boolean> =>
     ipcRenderer.invoke('db:sessions:end', sessionId),
   DBgenerateSessionPDF: (sessionId: number): Promise<string | null> =>

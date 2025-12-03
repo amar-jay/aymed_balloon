@@ -74,7 +74,7 @@ export default function VoltageCard({ power }: { power: number }) {
             : 'bg-red-600 text-white mx-auto'
         }
       >
-       {power > 0 && power < 24 ? 'OK' : 'Alert'}
+        {power > 0 && power < 24 ? 'OK' : 'Alert'}
       </Badge>
     </Card>
   )

@@ -66,13 +66,7 @@ export async function generateSessionPDF(options: PDFOptions): Promise<void> {
   }
 
   // Helper function to add a key-value pair
-  const addKeyValue = (
-    key: string,
-    value: string | number,
-    x: number,
-    y: number,
-    width = 240
-  ) => {
+  const addKeyValue = (key: string, value: string | number, x: number, y: number, width = 240) => {
     doc
       .fontSize(9)
       .fillColor(secondaryColor)
@@ -104,9 +98,7 @@ export async function generateSessionPDF(options: PDFOptions): Promise<void> {
     .fillColor(secondaryColor)
     .font('Helvetica')
     .text('COMPANY', 55, y + 35, { width: 90, align: 'center' })
-  doc
-    .fontSize(8)
-    .text('LOGO', 55, y + 50, { width: 90, align: 'center' })
+  doc.fontSize(8).text('LOGO', 55, y + 50, { width: 90, align: 'center' })
 
   // Company and session info
   doc
@@ -324,10 +316,7 @@ export async function generateSessionPDF(options: PDFOptions): Promise<void> {
   } else {
     // Table header
     const headerY = y
-    doc
-      .rect(50, headerY, 500, 25)
-      .fillColor(primaryColor)
-      .fill()
+    doc.rect(50, headerY, 500, 25).fillColor(primaryColor).fill()
 
     const headerColumns = [
       { text: '#', width: 30, x: 50 },
@@ -357,10 +346,7 @@ export async function generateSessionPDF(options: PDFOptions): Promise<void> {
         doc.addPage()
         y = 50
         // Redraw header on new page
-        doc
-          .rect(50, y, 500, 25)
-          .fillColor(primaryColor)
-          .fill()
+        doc.rect(50, y, 500, 25).fillColor(primaryColor).fill()
         headerColumns.forEach((col) => {
           doc
             .fontSize(8)
@@ -373,18 +359,11 @@ export async function generateSessionPDF(options: PDFOptions): Promise<void> {
 
       // Row background (alternating)
       if (index % 2 === 0) {
-        doc
-          .rect(50, y, 500, 25)
-          .fillColor(lightGray)
-          .fill()
+        doc.rect(50, y, 500, 25).fillColor(lightGray).fill()
       }
 
       // Row border
-      doc
-        .rect(50, y, 500, 25)
-        .strokeColor(borderColor)
-        .lineWidth(0.5)
-        .stroke()
+      doc.rect(50, y, 500, 25).strokeColor(borderColor).lineWidth(0.5).stroke()
 
       // Row data
       const rowData = [
@@ -410,8 +389,12 @@ export async function generateSessionPDF(options: PDFOptions): Promise<void> {
         doc
           .fontSize(9)
           .fillColor(cell.color || primaryColor)
-          .font(cell.text.startsWith('✓') || cell.text.startsWith('✗') ? 'Helvetica-Bold' : 'Helvetica')
-          .text(cell.text, cell.x + 5, y + 8, { width: headerColumns.find((c) => c.x === cell.x)?.width || 60 })
+          .font(
+            cell.text.startsWith('✓') || cell.text.startsWith('✗') ? 'Helvetica-Bold' : 'Helvetica'
+          )
+          .text(cell.text, cell.x + 5, y + 8, {
+            width: headerColumns.find((c) => c.x === cell.x)?.width || 60
+          })
       })
 
       y += 25
@@ -483,4 +466,3 @@ function formatDuration(ms: number): string {
     return `${seconds}s`
   }
 }
-

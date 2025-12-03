@@ -16,7 +16,7 @@ function Profile({
   selectedPage,
   setSelectedPage
 }: {
-  selectedPage: currentPathType 
+  selectedPage: currentPathType
   setSelectedPage: (page: currentPathType) => void
 }): React.JSX.Element {
   const [showSettings, setShowSettings] = React.useState(false)
@@ -36,7 +36,7 @@ function Profile({
           </Avatar>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel className='text-blue-800'>Aymed Medikal Teknoloji</DropdownMenuLabel>
+          <DropdownMenuLabel className="text-blue-800">Aymed Medikal Teknoloji</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setSelectedPage('dashboard')}>
             <span>Dashboard</span>
