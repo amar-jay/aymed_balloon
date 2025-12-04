@@ -152,7 +152,7 @@ export function History(): React.JSX.Element {
   }
 
   return (
-    <div className="flex-1 px-6 py-6 space-y-6">
+    <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto scroll-light">
       {/* <Card>
         <CardHeader>
           <CardTitle>Create New Session</CardTitle>
@@ -330,14 +330,14 @@ export function History(): React.JSX.Element {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[200px]">Operator</TableHead>
-                  <TableHead className="w-[200px]">Company</TableHead>
+                  <TableHead>Operator</TableHead>
+                  <TableHead>Company</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-center">Welds</TableHead>
                   <TableHead className="text-center">Success</TableHead>
                   <TableHead className="text-center">Failures</TableHead>
-                  <TableHead>Started</TableHead>
-                  <TableHead>Ended</TableHead>
+                  <TableHead className="hidden xl:table-cell">Started</TableHead>
+                  <TableHead className="hidden xl:table-cell">Ended</TableHead>
                   <TableHead className="text-right w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -355,7 +355,7 @@ export function History(): React.JSX.Element {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 wrap-anywhere">
                         <Building2 className="h-4 w-4 text-muted-foreground" />
                         {session.companyName}
                       </div>
@@ -370,7 +370,7 @@ export function History(): React.JSX.Element {
                     <TableCell className="text-center">
                       <Badge variant="outline">{session.welds?.length || 0}</Badge>
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center ">
                       <div className="flex items-center justify-center gap-1">
                         <CheckCircle2 className="h-4 w-4 text-green-600" />
                         <span className="font-medium text-green-600">{session.successCount}</span>
@@ -382,7 +382,7 @@ export function History(): React.JSX.Element {
                         <span className="font-medium text-red-600">{session.failureCount}</span>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden xl:table-cell">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="h-4 w-4" />
                         {session.startSession
@@ -390,7 +390,7 @@ export function History(): React.JSX.Element {
                           : 'N/A'}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden xl:table-cell">
                       {session.endSession ? (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Calendar className="h-4 w-4" />

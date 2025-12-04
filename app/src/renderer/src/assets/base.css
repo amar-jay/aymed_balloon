@@ -71,6 +71,7 @@ body {
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
+	height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -84,4 +85,8 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+
+.scroll-light::-webkit-scrollbar-track {
+	background: #f8f8f8;
 }

@@ -83,8 +83,8 @@ export function WeldSession({ sessionId }: { sessionId: string }) {
   const durationMinutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60))
 
   return (
-    <div className="min-h-screen flex-1 grow bg-accent-foreground/5 rounded-l-2xl">
-      <div className="px-8 py-8 space-y-8 mx-auto">
+    <main className="flex-1 flex bg-accent-foreground/5 rounded-tl-2xl flex-col p-6 relative xl:overflow-hidden overflow-y-auto">
+      <div className="px-8 py-8 space-y-8">
         {/* Hero Header Section */}
         <SessionHeader
           isActive={isActive}
@@ -154,6 +154,6 @@ export function WeldSession({ sessionId }: { sessionId: string }) {
 
         <WeldsTable welds={session.welds || []} totalWelds={totalWelds} />
       </div>
-    </div>
+    </main>
   )
 }

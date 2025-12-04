@@ -51,7 +51,7 @@ export function MainLayout({
   return (
     <div className="h-screen w-screen bg-gray-50 flex flex-col">
       {/* Header */}
-      <header className="px-6 py-1">
+      <header className="px-6 py-1 max-h-[10vh]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-10">
             <img
@@ -96,9 +96,9 @@ export function MainLayout({
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex w-screen h-[90vh] relative">
         {/* Sidebar */}
-        <aside className="w-80 flex flex-col">
+        <aside className="w-80 flex flex-col shrink-0">
           {/* Device List */}
           <div className="p-4 flex-1 border-b border-gray-200">
             <h2 className="text-lg font-semibold mb-3 text-gray-900">USB Devices</h2>

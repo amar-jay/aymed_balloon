@@ -11,6 +11,7 @@ import VoltageCard from './components/voltage-card'
 import { OperationCard } from './components/operation-card'
 import { CreateSessionForm } from './components/CreateSessionForm'
 import { ActiveSessionPanel } from './components/ActiveSessionPanel'
+import { toast } from 'sonner'
 
 interface DashboardProps {
   isConnected: boolean
@@ -96,8 +97,17 @@ export function Dashboard({ isConnected, receivedData, connectionId }: Dashboard
 
   // send GET STATUS command every half second if connected
   useEffect(() => {
-    // if (!isConnected) return
-    // if (!connectionId) return
+    if (!isConnected) {
+      setSystemData(null)
+      setPastSystemData([])
+      return
+    }
+    if (!connectionId) {
+			toast.warning('No connection ID available for dashboard status polling.')
+      setSystemData(null)
+      setPastSystemData([])
+      return
+    }
     const interval = setInterval(async () => {
       console.log('Requesting FAKE system status...')
       const fake_status = generateMockBalloonStatus()
@@ -253,7 +263,7 @@ export function Dashboard({ isConnected, receivedData, connectionId }: Dashboard
 
               <div className="grid grid-cols-2 gap-2">
                 {sessionId ? (
-                  <ActiveSessionPanel sessionId={sessionId} setSessionId={setSessionId}/>
+                  <ActiveSessionPanel sessionId={sessionId} setSessionId={setSessionId} />
                 ) : (
                   <CreateSessionForm setSessionId={setSessionId} />
                 )}

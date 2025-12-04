@@ -26,7 +26,7 @@ export function SessionHeader({
   companyName
 }: SessionHeaderProps) {
   return (
-    <div className="relative overflow-hidden rounded-2xl p-8 backdrop-blur-sm w-full">
+    <div className="relative overflow-hidden rounded-2xl p-8 backdrop-blur-sm">
       <div className="relative z-10">
         <div className="flex items-start justify-between mb-6">
           <div className="flex items-center gap-4">

@@ -52,8 +52,8 @@ export function WeldsTable({ welds, totalWelds }: WeldsTableProps) {
       </CardHeader>
       <CardContent className="px-5 pt-0">
         {totalWelds > 0 ? (
-          <div className="overflow-x-auto">
-            <Table>
+          <div className="overflow-y-auto xl:h-[580px] scroll-light">
+            <Table className='scroll-light'>
               <TableHeader>
                 <TableRow className="bg-muted/30">
                   <TableHead className="w-[70px] font-bold">#</TableHead>
@@ -88,7 +88,7 @@ export function WeldsTable({ welds, totalWelds }: WeldsTableProps) {
                     </div>
                   </TableHead>
                   <TableHead className="font-bold">Status</TableHead>
-                  <TableHead className="font-bold flex-1">Error Details</TableHead>
+                  <TableHead className="font-bold flex-1 hidden xl:table-cell">Error Details</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -155,7 +155,7 @@ export function WeldsTable({ welds, totalWelds }: WeldsTableProps) {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="flex-1 hidden xl:table-cell">
                       {weld.error ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
