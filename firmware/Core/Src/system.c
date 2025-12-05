@@ -284,8 +284,14 @@ void MonitorSensors(void) {
 
 
 void ControlHeater(void){
-	osMutexAcquire(stateMutexHandle, osWaitForever);
-	osMutexAcquire(configMutexHandle, osWaitForever);
+	if(osMutexAcquire(stateMutexHandle, 100) != osOK) {
+		return; // Skip if cannot acquire
+	}
+	
+	if(osMutexAcquire(configMutexHandle, 100) != osOK) {
+		osMutexRelease(stateMutexHandle);
+		return; // Skip if cannot acquire
+	}
 
 	bool heaters_enable = (balloonState.op_state != OP_STANDBY && balloonState.error == ERR_NONE);
 
@@ -324,9 +330,15 @@ void ControlHeater(void){
 
 
 void MonitorError(void) {
-    osMutexAcquire(stateMutexHandle, 100);
-    osMutexAcquire(configMutexHandle, 100);
-
+    // Acquire mutexes with error handling
+    if(osMutexAcquire(stateMutexHandle, 100) != osOK) {
+        return; // Cannot acquire, skip this iteration
+    }
+    
+    if(osMutexAcquire(configMutexHandle, 100) != osOK) {
+        osMutexRelease(stateMutexHandle); // Release first mutex
+        return; // Cannot acquire, skip this iteration
+    }
 
     if(balloonState.error == ERR_NONE) {
       // Temperature sensor errors

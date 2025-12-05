@@ -67,7 +67,7 @@ static HAL_StatusTypeDef Internal_SaveToFlash(void) {
 // --------------------------------------- SYSTEM CONFIG ---------------------------------------------
 
 void BalloonConfig_Init(void) {
-    if(osSemaphoreAcquire(configMutexHandle, osWaitForever) == osOK) {
+    if(osMutexAcquire(configMutexHandle, osWaitForever) == osOK) {
         
         // Point a pointer to the flash address
         BalloonConfig_t *flashConfig = (BalloonConfig_t *)CONFIG_FLASH_ADDR;
@@ -108,7 +108,7 @@ void BalloonConfig_Init(void) {
                 BalloonConfig_ForceReset();
             }
         }
-        osSemaphoreRelease(configMutexHandle);
+        osMutexRelease(configMutexHandle);
     } else {
         usb_printf("ERROR: Mutex acquire failed in BalloonConfig_Init\r\n");
     }

@@ -63,8 +63,7 @@ int counter = 0;
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
 void StartLog(void *argument){
-  EE_Init();
-  BalloonConfig_Init(); // Load config from EEPROM or set defaults
+  BalloonConfig_Init(); // Load config from Flash or set defaults
 
   for (;;) {
 
