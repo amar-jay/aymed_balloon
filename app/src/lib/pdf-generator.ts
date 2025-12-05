@@ -6,6 +6,7 @@
 
 import PDFDocument from 'pdfkit'
 import fs from 'fs'
+import path from 'path'
 import { Session } from './types/session'
 
 interface PDFOptions {
@@ -30,7 +31,8 @@ const THEME = {
   },
   fonts: {
     regular: 'Helvetica',
-    bold: 'Helvetica-Bold'
+    bold: 'Helvetica-Bold',
+    times: 'Times-Bold'
   },
   layout: {
     margin: 50,
@@ -108,22 +110,22 @@ export async function generateSessionPDF(options: PDFOptions): Promise<void> {
       // Label
       doc
         .fillColor(THEME.colors.secondary)
-        .font(THEME.fonts.regular)
-        .fontSize(9)
+        .font(THEME.fonts.bold)
+        .fontSize(8)
         .text(label.toUpperCase(), x, y, { width, align: 'left' })
 
       // Value
       doc
         .fillColor(THEME.colors.primary)
-        .font(THEME.fonts.bold)
-        .fontSize(18)
+        .font(THEME.fonts.times)
+        .fontSize(14)
         .text(value, x, y + 15, { width, align: 'left' })
 
       // Subtext (if any)
       if (subtext) {
         doc
           .fillColor(THEME.colors.secondary)
-          .fontSize(8)
+          .fontSize(7)
           .font(THEME.fonts.regular)
           .text(subtext, x, y + 40, { width, align: 'left' })
       }
@@ -141,38 +143,53 @@ export async function generateSessionPDF(options: PDFOptions): Promise<void> {
 
     // Company Name (Small top label)
     doc
-      .fontSize(10)
-      .fillColor(THEME.colors.secondary)
+      .fontSize(14)
+      .fillColor(THEME.colors.accent)
+      .font(THEME.fonts.times)
       .text(session.companyName.toUpperCase(), THEME.layout.margin, currentY)
 
     currentY += 15
 
     // Report Title
     doc
-      .fontSize(18)
-      .font(THEME.fonts.bold)
+      .fontSize(20)
+      .font(THEME.fonts.times)
       .fillColor(THEME.colors.primary)
       .text('Welding Session Report')
 
-    // Session ID Badge next to title
-    const idText = `#${session.id || 'N/A'}`
-    const idWidth = doc.widthOfString(idText) + 20
-    doc
-      .roundedRect(THEME.layout.width - THEME.layout.margin - idWidth, 55, idWidth, 24, 4)
-      .fill(THEME.colors.primary)
+    // Company Logo next to title
+    try {
+      const logoPath = path.join(__dirname, '../../resources/logo.jpeg')
+      if (fs.existsSync(logoPath)) {
+        const logoWidth = 60
+        const logoHeight = 60
+        doc.image(logoPath, THEME.layout.width - THEME.layout.margin - logoWidth, 40, {
+          width: logoWidth,
+          height: logoHeight,
+          fit: [logoWidth, logoHeight],
+          align: 'center'
+        })
+      }
+    } catch (err) {
+      // If logo fails to load, show session ID as fallback
+      const idText = `#${session.id || 'N/A'}`
+      const idWidth = doc.widthOfString(idText) + 20
+      doc
+        .roundedRect(THEME.layout.width - THEME.layout.margin - idWidth, 55, idWidth, 24, 4)
+        .fill(THEME.colors.primary)
+      doc
+        .fillColor(THEME.colors.white)
+        .fontSize(12)
+        .text(idText, THEME.layout.width - THEME.layout.margin - idWidth, 61, {
+          width: idWidth,
+          align: 'center'
+        })
+    }
 
-    doc
-      .fillColor(THEME.colors.white)
-      .fontSize(12)
-      .text(idText, THEME.layout.width - THEME.layout.margin - idWidth, 61, {
-        width: idWidth,
-        align: 'center'
-      })
-
-    currentY += 15
+    currentY += 20
 
     // Meta Data Row
-    doc.fontSize(8).font(THEME.fonts.regular).fillColor(THEME.colors.secondary)
+    doc.fontSize(10).font(THEME.fonts.regular).fillColor(THEME.colors.secondary)
 
     const dateStr = new Date(session.startSession).toLocaleDateString()
     const timeStr = new Date(session.startSession).toLocaleTimeString()
@@ -182,7 +199,7 @@ export async function generateSessionPDF(options: PDFOptions): Promise<void> {
       currentY
     )
 
-    currentY += 30
+    currentY += 20
     drawDivider(currentY)
     currentY += 20
 
@@ -193,7 +210,7 @@ export async function generateSessionPDF(options: PDFOptions): Promise<void> {
       .fontSize(12)
       .font(THEME.fonts.bold)
       .fillColor(THEME.colors.primary)
-      .text('Session Performance', THEME.layout.margin, currentY)
+      .text('Performance', THEME.layout.margin, currentY)
 
     currentY += 20
 
@@ -231,7 +248,9 @@ export async function generateSessionPDF(options: PDFOptions): Promise<void> {
     )
     drawStatItem(startX + 375, currentY, 'Duration', `${durationMin} min`, 'Total Session Time')
 
-    currentY += 70 // Reduced spacing as cards are gone
+    currentY += 50 // Reduced spacing as cards are gone
+    drawDivider(currentY)
+    currentY += 40
 
     // 3. WELD LOG TABLE
     // -----------------
@@ -245,7 +264,7 @@ export async function generateSessionPDF(options: PDFOptions): Promise<void> {
     currentY += 20
 
     // Table Configuration
-    const colWidths = [30, 80, 80, 60, 60, 80, 105] // Total should be ~495
+    const colWidths = [15, 60, 60, 60, 60, 80, 180] // Total should be ~495
     const columns = [
       { header: '#', align: 'left' },
       { header: 'Top Temp', align: 'right' },
@@ -315,7 +334,7 @@ export async function generateSessionPDF(options: PDFOptions): Promise<void> {
         let errorMsg = '-'
         if (weld.error) {
           const strError = String(weld.error)
-          errorMsg = strError.length > 20 ? strError.substring(0, 20) + '...' : strError
+          errorMsg = strError.length > 50 ? strError.substring(0, 50) + '...' : strError
         }
 
         // Prepare Row Data

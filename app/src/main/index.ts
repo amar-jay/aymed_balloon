@@ -10,8 +10,9 @@ function createWindow(): void {
   const scaleFactor = screen.getPrimaryDisplay().scaleFactor
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+    title: 'Aymed Balloon Welder',
+    width: 900 / scaleFactor,
+    height: 670 / scaleFactor,
     show: false,
     autoHideMenuBar: true,
     minWidth: 1280 / scaleFactor,
