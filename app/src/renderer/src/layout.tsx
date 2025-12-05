@@ -102,7 +102,7 @@ export function MainLayout({
           {/* Device List */}
           <div className="p-4 flex-1 border-b border-gray-200">
             <h2 className="text-lg font-semibold mb-3 text-gray-900">USB Devices</h2>
-            <div className="space-y-2">
+            <div className="space-y-2 overflow-y-auto scroll-light max-h-[300px] xl:max-h-full">
               {devices.length === 0 ? (
                 <Empty>
                   <EmptyMedia variant="icon">
@@ -152,7 +152,7 @@ export function MainLayout({
           </div>
 
           {/* Command Interface */}
-          <div className="p-4 flex flex-col pb-10">
+          <div className="p-4 flex flex-col pb-10 shrink-0">
             <div className="flex items-center gap-2 mb-3">
               <h3 className="text-lg font-semibold text-gray-900">Quick Commands</h3>
               {isConnected && <Badge variant="outline">Active</Badge>}

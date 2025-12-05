@@ -118,7 +118,7 @@ export function Dashboard({ isConnected, receivedData, connectionId }: Dashboard
     const interval = setInterval(async () => {
       if (!connectionId) return
       // if in dev mode, use mock data
-      if (process.env.NODE_ENV === 'development') {
+      if (process.env.NODE_ENV !== 'development') {
         console.log('Requesting FAKE system status...')
         const fake_status = generateMockBalloonStatus()
         const mockData: SystemData = {
