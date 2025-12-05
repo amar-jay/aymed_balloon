@@ -13,434 +13,396 @@ interface PDFOptions {
   session: Session
 }
 
-/**
- * Creates a professional PDF report for a welding session
- */
+// --- Theme Configuration ---
+const THEME = {
+  colors: {
+    primary: '#1e293b', // Slate 800
+    secondary: '#64748b', // Slate 500
+    accent: '#3b82f6', // Blue 500
+    success: '#059669', // Emerald 600
+    successBg: '#d1fae5', // Emerald 100
+    error: '#dc2626', // Red 600
+    errorBg: '#fee2e2', // Red 100
+    border: '#e2e8f0', // Slate 200
+    tableHeader: '#f8fafc', // Slate 50
+    zebra: '#f9fafb', // Gray 50
+    white: '#ffffff'
+  },
+  fonts: {
+    regular: 'Helvetica',
+    bold: 'Helvetica-Bold'
+  },
+  layout: {
+    margin: 50,
+    width: 595.28, // A4 width
+    contentWidth: 495.28 // Width - 2*margin
+  }
+}
+
 export async function generateSessionPDF(options: PDFOptions): Promise<void> {
   const { filePath, session } = options
 
-  const doc = new PDFDocument({
-    size: 'A4',
-    margins: { top: 50, bottom: 50, left: 50, right: 50 },
-    info: {
-      Title: `Welding Session Report - ${session.id}`,
-      Author: session.companyName,
-      Subject: 'Welding Session Quality Report',
-      Creator: 'Welding Machine Dashboard'
-    }
-  })
-
-  const stream = fs.createWriteStream(filePath)
-  doc.pipe(stream)
-
-  // Colors
-  const primaryColor = '#1a1a1a'
-  const secondaryColor = '#4a5568'
-  const accentColor = '#2563eb'
-  const successColor = '#10b981'
-  const errorColor = '#ef4444'
-  const lightGray = '#f3f4f6'
-  const borderColor = '#e5e7eb'
-
-  // Helper function to add a horizontal line
-  const addLine = (y: number, width = 500) => {
-    doc
-      .strokeColor(borderColor)
-      .lineWidth(1)
-      .moveTo(50, y)
-      .lineTo(50 + width, y)
-      .stroke()
-  }
-
-  // Helper function to add a section header
-  const addSectionHeader = (text: string, y: number) => {
-    doc
-      .fontSize(16)
-      .fillColor(primaryColor)
-      .font('Helvetica-Bold')
-      .text(text, 50, y, { width: 500 })
-    addLine(y + 25)
-    return y + 40
-  }
-
-  // Helper function to add a key-value pair
-  const addKeyValue = (key: string, value: string | number, x: number, y: number, width = 240) => {
-    doc
-      .fontSize(9)
-      .fillColor(secondaryColor)
-      .font('Helvetica')
-      .text(key, x, y, { width, continued: false })
-    doc
-      .fontSize(11)
-      .fillColor(primaryColor)
-      .font('Helvetica-Bold')
-      .text(String(value), x, y + 12, { width })
-    return y + 35
-  }
-
-  // Page 1: Header and Overview
-  let y = 50
-
-  // Header with logo placeholder and company info
-  doc
-    .rect(50, y, 100, 100)
-    .fillColor(lightGray)
-    .fill()
-    .strokeColor(borderColor)
-    .lineWidth(2)
-    .stroke()
-
-  // Logo placeholder text
-  doc
-    .fontSize(10)
-    .fillColor(secondaryColor)
-    .font('Helvetica')
-    .text('COMPANY', 55, y + 35, { width: 90, align: 'center' })
-  doc.fontSize(8).text('LOGO', 55, y + 50, { width: 90, align: 'center' })
-
-  // Company and session info
-  doc
-    .fontSize(20)
-    .fillColor(primaryColor)
-    .font('Helvetica-Bold')
-    .text(session.companyName || 'Company Name', 170, y + 10, { width: 380 })
-
-  doc
-    .fontSize(14)
-    .fillColor(secondaryColor)
-    .font('Helvetica')
-    .text('Welding Session Quality Report', 170, y + 35, { width: 380 })
-
-  doc
-    .fontSize(10)
-    .fillColor(secondaryColor)
-    .text(`Report Generated: ${new Date().toLocaleString()}`, 170, y + 55, { width: 380 })
-
-  // Status badge
-  const isActive = !session.endSession
-  const statusColor = isActive ? accentColor : successColor
-  const statusText = isActive ? 'ACTIVE' : 'COMPLETED'
-  doc
-    .roundedRect(170, y + 70, 100, 20, 4)
-    .fillColor(statusColor)
-    .fill()
-  doc
-    .fontSize(9)
-    .fillColor('#ffffff')
-    .font('Helvetica-Bold')
-    .text(statusText, 170, y + 75, { width: 100, align: 'center' })
-
-  y += 120
-  addLine(y)
-  y += 20
-
-  // Session Information Section
-  y = addSectionHeader('Session Information', y)
-
-  // Left column
-  let leftY = y
-  leftY = addKeyValue('Session ID', `#${session.id}`, 50, leftY)
-  leftY = addKeyValue('Operator Name', session.operatorName, 50, leftY)
-  leftY = addKeyValue('Company Name', session.companyName, 50, leftY)
-
-  // Right column
-  let rightY = y
-  rightY = addKeyValue(
-    'Start Time',
-    session.startSession ? new Date(session.startSession).toLocaleString() : 'N/A',
-    310,
-    rightY
-  )
-  rightY = addKeyValue(
-    'End Time',
-    session.endSession ? new Date(session.endSession).toLocaleString() : 'In Progress',
-    310,
-    rightY
-  )
-  rightY = addKeyValue(
-    'Duration',
-    session.startSession && session.endSession
-      ? formatDuration(
-          new Date(session.endSession).getTime() - new Date(session.startSession).getTime()
-        )
-      : session.startSession
-        ? formatDuration(Date.now() - new Date(session.startSession).getTime())
-        : 'N/A',
-    310,
-    rightY
-  )
-
-  y = Math.max(leftY, rightY) + 20
-
-  // Performance Metrics Section
-  y = addSectionHeader('Performance Metrics', y)
-
-  // Metrics in a grid layout
-  const metrics = [
-    {
-      label: 'Average Top Temperature',
-      value: `${session.averageTopHeaterTemperature.toFixed(1)}°C`,
-      icon: '🌡️'
-    },
-    {
-      label: 'Average Bottom Temperature',
-      value: `${session.averageBottomHeaterTemperature.toFixed(1)}°C`,
-      icon: '🌡️'
-    },
-    {
-      label: 'Average Voltage',
-      value: `${session.averagePowerSupplyVoltage.toFixed(1)}V`,
-      icon: '⚡'
-    },
-    {
-      label: 'Total Welds',
-      value: session.welds.length.toString(),
-      icon: '🔧'
-    }
-  ]
-
-  let metricY = y
-  metrics.forEach((metric, index) => {
-    const x = index % 2 === 0 ? 50 : 310
-    if (index % 2 === 0 && index > 0) {
-      metricY += 50
-    }
-
-    // Metric box
-    doc
-      .roundedRect(x, metricY, 240, 40, 4)
-      .fillColor(lightGray)
-      .fill()
-      .strokeColor(borderColor)
-      .lineWidth(1)
-      .stroke()
-
-    doc
-      .fontSize(8)
-      .fillColor(secondaryColor)
-      .font('Helvetica')
-      .text(metric.label, x + 10, metricY + 8, { width: 220 })
-
-    doc
-      .fontSize(14)
-      .fillColor(primaryColor)
-      .font('Helvetica-Bold')
-      .text(metric.value, x + 10, metricY + 20, { width: 220 })
-  })
-
-  metricY += 50
-  y = metricY + 20
-
-  // Success/Failure Statistics
-  const totalWelds = session.welds.length
-  const successCount = session.successCount || 0
-  const failureCount = session.failureCount || 0
-  const successRate = totalWelds > 0 ? ((successCount / totalWelds) * 100).toFixed(1) : '0.0'
-
-  y = addSectionHeader('Quality Statistics', y)
-
-  // Success section
-  doc
-    .roundedRect(50, y, 240, 60, 4)
-    .fillColor('#f0fdf4')
-    .fill()
-    .strokeColor(successColor)
-    .lineWidth(2)
-    .stroke()
-
-  doc
-    .fontSize(10)
-    .fillColor(secondaryColor)
-    .font('Helvetica')
-    .text('Successful Welds', 60, y + 10, { width: 220 })
-
-  doc
-    .fontSize(24)
-    .fillColor(successColor)
-    .font('Helvetica-Bold')
-    .text(successCount.toString(), 60, y + 25, { width: 220 })
-
-  doc
-    .fontSize(9)
-    .fillColor(secondaryColor)
-    .font('Helvetica')
-    .text(`${successRate}% success rate`, 60, y + 45, { width: 220 })
-
-  // Failure section
-  doc
-    .roundedRect(310, y, 240, 60, 4)
-    .fillColor('#fef2f2')
-    .fill()
-    .strokeColor(errorColor)
-    .lineWidth(2)
-    .stroke()
-
-  doc
-    .fontSize(10)
-    .fillColor(secondaryColor)
-    .font('Helvetica')
-    .text('Failed Welds', 320, y + 10, { width: 220 })
-
-  doc
-    .fontSize(24)
-    .fillColor(errorColor)
-    .font('Helvetica-Bold')
-    .text(failureCount.toString(), 320, y + 25, { width: 220 })
-
-  const failureRate = totalWelds > 0 ? ((failureCount / totalWelds) * 100).toFixed(1) : '0.0'
-  doc
-    .fontSize(9)
-    .fillColor(secondaryColor)
-    .font('Helvetica')
-    .text(`${failureRate}% failure rate`, 320, y + 45, { width: 220 })
-
-  y += 80
-
-  // Check if we need a new page for welds table
-  if (y + 100 > 750) {
-    doc.addPage()
-    y = 50
-  }
-
-  // Welds Table Section
-  y = addSectionHeader(`Weld Records (${totalWelds} total)`, y)
-
-  if (totalWelds === 0) {
-    doc
-      .fontSize(11)
-      .fillColor(secondaryColor)
-      .font('Helvetica')
-      .text('No welds recorded in this session.', 50, y, { width: 500 })
-  } else {
-    // Table header
-    const headerY = y
-    doc.rect(50, headerY, 500, 25).fillColor(primaryColor).fill()
-
-    const headerColumns = [
-      { text: '#', width: 30, x: 50 },
-      { text: 'Top Temp', width: 70, x: 80 },
-      { text: 'Bottom Temp', width: 80, x: 150 },
-      { text: 'Voltage', width: 60, x: 230 },
-      { text: 'Welding', width: 60, x: 290 },
-      { text: 'Cooling', width: 60, x: 350 },
-      { text: 'Status', width: 80, x: 410 },
-      { text: 'Error', width: 140, x: 490 }
-    ]
-
-    headerColumns.forEach((col) => {
-      doc
-        .fontSize(8)
-        .fillColor('#ffffff')
-        .font('Helvetica-Bold')
-        .text(col.text, col.x + 5, headerY + 8, { width: col.width - 10 })
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({
+      size: 'A4',
+      margin: THEME.layout.margin,
+      info: {
+        Title: `Session Report #${session.id}`,
+        Author: session.companyName
+      }
     })
 
-    y += 25
+    const stream = fs.createWriteStream(filePath)
+    doc.pipe(stream)
 
-    // Table rows
-    session.welds.forEach((weld, index) => {
-      // Check if we need a new page
-      if (y + 30 > 750) {
-        doc.addPage()
-        y = 50
-        // Redraw header on new page
-        doc.rect(50, y, 500, 25).fillColor(primaryColor).fill()
-        headerColumns.forEach((col) => {
-          doc
-            .fontSize(8)
-            .fillColor('#ffffff')
-            .font('Helvetica-Bold')
-            .text(col.text, col.x + 5, y + 8, { width: col.width - 10 })
-        })
-        y += 25
+    // --- Helper Functions ---
+
+    // Draw a divider line
+    const drawDivider = (y: number) => {
+      doc
+        .strokeColor(THEME.colors.border)
+        .lineWidth(1)
+        .moveTo(THEME.layout.margin, y)
+        .lineTo(THEME.layout.width - THEME.layout.margin, y)
+        .stroke()
+    }
+
+    // Draw a Status Badge (Pill)
+    const drawStatusBadge = (
+      text: string,
+      x: number,
+      y: number,
+      type: 'success' | 'error' | 'neutral'
+    ) => {
+      const width = 60
+      const height = 16
+      let bgColor = THEME.colors.border
+      let textColor = THEME.colors.secondary
+
+      if (type === 'success') {
+        bgColor = THEME.colors.successBg
+        textColor = THEME.colors.success
+      } else if (type === 'error') {
+        bgColor = THEME.colors.errorBg
+        textColor = THEME.colors.error
       }
 
-      // Row background (alternating)
-      if (index % 2 === 0) {
-        doc.rect(50, y, 500, 25).fillColor(lightGray).fill()
-      }
+      // Save state
+      doc.save()
 
-      // Row border
-      doc.rect(50, y, 500, 25).strokeColor(borderColor).lineWidth(0.5).stroke()
+      doc.roundedRect(x, y, width, height, 8).fill(bgColor)
+      doc
+        .fillColor(textColor)
+        .font(THEME.fonts.bold)
+        .fontSize(8)
+        .text(text.toUpperCase(), x, y + 4, { width, align: 'center' })
 
-      // Row data
-      const rowData = [
-        { text: String(index + 1), x: 50 },
-        { text: `${weld.topHeaterTemperature}°C`, x: 80 },
-        { text: `${weld.bottomHeaterTemperature}°C`, x: 150 },
-        { text: `${weld.powerSupplyVoltage}V`, x: 230 },
-        { text: `${weld.weldingDuration}s`, x: 290 },
-        { text: `${weld.coolingDuration}s`, x: 350 },
-        {
-          text: weld.isSuccessful ? '✓ Success' : '✗ Failed',
-          x: 410,
-          color: weld.isSuccessful ? successColor : errorColor
-        },
-        {
-          text: weld.error || '—',
-          x: 490,
-          color: weld.error ? errorColor : secondaryColor
-        }
-      ]
+      // Restore state to prevent font/color bleeding
+      doc.restore()
+    }
 
-      rowData.forEach((cell) => {
+    // Draw a Clean Stat Item (Minimalist Design)
+    const drawStatItem = (x: number, y: number, label: string, value: string, subtext?: string) => {
+      const width = 115
+
+      // Label
+      doc
+        .fillColor(THEME.colors.secondary)
+        .font(THEME.fonts.regular)
+        .fontSize(9)
+        .text(label.toUpperCase(), x, y, { width, align: 'left' })
+
+      // Value
+      doc
+        .fillColor(THEME.colors.primary)
+        .font(THEME.fonts.bold)
+        .fontSize(18)
+        .text(value, x, y + 15, { width, align: 'left' })
+
+      // Subtext (if any)
+      if (subtext) {
         doc
-          .fontSize(9)
-          .fillColor(cell.color || primaryColor)
-          .font(
-            cell.text.startsWith('✓') || cell.text.startsWith('✗') ? 'Helvetica-Bold' : 'Helvetica'
-          )
-          .text(cell.text, cell.x + 5, y + 8, {
-            width: headerColumns.find((c) => c.x === cell.x)?.width || 60
-          })
+          .fillColor(THEME.colors.secondary)
+          .fontSize(8)
+          .font(THEME.fonts.regular)
+          .text(subtext, x, y + 40, { width, align: 'left' })
+      }
+
+      // Optional: Vertical Divider to the right (except for last item, logic handled by caller if needed)
+      // For now, we rely on whitespace
+    }
+
+    // --- Document Content ---
+
+    let currentY = 50
+
+    // 1. HEADER SECTION
+    // -----------------
+
+    // Company Name (Small top label)
+    doc
+      .fontSize(10)
+      .fillColor(THEME.colors.secondary)
+      .text(session.companyName.toUpperCase(), THEME.layout.margin, currentY)
+
+    currentY += 15
+
+    // Report Title
+    doc
+      .fontSize(18)
+      .font(THEME.fonts.bold)
+      .fillColor(THEME.colors.primary)
+      .text('Welding Session Report')
+
+    // Session ID Badge next to title
+    const idText = `#${session.id || 'N/A'}`
+    const idWidth = doc.widthOfString(idText) + 20
+    doc
+      .roundedRect(THEME.layout.width - THEME.layout.margin - idWidth, 55, idWidth, 24, 4)
+      .fill(THEME.colors.primary)
+
+    doc
+      .fillColor(THEME.colors.white)
+      .fontSize(12)
+      .text(idText, THEME.layout.width - THEME.layout.margin - idWidth, 61, {
+        width: idWidth,
+        align: 'center'
       })
 
-      y += 25
-    })
-  }
+    currentY += 15
 
-  // Footer on last page
-  const pageCount = doc.bufferedPageRange().count
-  for (let i = 0; i < pageCount; i++) {
-    doc.switchToPage(i)
-    const pageHeight = doc.page.height
-    const pageWidth = doc.page.width
+    // Meta Data Row
+    doc.fontSize(8).font(THEME.fonts.regular).fillColor(THEME.colors.secondary)
 
-    // Footer line
+    const dateStr = new Date(session.startSession).toLocaleDateString()
+    const timeStr = new Date(session.startSession).toLocaleTimeString()
+    doc.text(
+      `Date: ${dateStr} • Time: ${timeStr} • Operator: ${session.operatorName}`,
+      THEME.layout.margin,
+      currentY
+    )
+
+    currentY += 30
+    drawDivider(currentY)
+    currentY += 20
+
+    // 2. KPI OVERVIEW SECTION
+    // -----------------------
+
     doc
-      .strokeColor(borderColor)
-      .lineWidth(0.5)
-      .moveTo(50, pageHeight - 40)
-      .lineTo(pageWidth - 50, pageHeight - 40)
-      .stroke()
+      .fontSize(12)
+      .font(THEME.fonts.bold)
+      .fillColor(THEME.colors.primary)
+      .text('Session Performance', THEME.layout.margin, currentY)
 
-    // Footer text
+    currentY += 20
+
+    // Calculate rates
+    const total = session.welds ? session.welds.length : 0
+    const successRate = total > 0 ? ((session.successCount / total) * 100).toFixed(1) : '0'
+    const durationMs = session.endSession
+      ? new Date(session.endSession).getTime() - new Date(session.startSession).getTime()
+      : 0
+    const durationMin = Math.floor(durationMs / 60000)
+
+    // Draw 4 items across
+    const startX = THEME.layout.margin
+
+    drawStatItem(
+      startX,
+      currentY,
+      'Success Rate',
+      `${successRate}%`,
+      `${session.successCount} passed / ${session.failureCount} failed`
+    )
+    drawStatItem(
+      startX + 125,
+      currentY,
+      'Avg Top Temp',
+      `${session.averageTopHeaterTemperature.toFixed(0)}°C`,
+      'Target: 200°C'
+    )
+    drawStatItem(
+      startX + 250,
+      currentY,
+      'Avg Bottom Temp',
+      `${session.averageBottomHeaterTemperature.toFixed(0)}°C`,
+      'Target: 200°C'
+    )
+    drawStatItem(startX + 375, currentY, 'Duration', `${durationMin} min`, 'Total Session Time')
+
+    currentY += 70 // Reduced spacing as cards are gone
+
+    // 3. WELD LOG TABLE
+    // -----------------
+
     doc
-      .fontSize(8)
-      .fillColor(secondaryColor)
-      .font('Helvetica')
-      .text(
-        `Session Report - ${session.companyName} | Page ${i + 1} of ${pageCount}`,
-        50,
-        pageHeight - 30,
-        { width: pageWidth - 100, align: 'center' }
+      .fontSize(12)
+      .font(THEME.fonts.bold)
+      .fillColor(THEME.colors.primary)
+      .text(`Weld Log (${total} records)`, THEME.layout.margin, currentY)
+
+    currentY += 20
+
+    // Table Configuration
+    const colWidths = [30, 80, 80, 60, 60, 80, 105] // Total should be ~495
+    const columns = [
+      { header: '#', align: 'left' },
+      { header: 'Top Temp', align: 'right' },
+      { header: 'Bot Temp', align: 'right' },
+      { header: 'Volt', align: 'right' },
+      { header: 'Time', align: 'right' },
+      { header: 'Status', align: 'center' },
+      { header: 'Note', align: 'left' }
+    ] as const
+
+    const rowHeight = 25
+    const startTableX = THEME.layout.margin
+
+    // Draw Table Header
+    const drawTableHeader = (y: number) => {
+      doc.rect(startTableX, y, THEME.layout.contentWidth, 20).fill(THEME.colors.tableHeader)
+
+      let currentX = startTableX
+      doc.fillColor(THEME.colors.secondary).font(THEME.fonts.bold).fontSize(8)
+
+      columns.forEach((col, i) => {
+        // Adjust text position for padding
+        const textX = col.align === 'right' ? currentX - 5 : currentX + 5
+        const align = col.align as any
+
+        doc.text(col.header.toUpperCase(), currentX, y + 6, {
+          width: colWidths[i],
+          align: align
+        })
+        currentX += colWidths[i]
+      })
+
+      // Bottom border of header
+      doc
+        .strokeColor(THEME.colors.border)
+        .lineWidth(1)
+        .moveTo(startTableX, y + 20)
+        .lineTo(THEME.layout.width - THEME.layout.margin, y + 20)
+        .stroke()
+
+      return y + 20
+    }
+
+    currentY = drawTableHeader(currentY)
+
+    // Draw Table Rows
+    // Safety check: ensure welds is an array
+    if (session.welds && Array.isArray(session.welds)) {
+      session.welds.forEach((weld, index) => {
+        if (!weld) return // Skip if undefined
+
+        // Check pagination
+        if (currentY > doc.page.height - 50) {
+          doc.addPage()
+          currentY = 50 // Reset top margin
+          currentY = drawTableHeader(currentY) // Redraw header
+        }
+
+        // Zebra striping
+        if (index % 2 === 0) {
+          doc
+            .rect(startTableX, currentY, THEME.layout.contentWidth, rowHeight)
+            .fill(THEME.colors.zebra)
+        }
+
+        // Safe Error Message Handling
+        let errorMsg = '-'
+        if (weld.error) {
+          const strError = String(weld.error)
+          errorMsg = strError.length > 20 ? strError.substring(0, 20) + '...' : strError
+        }
+
+        // Prepare Row Data
+        const rowData = [
+          (index + 1).toString(),
+          `${weld.topHeaterTemperature.toFixed(2)}°C`,
+          `${weld.bottomHeaterTemperature.toFixed(2)}°C`,
+          `${weld.powerSupplyVoltage.toFixed(2)}V`,
+          `${weld.weldingDuration}s`,
+          '', // Status handled specially
+          errorMsg
+        ]
+
+        // Draw Text Columns
+        let currentX = startTableX
+
+        rowData.forEach((text, i) => {
+          // IMPORTANT: Reset font settings for every cell to prevent bleeding from previous cells
+          doc.fillColor(THEME.colors.primary).font(THEME.fonts.regular).fontSize(9)
+
+          if (i === 5) {
+            // Status Column Special Handling
+            const status = weld.isSuccessful ? 'success' : 'error'
+            const label = weld.isSuccessful ? 'PASS' : 'FAIL'
+            const badgeX = currentX + (colWidths[i] - 60) / 2
+            drawStatusBadge(label, badgeX, currentY + 4, status)
+          } else {
+            const align = columns[i].align as any
+
+            // Highlight errors in red text for Note column
+            if (i === 6 && text !== '-') doc.fillColor(THEME.colors.error)
+
+            doc.text(text, currentX, currentY + 8, {
+              width: colWidths[i],
+              align: align
+            })
+          }
+          currentX += colWidths[i]
+        })
+
+        // Bottom border for row
+        doc
+          .strokeColor(THEME.colors.border)
+          .lineWidth(0.5)
+          .moveTo(startTableX, currentY + rowHeight)
+          .lineTo(THEME.layout.width - THEME.layout.margin, currentY + rowHeight)
+          .stroke()
+
+        currentY += rowHeight
+      })
+    }
+
+    // 4. FOOTER
+    // ---------
+    const range = doc.bufferedPageRange()
+    for (let i = range.start; i < range.start + range.count; i++) {
+      doc.switchToPage(i)
+
+      // Footer Line
+      doc
+        .strokeColor(THEME.colors.border)
+        .lineWidth(1)
+        .moveTo(THEME.layout.margin, doc.page.height - 40)
+        .lineTo(THEME.layout.width - THEME.layout.margin, doc.page.height - 40)
+        .stroke()
+
+      // Footer Text
+      doc
+        .fontSize(8)
+        .fillColor(THEME.colors.secondary)
+        .text(
+          `Generated by Aymed Medikal Teknoloji • ${new Date().toISOString()}`,
+          THEME.layout.margin,
+          doc.page.height - 30
+        )
+
+      doc.text(
+        `Page ${i + 1} of ${range.count}`,
+        THEME.layout.width - THEME.layout.margin - 50,
+        doc.page.height - 30,
+        { align: 'right', width: 50 }
       )
+    }
 
-    doc
-      .fontSize(7)
-      .fillColor(secondaryColor)
-      .text(
-        `Generated on ${new Date().toLocaleString()} | Session ID: ${session.id}`,
-        50,
-        pageHeight - 20,
-        { width: pageWidth - 100, align: 'center' }
-      )
-  }
+    doc.end()
 
-  doc.end()
-
-  return new Promise((resolve, reject) => {
-    stream.on('finish', () => resolve())
+    stream.on('finish', resolve)
     stream.on('error', reject)
   })
 }
