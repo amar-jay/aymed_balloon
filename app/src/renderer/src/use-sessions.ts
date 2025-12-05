@@ -109,7 +109,7 @@ export function useSessions() {
 
 type RemoveUndefined<T> = T extends undefined ? never : T | null
 
-export function useSessionById(sessionId: number) {
+export function useSessionById(sessionId: number | null) {
   const [, setCurrentPath] = useAtom(currentPathAtom)
 
   type SafeSession = RemoveUndefined<Session>
@@ -117,6 +117,7 @@ export function useSessionById(sessionId: number) {
   const [session, setSession] = React.useState<SafeSession>(null)
 
   const fetchSession = useCallback(async () => {
+    if (!sessionId) return
     const fetched = await window.api.DBgetSession(sessionId)
     if (fetched) setSession(fetched)
   }, [sessionId])
@@ -127,6 +128,7 @@ export function useSessionById(sessionId: number) {
 
   // PDF generation
   const generatePDF = useCallback(async () => {
+    if (!sessionId) return
     try {
       const filePath = await window.api.DBgenerateSessionPDF(sessionId)
       if (filePath) {
@@ -143,6 +145,7 @@ export function useSessionById(sessionId: number) {
   const updateSession = useCallback(
     async (session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>) => {
       try {
+        if (!sessionId) return false
         const success = await window.api.DBupdateSession(sessionId, session)
         if (success) {
           await fetchSession()
@@ -159,14 +162,15 @@ export function useSessionById(sessionId: number) {
 
   // Add weld to session
   const addWeld = useCallback(
-    async (weld: Omit<Weld, 'id' | 'createdAt'>) => {
+    async (weld: Omit<Weld, 'id' | 'createdAt'>, notify = true) => {
+      if (!sessionId) return null
       try {
         const weldId = await window.api.DBaddWeldToSession(sessionId, weld)
         await fetchSession()
-        toast.success('Weld added successfully')
+        if (notify) toast.success('Weld added successfully')
         return weldId
       } catch {
-        toast.error('Failed to add weld')
+        if (notify) toast.error('Failed to add weld')
         return null
       }
     },
@@ -175,6 +179,7 @@ export function useSessionById(sessionId: number) {
 
   // End session
   const endSession = useCallback(async () => {
+    if (!sessionId) return false
     try {
       const success = await window.api.DBendSession(sessionId)
       if (success) {
@@ -190,6 +195,7 @@ export function useSessionById(sessionId: number) {
 
   // Delete
   const deleteSession = useCallback(async () => {
+    if (!sessionId) return
     try {
       await window.api.DBdeleteSession(sessionId)
       toast.success('Session deleted successfully')

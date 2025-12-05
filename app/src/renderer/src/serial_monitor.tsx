@@ -39,7 +39,7 @@ export function Main({
       {/* Console Output */}
       <div className="flex-1 p-4 overflow-hidden">
         <div
-          className="bg-[#222] rounded-lg p-4 font-mono text-sm h-full overflow-y-auto overflow-x-hidden border border-[#333]"
+          className="bg-[#222] rounded-lg p-4 pb-12 font-mono text-sm h-full overflow-y-auto overflow-x-hidden border border-[#333]"
           style={{ minHeight: '400px' }}
         >
           {receivedData.length === 0 ? (

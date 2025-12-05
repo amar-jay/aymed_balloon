@@ -1,30 +1,24 @@
 import { useSessionById } from '../use-sessions'
-import React from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 import { Plus, Power, FileDown, Trash2 } from 'lucide-react'
-import { toast } from 'sonner'
 
 export function ActiveSessionPanel({
-  sessionId,
-  setSessionId
+  session,
+  resetSessionId,
+  deleteSession,
+  addWeld: handleAddWeld,
+  endSession,
+  generatePDF
 }: {
-  sessionId: number
-  setSessionId: (sessionId: number | null) => void
+  session: ReturnType<typeof useSessionById>['session']
+  resetSessionId: () => void
+  deleteSession: () => Promise<void>
+  addWeld: (notify?: boolean) => Promise<void>
+  endSession: () => Promise<boolean>
+  generatePDF: () => Promise<void>
 }) {
-  const {
-    session,
-    deleteSession,
-    addWeld,
-    endSession,
-    generatePDF,
-    goToAllSessions,
-    refresh,
-    updateSession
-  } = useSessionById(sessionId)
-  const resetSessionId = () => setSessionId(null)
-
   const handleEndSession = async () => {
     const success = await endSession()
     if (success) {
@@ -35,20 +29,6 @@ export function ActiveSessionPanel({
   const handleDeleteSession = async () => {
     await deleteSession()
     resetSessionId()
-  }
-
-  const handleAddWeld = async () => {
-    // For demo purposes, add a mock weld
-    const mockWeld = {
-      topHeaterTemperature: Math.random() * 50 + 100,
-      bottomHeaterTemperature: Math.random() * 50 + 100,
-      powerSupplyVoltage: Math.random() * 5 + 25,
-      weldingDuration: Math.floor(Math.random() * 20) + 10,
-      coolingDuration: Math.floor(Math.random() * 10) + 5,
-      isSuccessful: Math.random() > 0.2, // 80% success rate
-      error: Math.random() > 0.8 ? 'Temperature out of range' : undefined
-    }
-    await addWeld(mockWeld)
   }
 
   if (!session) {
@@ -100,7 +80,7 @@ export function ActiveSessionPanel({
         </div>
 
         <div className="flex gap-2">
-          <Button onClick={handleAddWeld} size="sm" className="flex-1">
+          <Button onClick={() => handleAddWeld()} size="sm" className="flex-1">
             <Plus className="h-4 w-4 mr-1" />
             Add Weld
           </Button>

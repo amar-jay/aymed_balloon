@@ -2,7 +2,7 @@ import { Badge } from './components/ui/badge'
 import { Gauge } from './components/ui/guage'
 import { cn } from './lib/utils'
 import { Card } from './components/ui/card'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { SystemConfig, SystemData } from 'src/lib/types/minibuf'
 import { TempGraph } from './components/temp-graph'
 import { useAtom } from 'jotai/react'
@@ -12,6 +12,7 @@ import { OperationCard } from './components/operation-card'
 import { CreateSessionForm } from './components/CreateSessionForm'
 import { ActiveSessionPanel } from './components/ActiveSessionPanel'
 import { toast } from 'sonner'
+import { useSessionById } from './use-sessions'
 
 interface DashboardProps {
   isConnected: boolean
@@ -63,14 +64,29 @@ export function Dashboard({ isConnected, receivedData, connectionId }: Dashboard
   const [version, setVersion] = useState<string | null>(null)
   const [config, setConfig] = useState<SystemConfig | null>(null)
   const [HISTORY_LIMIT] = useAtom(historyLimitAtom)
-  if (connectionId) {
-    const latestData = window.api.SerialgetSystemStatus(connectionId)
-    if (latestData) setSystemData(latestData)
-  }
+  // if (connectionId) {
+  //   const latestData = window.api.SerialgetSystemStatus(connectionId)
+  //   if (latestData) setSystemData(latestData)
+  // }
   const [sessionId, setSessionId] = useState<number | null>(null)
+  const { session, addWeld, endSession, deleteSession, generatePDF } = useSessionById(sessionId)
 
   // it is meant to be used in the temp graphs later
   const [pastSystemData, setPastSystemData] = useState<SystemData[]>([])
+
+  // Use refs to track the latest values without causing re-renders
+  const systemDataRef = useRef<SystemData | null>(null)
+  const configRef = useRef<SystemConfig | null>(null)
+  const lastPedalStateRef = useRef<boolean>(false)
+
+  // Update refs when state changes
+  useEffect(() => {
+    systemDataRef.current = systemData
+  }, [systemData])
+
+  useEffect(() => {
+    configRef.current = config
+  }, [config])
 
   const pushSystemSnapshot = useCallback(
     (next: SystemData) => {
@@ -97,51 +113,114 @@ export function Dashboard({ isConnected, receivedData, connectionId }: Dashboard
 
   // send GET STATUS command every half second if connected
   useEffect(() => {
-    if (!isConnected) {
-      setSystemData(null)
-      setPastSystemData([])
-      return
-    }
-    if (!connectionId) {
-			toast.warning('No connection ID available for dashboard status polling.')
-      setSystemData(null)
-      setPastSystemData([])
-      return
-    }
+    // if (!isConnected) return
+    // if (!connectionId) return
     const interval = setInterval(async () => {
-      console.log('Requesting FAKE system status...')
-      const fake_status = generateMockBalloonStatus()
-      const mockData: SystemData = {
-        bottomHeaterActive: fake_status.data.bottomHeaterActive,
-        bottomTemp: fake_status.data.bottomTemp,
-        pedalActive: fake_status.data.pedalPressed,
-        powerSupplyTemp: fake_status.data.powerSupplyTemp,
-        topHeaterActive: fake_status.data.topHeaterActive,
-        topTemp: fake_status.data.topTemp,
-        powerSupplyVoltage: fake_status.data.powerSupplyVoltage,
-        proximityActive: fake_status.data.proximityActive,
-        coolingFanActive: fake_status.data.coolingFanActive,
-        pressureValveActive: fake_status.data.pressureValveActive,
-        weldingTime: Math.floor(fake_status.data.weldingTime),
-        coolingTime: Math.floor(fake_status.data.coolingTime)
-      }
-      pushSystemSnapshot(mockData)
-      setConfig(fake_status.config)
-      setVersion(fake_status.firmwareVersion)
       if (!connectionId) return
+      // if in dev mode, use mock data
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Requesting FAKE system status...')
+        const fake_status = generateMockBalloonStatus()
+        const mockData: SystemData = {
+          bottomHeaterActive: fake_status.data.bottomHeaterActive,
+          bottomTemp: fake_status.data.bottomTemp,
+          pedalActive: fake_status.data.pedalPressed,
+          powerSupplyTemp: fake_status.data.powerSupplyTemp,
+          topHeaterActive: fake_status.data.topHeaterActive,
+          topTemp: fake_status.data.topTemp,
+          powerSupplyVoltage: fake_status.data.powerSupplyVoltage,
+          proximityActive: fake_status.data.proximityActive,
+          coolingFanActive: fake_status.data.coolingFanActive,
+          pressureValveActive: fake_status.data.pressureValveActive,
+          weldingTime: Math.floor(fake_status.data.weldingTime),
+          coolingTime: Math.floor(fake_status.data.coolingTime)
+        }
+        pushSystemSnapshot(mockData)
+        setConfig(fake_status.config)
+        setVersion(fake_status.firmwareVersion)
+      }
       await window.api.SerialsendCommand(connectionId, 'GET STATUS')
       const status = window.api.SerialgetSystemStatus(connectionId)
-      const config = window.api.SerialgetSystemConfig(connectionId)
-      setConfig(config)
-      const version = window.api.SerialgetSystemVersion(connectionId)
-      setVersion(`${version?.major}.${version?.minor}.${version?.patch}`)
-      console.log('Firmware Version:', version)
       if (status) {
         pushSystemSnapshot({ ...status })
       }
+
+      const version = window.api.SerialgetSystemVersion(connectionId)
+      setVersion(`${version?.major}.${version?.minor}.${version?.patch}`)
+
+      // if (!config) {
+      //   const c = window.api.SerialgetSystemConfig(connectionId)
+      //   setConfig(c)
+      // }
     }, 1000)
-    return () => clearInterval(interval)
+
+    // config fetching interval
+    const configInterval = setInterval(() => {
+      if (!isConnected) return
+      if (!connectionId) return
+      const c = window.api.SerialgetSystemConfig(connectionId)
+      if (c) setConfig(c)
+    }, 10000)
+
+    return () => {
+      clearInterval(interval)
+      clearInterval(configInterval)
+    }
   }, [isConnected, connectionId, pushSystemSnapshot])
+
+  const handleAddWeld = useCallback(
+    async (notify = false) => {
+      const currentSystemData = systemDataRef.current
+      const currentConfig = configRef.current
+
+      if (currentSystemData?.pedalActive) {
+        // Prevent duplicate welds - only add when pedal transitions from inactive to active
+        if (lastPedalStateRef.current === true) {
+          return
+        }
+        lastPedalStateRef.current = true
+
+        const newWeld = {
+          topHeaterTemperature: currentSystemData.topTemp,
+          bottomHeaterTemperature: currentSystemData.bottomTemp,
+          powerSupplyVoltage: currentSystemData.powerSupplyVoltage,
+          weldingDuration: currentSystemData.weldingTime,
+          coolingDuration: currentSystemData.coolingTime,
+          isSuccessful:
+            currentSystemData.topTemp <= (currentConfig?.topTempThreshold || 110) &&
+            currentSystemData.bottomTemp <= (currentConfig?.bottomTempThreshold || 140),
+          error:
+            currentSystemData.topTemp < (currentConfig?.topTempThreshold || 110)
+              ? 'Top heater too low temperature'
+              : currentSystemData.bottomTemp < (currentConfig?.bottomTempThreshold || 140)
+                ? 'Bottom heater too low temperature'
+                : undefined
+        }
+        await addWeld(newWeld, notify)
+        console.log('Added weld:', newWeld)
+      } else {
+        // Reset the pedal state when pedal is released
+        lastPedalStateRef.current = false
+      }
+    },
+    [addWeld]
+  )
+
+  // timer to add welds every second when pedal is pressed
+  useEffect(() => {
+    if (!isConnected) return
+    if (!sessionId) return
+
+    console.log('Setting up weld checker interval...')
+    const interval = setInterval(() => {
+      handleAddWeld(true)
+    }, 1000)
+
+    return () => {
+      console.log('Clearing weld checker interval...')
+      clearInterval(interval)
+    }
+  }, [isConnected, sessionId, handleAddWeld])
 
   return (
     <main className="flex-1 flex flex-col rounded-tl-2xl p-6 overflow-auto bg-background">
@@ -263,7 +342,14 @@ export function Dashboard({ isConnected, receivedData, connectionId }: Dashboard
 
               <div className="grid grid-cols-2 gap-2">
                 {sessionId ? (
-                  <ActiveSessionPanel sessionId={sessionId} setSessionId={setSessionId} />
+                  <ActiveSessionPanel
+                    session={session}
+                    resetSessionId={() => setSessionId(null)}
+                    deleteSession={deleteSession}
+                    addWeld={handleAddWeld}
+                    endSession={endSession}
+                    generatePDF={generatePDF}
+                  />
                 ) : (
                   <CreateSessionForm setSessionId={setSessionId} />
                 )}

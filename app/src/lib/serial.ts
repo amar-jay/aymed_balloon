@@ -311,7 +311,7 @@ export function readData(connectionId: string, clearBuffer: boolean = true): str
     throw new Error(`Connection ${connectionId} not found`)
   }
 
-  console.log('[Serial] Reading buffer, current size:', connection.dataBuffer.length) // Debug log
+  // console.log('[Serial] Reading buffer, current size:', connection.dataBuffer.length) // Debug log
   try {
     parseConfig(connection) // try to parse config before reading data
     parseStatus(connection)
@@ -322,7 +322,7 @@ export function readData(connectionId: string, clearBuffer: boolean = true): str
   const data = [...connection.dataBuffer]
   if (clearBuffer) {
     connection.dataBuffer = []
-    console.log('[Serial] Buffer cleared') // Debug log
+    // console.log('[Serial] Buffer cleared') // Debug log
   }
   return data
 }

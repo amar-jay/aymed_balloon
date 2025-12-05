@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, screen } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { initializeDatabase, closeDatabase, setupDatabaseHandlers } from '../lib/db'
@@ -7,14 +7,17 @@ import { Session, Weld } from '../lib/types/session'
 import icon from '../../resources/logo.jpeg?asset'
 
 function createWindow(): void {
+  const scaleFactor = screen.getPrimaryDisplay().scaleFactor
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
     show: false,
     autoHideMenuBar: true,
-    minWidth: 1280,
-    minHeight: 720,
+    minWidth: 1280 / scaleFactor,
+    minHeight: 720 / scaleFactor,
+    icon: join(app.getAppPath(), 'resources', 'logo.jpeg'),
+    // frame: false,
     // titleBarStyle: 'hidden',
     // expose window controls in Windows/Linux
     // ...(process.platform !== 'darwin' ? { titleBarOverlay: true } : {}),
@@ -23,7 +26,8 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
       // Enable persistent storage for localStorage
-      partition: 'persist:main'
+      partition: 'persist:main',
+      zoomFactor: 1 / scaleFactor // Compensate for display scaling
     }
   })
 

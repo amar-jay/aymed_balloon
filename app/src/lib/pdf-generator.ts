@@ -6,9 +6,7 @@
 
 import PDFDocument from 'pdfkit'
 import fs from 'fs'
-import { join } from 'path'
-import { app } from 'electron'
-import { Session, Weld } from './types/session'
+import { Session } from './types/session'
 
 interface PDFOptions {
   filePath: string
