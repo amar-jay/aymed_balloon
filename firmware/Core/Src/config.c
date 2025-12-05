@@ -4,58 +4,105 @@
  *  Created on: Nov 22, 2025
  *      Author: ASUS
  */
-
-#include "config.h"
-#include "flash.h"
+ #include "config.h"
+#include "stm32f4xx_hal.h" // Replaces flash.h
 #include "cmsis_os.h"
 #include "utils.h"
+#include "config.h"
+#include "utils.h"
+
+
+#include <string.h> // For memcpy
+
+// --------------------------------------- FLASH DEFINITIONS -----------------------------------------
+// STM32F407VG Sector 11 starts at 0x080E0000 and ends at 0x080FFFFF
+#define CONFIG_FLASH_SECTOR       FLASH_SECTOR_11
+#define CONFIG_FLASH_ADDR         0x080E0000 
+#define CONFIG_MAGIC_VAL          0xA5
 
 // Global variables
 BalloonConfig_t balloonConfig;
-
 extern osMutexId_t configMutexHandle;
 
+// --------------------------------------- HELPER FUNCTIONS ------------------------------------------
 
-// The virtual address table for EEPROM emulation. Must match NB_OF_VAR in flash.h and config variables in config.h
-// definition of VirtAddVarTab for NB_OF_VAR = 18
-// Used for EEPROM emulation variable identification
-uint16_t VirtAddVarTab[NB_OF_VAR] = {
-    0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007, 0x0008, 0x0009, 0x000A,
-    0x000B, 0x000C, 0x000D, 0x000E, 0x000F, 0x0010, 0x0011, 0x0012
-};
+/*
+ * Erases the config sector and writes the current balloonConfig struct to it.
+ * Note: This blocks interrupts briefly during flash operations.
+ */
+static HAL_StatusTypeDef Internal_SaveToFlash(void) {
+    HAL_StatusTypeDef status;
+    FLASH_EraseInitTypeDef EraseInitStruct;
+    uint32_t SectorError;
+
+    HAL_FLASH_Unlock();
+
+    // 1. Erase the Sector
+    EraseInitStruct.TypeErase    = FLASH_TYPEERASE_SECTORS;
+    EraseInitStruct.VoltageRange = FLASH_VOLTAGE_RANGE_3; // 2.7V to 3.6V
+    EraseInitStruct.Sector       = CONFIG_FLASH_SECTOR;
+    EraseInitStruct.NbSectors    = 1;
+
+    status = HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError);
+    
+    if (status != HAL_OK) {
+        HAL_FLASH_Lock();
+        return status;
+    }
+
+    // 2. Write the struct byte by byte (or word by word)
+    uint8_t *data = (uint8_t *)&balloonConfig;
+    for (uint32_t i = 0; i < sizeof(BalloonConfig_t); i++) {
+        status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, CONFIG_FLASH_ADDR + i, data[i]);
+        if (status != HAL_OK) {
+            HAL_FLASH_Lock();
+            return status;
+        }
+    }
+
+    HAL_FLASH_Lock();
+    return HAL_OK;
+}
 
 // --------------------------------------- SYSTEM CONFIG ---------------------------------------------
 
 void BalloonConfig_Init(void) {
-    EE_Init();
     if(osSemaphoreAcquire(configMutexHandle, osWaitForever) == osOK) {
-        uint16_t val;
-        // Try reading first_boot flag
-        if (EE_ReadVariable(VAR_FIRST_BOOT, &val) != EE_OK || val != 0xA5) {
-            // EEPROM uninitialized or corrupted → store defaults
-            balloonConfig.optime               = 10;
-            balloonConfig.cotime               = 5;
-            balloonConfig.top_temp_threshold   = 110;
-            balloonConfig.bottom_temp_threshold= 110;
-            balloonConfig.top_temp_offset      = 0;
-            balloonConfig.bottom_temp_offset   = 0;
-            balloonConfig.menu_reset_delay     = 15;
-            balloonConfig.time_calibration     = 100;
-            balloonConfig.max_temp_error       = 150;
-            balloonConfig.vcc_voltage_error    = 24;
-            balloonConfig.power_temp_error     = 40;
-            balloonConfig.power_vcc_error      = 0;
-            balloonConfig.sys_error            = 0;
-            balloonConfig.voltage_calibration  = 125;
-            balloonConfig.heater_error_enable  = 5;
-            balloonConfig.cooling_delay        = 75;
-            balloonConfig.first_boot           = 0xA5;
-            balloonConfig.use_internal_adc     = 0;
+        
+        // Point a pointer to the flash address
+        BalloonConfig_t *flashConfig = (BalloonConfig_t *)CONFIG_FLASH_ADDR;
 
-            BalloonConfig_SaveAll(); // write defaults to flash
+        // Check if our magic "first_boot" flag matches in Flash
+        // Note: We access Flash directly like memory
+        if (flashConfig->first_boot != CONFIG_MAGIC_VAL) {
+            
+            usb_printf("Config uninitialized. Writing defaults...\r\n");
+
+            // --- SET DEFAULTS ---
+            balloonConfig.optime                = 10;
+            balloonConfig.cotime                = 5;
+            balloonConfig.top_temp_threshold    = 110;
+            balloonConfig.bottom_temp_threshold = 110;
+            balloonConfig.top_temp_offset       = 0;
+            balloonConfig.bottom_temp_offset    = 0;
+            balloonConfig.menu_reset_delay      = 15;
+            balloonConfig.time_calibration      = 100;
+            balloonConfig.max_temp_error        = 150;
+            balloonConfig.vcc_voltage_error     = 24;
+            balloonConfig.power_temp_error      = 40;
+            balloonConfig.power_vcc_error       = 0;
+            balloonConfig.sys_error             = 0;
+            balloonConfig.voltage_calibration   = 125;
+            balloonConfig.heater_error_enable   = 5;
+            balloonConfig.cooling_delay         = 75;
+            balloonConfig.first_boot            = CONFIG_MAGIC_VAL; // 0xA5
+            balloonConfig.use_internal_adc      = 0;
+
+            BalloonConfig_SaveAll(); 
         } else {
-            BalloonConfig_Load(); // load saved data
-            // Validate EEPROM integrity
+            BalloonConfig_Load(); // Load data from Flash to RAM
+            
+            // Validate Loaded Data
             if (!BalloonConfig_Validate()) {
                 usb_printf("Flash integrity check failed, using defaults\r\n");
                 BalloonConfig_ForceReset();
@@ -68,84 +115,75 @@ void BalloonConfig_Init(void) {
 }
 
 void BalloonConfig_Load(void) {
-    uint16_t val;
-    EE_ReadVariable(VAR_OPTIME, &val);                balloonConfig.optime = val;
-    EE_ReadVariable(VAR_COTIME, &val);                balloonConfig.cotime = val;
-    EE_ReadVariable(VAR_TOP_TEMP_THRESHOLD, &val);    balloonConfig.top_temp_threshold = val;
-    EE_ReadVariable(VAR_BOTTOM_TEMP_THRESHOLD, &val); balloonConfig.bottom_temp_threshold = val;
-    EE_ReadVariable(VAR_TOP_TEMP_OFFSET, &val);       balloonConfig.top_temp_offset = val;
-    EE_ReadVariable(VAR_BOTTOM_TEMP_OFFSET, &val);    balloonConfig.bottom_temp_offset = val;
-    EE_ReadVariable(VAR_MENU_RESET_DELAY, &val);      balloonConfig.menu_reset_delay = val;
-    EE_ReadVariable(VAR_TIME_CALIBRATION, &val);      balloonConfig.time_calibration = val;
-    EE_ReadVariable(VAR_MAX_TEMP_ERROR, &val);        balloonConfig.max_temp_error = val;
-    EE_ReadVariable(VAR_VCC_VOLTAGE_ERROR, &val);     balloonConfig.vcc_voltage_error = val;
-    EE_ReadVariable(VAR_POWER_TEMP_ERROR, &val);      balloonConfig.power_temp_error = val;
-    EE_ReadVariable(VAR_POWER_VCC_ERROR, &val);       balloonConfig.power_vcc_error = val;
-    EE_ReadVariable(VAR_SYS_ERROR, &val);             balloonConfig.sys_error = val;
-    EE_ReadVariable(VAR_VOLTAGE_CALIBRATION, &val);   balloonConfig.voltage_calibration = val;
-    EE_ReadVariable(VAR_HEATER_ERROR_ENABLE, &val);   balloonConfig.heater_error_enable = val;
-    EE_ReadVariable(VAR_COOLING_DELAY, &val);         balloonConfig.cooling_delay = val;
-    EE_ReadVariable(VAR_FIRST_BOOT, &val);            balloonConfig.first_boot = val;
-		EE_ReadVariable(VAR_USE_INTERNAL_ADC, &val);      balloonConfig.use_internal_adc = val;
+    // Direct memory copy from Flash Address to RAM Struct
+    // This is much faster than reading variables one by one
+    memcpy(&balloonConfig, (void*)CONFIG_FLASH_ADDR, sizeof(BalloonConfig_t));
 }
 
 void BalloonConfig_SaveAll(void) {
-	uint8_t allOk = 1;
-	if (EE_WriteVariable(VAR_OPTIME, balloonConfig.optime) != EE_OK) allOk=0;
-	if (EE_WriteVariable(VAR_TOP_TEMP_THRESHOLD, balloonConfig.top_temp_threshold) != EE_OK) allOk=0;
-	if (EE_WriteVariable(VAR_BOTTOM_TEMP_THRESHOLD, balloonConfig.bottom_temp_threshold) != EE_OK) allOk=0;
-	if (EE_WriteVariable(VAR_TOP_TEMP_OFFSET, balloonConfig.top_temp_offset) != EE_OK) allOk=0;
-	if (EE_WriteVariable(VAR_BOTTOM_TEMP_OFFSET, balloonConfig.bottom_temp_offset) != EE_OK) allOk=0;
-	if (EE_WriteVariable(VAR_MENU_RESET_DELAY, balloonConfig.menu_reset_delay) != EE_OK) allOk=0;
-	if (EE_WriteVariable(VAR_TIME_CALIBRATION, balloonConfig.time_calibration) != EE_OK) allOk=0;
-	if (EE_WriteVariable(VAR_MAX_TEMP_ERROR, balloonConfig.max_temp_error) != EE_OK) allOk=0;
-	if (EE_WriteVariable(VAR_VCC_VOLTAGE_ERROR, balloonConfig.vcc_voltage_error) != EE_OK) allOk=0;
-	if (EE_WriteVariable(VAR_POWER_TEMP_ERROR, balloonConfig.power_temp_error) != EE_OK) allOk=0;
-	if (EE_WriteVariable(VAR_POWER_VCC_ERROR, balloonConfig.power_vcc_error) != EE_OK) allOk=0;
-	if (EE_WriteVariable(VAR_SYS_ERROR, balloonConfig.sys_error) != EE_OK) allOk=0;
-	if (EE_WriteVariable(VAR_VOLTAGE_CALIBRATION, balloonConfig.voltage_calibration) != EE_OK) allOk=0;
-	if (EE_WriteVariable(VAR_HEATER_ERROR_ENABLE, balloonConfig.heater_error_enable) != EE_OK) allOk=0;
-	if (EE_WriteVariable(VAR_COOLING_DELAY, balloonConfig.cooling_delay) != EE_OK) allOk=0;
-	if (EE_WriteVariable(VAR_FIRST_BOOT, balloonConfig.first_boot) != EE_OK) allOk=0;
-	if (EE_WriteVariable(VAR_USE_INTERNAL_ADC, balloonConfig.use_internal_adc) == EE_OK) allOk=0;
-
-	if (!allOk) usb_printf("ERROR: Failed to save all config variables to flash\r\n");
+    if (Internal_SaveToFlash() != HAL_OK) {
+        usb_printf("ERROR: Failed to save config to Internal Flash\r\n");
+    }
 }
 
+/**
+NOTE: This function updates a single variable in RAM and then commits the entire struct to Flash.
+This is because Flash memory requires erasing entire sectors before writing, so we must rewrite
+the whole struct anyway. Be cautious about calling this function too frequently.
+*/
 void BalloonConfig_Update(uint16_t varID, uint8_t value) {
-    if (EE_WriteVariable(varID, value) != EE_OK) {
-        usb_printf("ERROR: Failed to update varID 0x%04X\r\n", varID);
+    // 1. Update the RAM copy
+    switch (varID) {
+        case VAR_OPTIME:                balloonConfig.optime = value; break;
+        case VAR_COTIME:                balloonConfig.cotime = value; break;
+        case VAR_TOP_TEMP_THRESHOLD:    balloonConfig.top_temp_threshold = value; break;
+        case VAR_BOTTOM_TEMP_THRESHOLD: balloonConfig.bottom_temp_threshold = value; break;
+        case VAR_TOP_TEMP_OFFSET:       balloonConfig.top_temp_offset = value; break;
+        case VAR_BOTTOM_TEMP_OFFSET:    balloonConfig.bottom_temp_offset = value; break;
+        case VAR_MENU_RESET_DELAY:      balloonConfig.menu_reset_delay = value; break;
+        case VAR_TIME_CALIBRATION:      balloonConfig.time_calibration = value; break;
+        case VAR_MAX_TEMP_ERROR:        balloonConfig.max_temp_error = value; break;
+        case VAR_VCC_VOLTAGE_ERROR:     balloonConfig.vcc_voltage_error = value; break;
+        case VAR_POWER_TEMP_ERROR:      balloonConfig.power_temp_error = value; break;
+        case VAR_POWER_VCC_ERROR:       balloonConfig.power_vcc_error = value; break;
+        case VAR_SYS_ERROR:             balloonConfig.sys_error = value; break;
+        case VAR_VOLTAGE_CALIBRATION:   balloonConfig.voltage_calibration = value; break;
+        case VAR_HEATER_ERROR_ENABLE:   balloonConfig.heater_error_enable = value; break;
+        case VAR_COOLING_DELAY:         balloonConfig.cooling_delay = value; break;
+        case VAR_FIRST_BOOT:            balloonConfig.first_boot = value; break;
+        case VAR_USE_INTERNAL_ADC:      balloonConfig.use_internal_adc = value; break;
+        default: return; // Unknown varID, do nothing
     }
 
-    // Update RAM copy as well
-    switch (varID) {
-        case VAR_OPTIME: balloonConfig.optime = value; break;
-        case VAR_COTIME: balloonConfig.cotime = value; break;
-        case VAR_TOP_TEMP_THRESHOLD: balloonConfig.top_temp_threshold = value; break;
-        case VAR_BOTTOM_TEMP_THRESHOLD: balloonConfig.bottom_temp_threshold = value; break;
-        case VAR_TOP_TEMP_OFFSET: balloonConfig.top_temp_offset = value; break;
-        case VAR_BOTTOM_TEMP_OFFSET: balloonConfig.bottom_temp_offset = value; break;
-        case VAR_MENU_RESET_DELAY: balloonConfig.menu_reset_delay = value; break;
-        case VAR_TIME_CALIBRATION: balloonConfig.time_calibration = value; break;
-        case VAR_MAX_TEMP_ERROR: balloonConfig.max_temp_error = value; break;
-        case VAR_VCC_VOLTAGE_ERROR: balloonConfig.vcc_voltage_error = value; break;
-        case VAR_POWER_TEMP_ERROR: balloonConfig.power_temp_error = value; break;
-        case VAR_POWER_VCC_ERROR: balloonConfig.power_vcc_error = value; break;
-        case VAR_SYS_ERROR: balloonConfig.sys_error = value; break;
-        case VAR_VOLTAGE_CALIBRATION: balloonConfig.voltage_calibration = value; break;
-        case VAR_HEATER_ERROR_ENABLE: balloonConfig.heater_error_enable = value; break;
-        case VAR_COOLING_DELAY: balloonConfig.cooling_delay = value; break;
-        case VAR_FIRST_BOOT: balloonConfig.first_boot = value; break;
-				case VAR_USE_INTERNAL_ADC: balloonConfig.use_internal_adc = value; break;
-				default: break; // Unknown varID
-    }
+    // 2. Commit the entire struct to Flash
+    // NOTE: This erases the sector every time. Do not call this in a fast loop.
+    BalloonConfig_SaveAll();
 }
 
 void BalloonConfig_ForceReset(void) {
-    EE_WriteVariable(VAR_FIRST_BOOT, 0x00); // Set to 0x00 to force default branch
-    BalloonConfig_Init();
-}
+    // To force reset, we just need to invalidate the first_boot byte in Flash
+    // However, since we can't write 0 without erasing, we just Init defaults in RAM and Save.
+    
+    balloonConfig.first_boot = 0x00; // Invalid logic for RAM
+    // Actually, simpler to just recursive call Init logic effectively:
+    
+    // Manually set invalid, then re-init will catch it
+    // But since we are already in code, let's just reset RAM defaults manually:
+    
+    // Re-trigger the default logic
+    // We erase the flash sector to 0xFF or 0x00 to force the check to fail next boot
+    HAL_FLASH_Unlock();
+    FLASH_EraseInitTypeDef EraseInitStruct;
+    uint32_t SectorError;
+    EraseInitStruct.TypeErase    = FLASH_TYPEERASE_SECTORS;
+    EraseInitStruct.VoltageRange = FLASH_VOLTAGE_RANGE_3;
+    EraseInitStruct.Sector       = CONFIG_FLASH_SECTOR;
+    EraseInitStruct.NbSectors    = 1;
+    HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError);
+    HAL_FLASH_Lock();
 
+    BalloonConfig_Init(); // This will see empty flash and reload defaults
+}
 
 
 uint8_t BalloonConfig_Validate(void) {
