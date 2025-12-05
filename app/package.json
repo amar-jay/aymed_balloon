@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "description": "An application for weld quality monitoring and reporting built by Aymed Medikal Technology",
   "main": "./out/main/index.js",
-  "author": "example.com",
-  "homepage": "https://electron-vite.org",
+	"author": "amarjay",
+  "homepage": "https://amarjay.com",
   "scripts": {
+
     "format": "prettier --write .",
     "lint": "eslint --cache .",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
