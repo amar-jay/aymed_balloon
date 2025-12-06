@@ -19,45 +19,44 @@ extern osMutexId_t configMutexHandle;
 
 void BalloonConfig_Init(void) {
     EE_Init();
-    if(osSemaphoreAcquire(configMutexHandle, osWaitForever) == osOK) {
+    if(osMutexAcquire(configMutexHandle, osWaitForever) == osOK) {
 		uint16_t val;
-		// Try reading first_boot flag. if not write only on first boot
+		// Try reading first_boot flag
 		if (EE_ReadVariable(VAR_FIRST_BOOT, &val) != EE_OK || val != 0xA5) {
-			if (val != 0xA5){
-				// EEPROM uninitialized → store defaults
-				balloonConfig.optime               = 10;
-				balloonConfig.cotime               = 5;
-				balloonConfig.top_temp_threshold   = 110;
-				balloonConfig.bottom_temp_threshold= 110;
-				balloonConfig.top_temp_offset         = 0;
-				balloonConfig.bottom_temp_offset         = 0;
-				balloonConfig.menu_reset_delay     = 15;
-				balloonConfig.time_calibration     = 100;
-				balloonConfig.max_temp_error       = 150;
-				balloonConfig.vcc_voltage_error    = 24;
-				balloonConfig.power_temp_error     = 40;
-				balloonConfig.power_vcc_error      = 0;
-				balloonConfig.sys_error            = 0;
-				balloonConfig.voltage_calibration  = 125;
-				balloonConfig.heater_error_enable  = 5;
-				balloonConfig.cooling_delay        = 75;
-				balloonConfig.first_boot           = 0xA5;
-				balloonConfig.use_internal_adc     = 0;
+			// EEPROM uninitialized → store defaults
+			balloonConfig.optime               = 10;
+			balloonConfig.cotime               = 5;
+			balloonConfig.top_temp_threshold   = 110;
+			balloonConfig.bottom_temp_threshold= 110;
+			balloonConfig.top_temp_offset         = 0;
+			balloonConfig.bottom_temp_offset         = 0;
+			balloonConfig.menu_reset_delay     = 15;
+			balloonConfig.time_calibration     = 100;
+			balloonConfig.max_temp_error       = 150;
+			balloonConfig.vcc_voltage_error    = 24;
+			balloonConfig.power_temp_error     = 40;
+			balloonConfig.power_vcc_error      = 0;
+			balloonConfig.sys_error            = 0;
+			balloonConfig.voltage_calibration  = 125;
+			balloonConfig.heater_error_enable  = 5;
+			balloonConfig.cooling_delay        = 75;
+			balloonConfig.first_boot           = 0xA5;
+			balloonConfig.use_internal_adc     = 0;
 
-				BalloonConfig_SaveAll(); // write defaults
-			} else {
-				BalloonConfig_Load(); // load saved data
-				// Validate EEPROM integrity
-				if (!BalloonConfig_Validate()) {
-					usb_printf("Flash integrity check failed, using defaults\r\n");
-					BalloonConfig_ForceReset();
-				}
+			BalloonConfig_SaveAll(); // write defaults
+		} else {
+			// Load saved data
+			BalloonConfig_Load();
+			// Validate EEPROM integrity
+			if (!BalloonConfig_Validate()) {
+				usb_printf("Flash integrity check failed, using defaults\r\n");
+				BalloonConfig_ForceReset();
 			}
+		}
+		osMutexRelease(configMutexHandle);
 	} else {
-		usb_printf("ERROR: EEPROM Read Failed - Using Defaults\r\n");
+		usb_printf("ERROR: Failed to acquire config mutex\r\n");
 	}
-    osSemaphoreRelease(configMutexHandle);
-  }
 }
 
 void BalloonConfig_Load(void) {

@@ -7,6 +7,11 @@
 #include "flash.h"
 #include "config.h"
 
+// Firmware version
+#define VERSION_MAJOR 1
+#define VERSION_MINOR 0
+#define VERSION_PATCH 0
+
 //config variables within flash
 
 
@@ -86,6 +91,8 @@ typedef struct {
   bool proximity;
   bool menu_active;
   bool pedal;
+  bool cooling_fan;
+  bool pressure_valve;
 //  uint8_t pedal_lock_cnt;
   uint8_t standby_blink;
   uint32_t menu_timeout;
