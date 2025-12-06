@@ -344,6 +344,16 @@ void process_command(const char *input, BalloonConfig_t* config, BalloonState_t*
 						else if (strcmp(key, "VERSION") == 0) {
 							  print_version();
 						}
+						
+						else if (strcmp(key, "OPSTATE") == 0) {
+						    const char* state_names[] = {"STANDBY", "READY", "WELDING", "COOLING"};
+						    usb_printf("Operation State: %s\r\n", state_names[state->op_state]);
+						    if(state->op_state == OP_WELDING) {
+						        usb_printf("  Welding Time: %d / %d seconds\r\n", state->prtime, balloonConfig.optime);
+						    } else if(state->op_state == OP_COOLING) {
+						        usb_printf("  Cooling Time: %d / %d seconds\r\n", state->cltime, balloonConfig.cotime);
+						    }
+						}
         } else {
             usb_printf("ERROR: Invalid GET command format\r\n");
         }

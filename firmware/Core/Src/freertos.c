@@ -48,6 +48,8 @@ void StartLog(void *argument) {
   for (;;) {
 		LogCallbackHandler();
 		osDelay(1);
+		HandleOperationStateMachine();  // Handle pedal operation state machine
+		osDelay(1);
 		MonitorError();
     osDelay(1);
   }

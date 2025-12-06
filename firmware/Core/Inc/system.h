@@ -93,6 +93,7 @@ typedef struct {
 void MonitorSensors(void);
 void ControlHeater(void);
 void MonitorError(void);
+void HandleOperationStateMachine(void);
 
 void BalloonSystemInit(void);
 
