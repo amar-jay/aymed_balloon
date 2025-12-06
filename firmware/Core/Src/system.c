@@ -51,23 +51,22 @@ static inline double compute_ntc_temperature(float v_out_mv)
     // Circuit topology (voltage divider):
     //   VCC (3.3V)
     //       |
-    //   R_FIXED (10kΩ) - top resistor
+    //   R_NTC - top resistor (temperature dependent)
     //       |
     //       +--- Vout (measured voltage)
     //       |
-    //   R_NTC - bottom resistor (temperature dependent)
+    //   R_FIXED (10kΩ) - bottom resistor
     //       |
     //      GND
     //
-    // Voltage divider formula: Vout = Vsupply * R_NTC / (R_FIXED + R_NTC)
+    // Voltage divider formula: Vout = Vsupply * R_FIXED / (R_NTC + R_FIXED)
     // Solving for R_NTC:
-    //   Vout * (R_FIXED + R_NTC) = Vsupply * R_NTC
-    //   Vout * R_FIXED + Vout * R_NTC = Vsupply * R_NTC
-    //   Vout * R_FIXED = Vsupply * R_NTC - Vout * R_NTC
-    //   Vout * R_FIXED = R_NTC * (Vsupply - Vout)
-    //   R_NTC = R_FIXED * Vout / (Vsupply - Vout)
-    //
-    // Rearranging: R_NTC = R_FIXED * (Vsupply/Vout - 1)
+    //   Vout * (R_NTC + R_FIXED) = Vsupply * R_FIXED
+    //   Vout * R_NTC + Vout * R_FIXED = Vsupply * R_FIXED
+    //   Vout * R_NTC = Vsupply * R_FIXED - Vout * R_FIXED
+    //   Vout * R_NTC = R_FIXED * (Vsupply - Vout)
+    //   R_NTC = R_FIXED * (Vsupply - Vout) / Vout
+    //   R_NTC = R_FIXED * (Vsupply/Vout - 1)
     
     double R_ntc = R_FIXED * (V_SUPPLY_MV / v_out_mv - 1.0);
 
