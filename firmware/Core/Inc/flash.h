@@ -66,6 +66,10 @@
 #define VOLTAGE_RANGE           (uint8_t)VOLTAGE_RANGE_3
 
 /* EEPROM start address in Flash */
+/* NOTE: Sectors 2-3 are reserved in the linker script (STM32F407VGTX_FLASH.ld)
+ * as FLASH_EEPROM region to prevent conflicts with application code.
+ * EEPROM_START_ADDRESS must match FLASH_EEPROM ORIGIN in linker script.
+ */
 #define EEPROM_START_ADDRESS  ((uint32_t)0x08008000) /* EEPROM emulation start address:
                                                   from sector2 : after 16KByte of used
                                                   Flash memory */

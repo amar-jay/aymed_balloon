@@ -45,10 +45,11 @@ _Min_Stack_Size = 0x400; /* required amount of stack */
 /* Memories definition */
 MEMORY
 {
-  CCMRAM    (xrw)    : ORIGIN = 0x10000000,   LENGTH = 64K
-  RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 128K
-  FLASH_ISR (rx)    : ORIGIN = 0x8000000,   LENGTH = 16K
-  FLASH_APP (rx)    : ORIGIN = 0x8010000,   LENGTH = 960K
+  CCMRAM       (xrw) : ORIGIN = 0x10000000, LENGTH = 64K
+  RAM          (xrw) : ORIGIN = 0x20000000, LENGTH = 128K
+  FLASH_ISR    (rx)  : ORIGIN = 0x8000000,  LENGTH = 16K   /* Sector 0 */
+  FLASH_EEPROM (rw)  : ORIGIN = 0x8008000,  LENGTH = 32K   /* Sectors 2-3: Reserved for EEPROM emulation */
+  FLASH_APP    (rx)  : ORIGIN = 0x8010000,  LENGTH = 960K  /* Sectors 4-11 */
 }
 
 /* Sections */
