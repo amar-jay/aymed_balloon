@@ -22,7 +22,7 @@ void BalloonConfig_Init(void) {
     if(osMutexAcquire(configMutexHandle, osWaitForever) == osOK) {
 		uint16_t val;
 		// Try reading first_boot flag
-		if (EE_ReadVariable(VAR_FIRST_BOOT, &val) != EE_OK || val != 0xA5) {
+		if (EE_ReadVariable(VAR_FIRST_BOOT, &val) != EE_OK || val != FIRST_BOOT_MAGIC) {
 			// EEPROM uninitialized → store defaults
 			balloonConfig.optime               = 10;
 			balloonConfig.cotime               = 5;
@@ -40,7 +40,7 @@ void BalloonConfig_Init(void) {
 			balloonConfig.voltage_calibration  = 125;
 			balloonConfig.heater_error_enable  = 5;
 			balloonConfig.cooling_delay        = 75;
-			balloonConfig.first_boot           = 0xA5;
+			balloonConfig.first_boot           = FIRST_BOOT_MAGIC;
 			balloonConfig.use_internal_adc     = 0;
 
 			BalloonConfig_SaveAll(); // write defaults
@@ -130,7 +130,7 @@ void BalloonConfig_Update(uint16_t varID, uint8_t value) {
 }
 
 void BalloonConfig_ForceReset(void) {
-	EE_WriteVariable(VAR_FIRST_BOOT, 0xA5);
+	EE_WriteVariable(VAR_FIRST_BOOT, FIRST_BOOT_MAGIC);
 	BalloonConfig_Init();
 }
 

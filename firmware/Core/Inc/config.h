@@ -10,6 +10,9 @@
 
 #include <stdint.h>
 
+// Flash initialization magic value
+#define FIRST_BOOT_MAGIC 0xA5
+
 //config variables within flash
 #define VAR_OPTIME                0x0001
 #define VAR_COTIME                0x0002

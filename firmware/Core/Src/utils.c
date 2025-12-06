@@ -197,6 +197,7 @@ void handle_commands(const char *key, const char *value, BalloonConfig_t* config
 					} else {
 						newState = HAL_GPIO_ReadPin(TOP_HEATER1_GPIO_Port, TOP_HEATER1_Pin);
 					}
+					// Control both heater pins simultaneously for redundancy/parallel heating
 					HAL_GPIO_WritePin(TOP_HEATER1_GPIO_Port, TOP_HEATER1_Pin, newState);
 					HAL_GPIO_WritePin(TOP_HEATER2_GPIO_Port, TOP_HEATER2_Pin, newState);
 				}
@@ -209,6 +210,7 @@ void handle_commands(const char *key, const char *value, BalloonConfig_t* config
 					} else {
 						newState = HAL_GPIO_ReadPin(BOTTOM_HEATER1_GPIO_Port, BOTTOM_HEATER1_Pin);
 					}
+					// Control both heater pins simultaneously for redundancy/parallel heating
 					HAL_GPIO_WritePin(BOTTOM_HEATER1_GPIO_Port, BOTTOM_HEATER1_Pin, newState);
 					HAL_GPIO_WritePin(BOTTOM_HEATER2_GPIO_Port, BOTTOM_HEATER2_Pin, newState);
 				}
