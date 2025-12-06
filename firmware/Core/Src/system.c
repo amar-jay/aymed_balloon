@@ -132,8 +132,8 @@ double ComputePowerSupplyTemperature(float mv)
 {
     double baseTempC = compute_ntc_temperature(mv);
 
-    // No offset needed for power supply temperature sensor
-    // If calibration is required, add a small offset (not 275.15!)
+    // Power supply sensor doesn't need calibration offset (monitoring only)
+    // Heater sensors use offsets to compensate for thermal coupling to heating elements
     return baseTempC;
 }
 
