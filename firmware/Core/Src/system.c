@@ -503,12 +503,8 @@ void HandleOperationStateMachine(void) {
                         }
                     }
                     
-                    // Re-acquire mutexes before updating last_pedal_state
-                    osMutexAcquire(stateMutexHandle, osWaitForever);
-                    osMutexAcquire(configMutexHandle, osWaitForever);
-                    last_pedal_state = HAL_GPIO_ReadPin(PEDAL_SWITCH_GPIO_Port, PEDAL_SWITCH_Pin);
-                    osMutexRelease(configMutexHandle);
-                    osMutexRelease(stateMutexHandle);
+                    // No need to re-acquire mutexes, just exit
+                    // last_pedal_state will be updated on next call
                     return;  // Exit function, mutexes already released
                 }
             }
