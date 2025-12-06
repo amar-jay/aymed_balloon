@@ -55,9 +55,9 @@ typedef enum {
   SEL_NONE = 0,
   SEL_OPTIME = 1,
   SEL_COTIME = 2,
-  SEL_TOP_TEMP = 1,
-  SEL_BOT_TEMP = 2,
-  SEL_TEMP_RESET = 3
+  SEL_TOP_TEMP = 3,
+  SEL_BOT_TEMP = 4,
+  SEL_TEMP_RESET = 5
 } SelectionState_t;
 
 // System State Structure

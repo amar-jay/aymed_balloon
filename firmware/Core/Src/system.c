@@ -373,6 +373,11 @@ void MonitorError(void) {
         balloonState.menu_active = true;
         balloonState.menu_state = MENU_SYSTEM_ERROR;
         balloonState.op_state = OP_STANDBY;
+        
+        // Safety: Turn off all outputs when error occurs
+        HAL_GPIO_WritePin(PRESSURE_VALVE_GPIO_Port, PRESSURE_VALVE_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(COOLER_FAN_GPIO_Port, COOLER_FAN_Pin, GPIO_PIN_RESET);
+        
         PrintError(balloonState.error);
         BuzzerBeep(750, 1);
       }
@@ -386,6 +391,7 @@ void HandleOperationStateMachine(void) {
     static uint32_t operation_start_time = 0;
     static uint8_t pedal_lock_counter = 0;
     static uint8_t last_pedal_state = 1;  // 1 = released
+    uint32_t elapsed;  // Declare at function scope to avoid shadowing
     
     osMutexAcquire(stateMutexHandle, osWaitForever);
     osMutexAcquire(configMutexHandle, osWaitForever);
@@ -448,7 +454,7 @@ void HandleOperationStateMachine(void) {
             HAL_GPIO_WritePin(PRESSURE_VALVE_GPIO_Port, PRESSURE_VALVE_Pin, GPIO_PIN_SET);
             
             // Update operation time counter
-            uint32_t elapsed = (current_time - operation_start_time) / 1000;  // Convert to seconds
+            elapsed = (current_time - operation_start_time) / 1000;  // Convert to seconds
             balloonState.prtime = (uint8_t)(elapsed > 255 ? 255 : elapsed);
             
             // Check if operation time has elapsed
@@ -478,12 +484,32 @@ void HandleOperationStateMachine(void) {
                 usb_printf("STATE: READY (cooling complete)\r\n");
                 
                 // Check if pedal is still pressed (error condition)
+                // Release mutexes before waiting to avoid deadlock
                 if(pedal == 0) {
                     usb_printf("ERROR: Pedal locked after cooling\r\n");
                     BuzzerBeep(100, 24);  // Long error beep
-                    while(balloonState.pedal == 0) {
+                    
+                    // Release mutexes before waiting loop to avoid deadlock
+                    osMutexRelease(configMutexHandle);
+                    osMutexRelease(stateMutexHandle);
+                    
+                    // Wait for pedal release with timeout (max 5 seconds)
+                    uint32_t wait_start = HAL_GetTick();
+                    while(HAL_GPIO_ReadPin(PEDAL_SWITCH_GPIO_Port, PEDAL_SWITCH_Pin) == 0) {
                         osDelay(10);  // Wait for pedal release
+                        if((HAL_GetTick() - wait_start) > 5000) {
+                            usb_printf("WARNING: Pedal still pressed after 5s timeout\r\n");
+                            break;  // Timeout to prevent infinite loop
+                        }
                     }
+                    
+                    // Re-acquire mutexes before updating last_pedal_state
+                    osMutexAcquire(stateMutexHandle, osWaitForever);
+                    osMutexAcquire(configMutexHandle, osWaitForever);
+                    last_pedal_state = HAL_GPIO_ReadPin(PEDAL_SWITCH_GPIO_Port, PEDAL_SWITCH_Pin);
+                    osMutexRelease(configMutexHandle);
+                    osMutexRelease(stateMutexHandle);
+                    return;  // Exit function, mutexes already released
                 }
             }
             break;
