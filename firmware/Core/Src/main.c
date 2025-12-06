@@ -53,28 +53,28 @@ UART_HandleTypeDef huart4;
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 128 * 4,
+  .stack_size = 128 * 4,  // 512 bytes - minimal task
   .priority = (osPriority_t) osPriorityAboveNormal,
 };
 /* Definitions for logTask */
 osThreadId_t logTaskHandle;
 const osThreadAttr_t logTask_attributes = {
   .name = "logTask",
-  .stack_size = 128 * 4,
+  .stack_size = 1024 * 4,  // 4096 bytes - handles UART/printf/command processing
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for sensorTask */
 osThreadId_t sensorTaskHandle;
 const osThreadAttr_t sensorTask_attributes = {
   .name = "sensorTask",
-  .stack_size = 128 * 4,
+  .stack_size = 512 * 4,  // 2048 bytes - handles I2C/ADC operations
   .priority = (osPriority_t) osPriorityNormal2,
 };
 /* Definitions for heaterTask */
 osThreadId_t heaterTaskHandle;
 const osThreadAttr_t heaterTask_attributes = {
   .name = "heaterTask",
-  .stack_size = 128 * 4,
+  .stack_size = 384 * 4,  // 1536 bytes - GPIO and control logic
   .priority = (osPriority_t) osPriorityNormal1,
 };
 /* Definitions for configMutex */
