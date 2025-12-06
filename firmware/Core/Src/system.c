@@ -47,25 +47,33 @@ static inline double compute_ntc_temperature(float v_out_mv)
         return -999.0; // invalid reading
     }
 
-    // Convert voltage to resistance
-    // Vout = Vsupply * Rntc / (Rfixed + Rntc)  <-- assuming Rntc is bottom resistor
-    // OR
-    // Vout = Vsupply * Rfixed / (Rfixed + Rntc) <-- assuming Rfixed is bottom resistor
-    
-    // Based on previous code: r_ntc = R_FIXED * (V_SUPPLY - 2 * v_out) / (V_SUPPLY + 2 * v_out);
-    // That was for a bridge.
-    // The new code: R_ntc = R_FIXED * (ADC_MAX / adc_raw - 1.0);
-    // This implies a simple divider where ADC_MAX/adc_raw = Vsupply/Vout
-    // So Vsupply/Vout = (Rfixed + Rntc) / Rntc  (if Rntc is bottom) -> Rfixed/Rntc + 1 -> Rntc = Rfixed / (Vsupply/Vout - 1)
-    // The user's formula: R_ntc = R_FIXED * (Vsupply/Vout - 1.0)
-    // This implies Vsupply/Vout = Rntc/Rfixed + 1 -> Vsupply/Vout = (Rntc + Rfixed)/Rfixed -> Vout = Vsupply * Rfixed / (Rntc + Rfixed)
-    // So Rfixed is the bottom resistor (across which we measure Vout).
+    // Convert voltage to NTC resistance
+    // Circuit topology (voltage divider):
+    //   VCC (3.3V)
+    //       |
+    //   R_NTC - top resistor (temperature dependent)
+    //       |
+    //       +--- Vout (measured voltage)
+    //       |
+    //   R_FIXED (10kΩ) - bottom resistor
+    //       |
+    //      GND
+    //
+    // Voltage divider formula: Vout = Vsupply * R_FIXED / (R_NTC + R_FIXED)
+    // Solving for R_NTC:
+    //   Vout * (R_NTC + R_FIXED) = Vsupply * R_FIXED
+    //   Vout * R_NTC + Vout * R_FIXED = Vsupply * R_FIXED
+    //   Vout * R_NTC = Vsupply * R_FIXED - Vout * R_FIXED
+    //   Vout * R_NTC = R_FIXED * (Vsupply - Vout)
+    //   R_NTC = R_FIXED * (Vsupply - Vout) / Vout
+    //   R_NTC = R_FIXED * (Vsupply/Vout - 1)
     
     double R_ntc = R_FIXED * (V_SUPPLY_MV / v_out_mv - 1.0);
 
     double lnR = log(R_ntc);
 
-    // Steinhart–Hart equation
+    // Steinhart–Hart equation: 1/T = A + B*ln(R) + C*(ln(R))^3
+    // where T is in Kelvin
     double inv_T = NTC_A + NTC_B * lnR + NTC_C * lnR * lnR * lnR;
     double temp_K = 1.0 / inv_T;
 
@@ -124,8 +132,9 @@ double ComputePowerSupplyTemperature(float mv)
 {
     double baseTempC = compute_ntc_temperature(mv);
 
-    // Your calibration constant
-    return baseTempC - 275.15;
+    // Power supply sensor doesn't need calibration offset (monitoring only)
+    // Heater sensors use offsets to compensate for thermal coupling to heating elements
+    return baseTempC;
 }
 
 
@@ -287,7 +296,9 @@ void ControlHeater(void){
 	osMutexAcquire(stateMutexHandle, osWaitForever);
 	osMutexAcquire(configMutexHandle, osWaitForever);
 
-	bool heaters_enable = (balloonState.op_state != OP_STANDBY && balloonState.error == ERR_NONE);
+	// Heaters should only be active in STANDBY and READY states, not during WELDING/COOLING
+	bool heaters_enable = ((balloonState.op_state == OP_STANDBY || balloonState.op_state == OP_READY) && 
+	                        balloonState.error == ERR_NONE);
 
 	// Top heater control
 	if(balloonState.temp1 < balloonConfig.top_temp_threshold && heaters_enable) {
@@ -307,16 +318,18 @@ void ControlHeater(void){
 	  HAL_GPIO_WritePin(BOTTOM_HEATER2_GPIO_Port, BOTTOM_HEATER2_Pin, GPIO_PIN_RESET);
 	}
 
-	// If either of the heater tempretures is above threshold, enable cooling fan
-	if(
-		(balloonState.temp1 > balloonConfig.top_temp_threshold) ||
-		(balloonState.temp2 > balloonConfig.bottom_temp_threshold)
-	) {
-	  HAL_GPIO_WritePin(COOLER_FAN_GPIO_Port, COOLER_FAN_Pin, GPIO_PIN_SET);
-	} else {
-	  HAL_GPIO_WritePin(COOLER_FAN_GPIO_Port, COOLER_FAN_Pin, GPIO_PIN_RESET);
+	// Cooling fan control is handled by the state machine during COOLING state
+	// Here we only handle it for temperature-based cooling
+	if(balloonState.op_state != OP_COOLING) {
+		// If either heater temperature is above threshold, enable cooling fan
+		if((balloonState.temp1 > balloonConfig.top_temp_threshold) ||
+		   (balloonState.temp2 > balloonConfig.bottom_temp_threshold)) {
+		  HAL_GPIO_WritePin(COOLER_FAN_GPIO_Port, COOLER_FAN_Pin, GPIO_PIN_SET);
+		} else {
+		  HAL_GPIO_WritePin(COOLER_FAN_GPIO_Port, COOLER_FAN_Pin, GPIO_PIN_RESET);
+		}
 	}
-
+	// Note: During OP_COOLING, the cooling fan is controlled by HandleOperationStateMachine()
 
 	osMutexRelease(configMutexHandle);
 	osMutexRelease(stateMutexHandle);
@@ -360,6 +373,11 @@ void MonitorError(void) {
         balloonState.menu_active = true;
         balloonState.menu_state = MENU_SYSTEM_ERROR;
         balloonState.op_state = OP_STANDBY;
+        
+        // Safety: Turn off all outputs when error occurs
+        HAL_GPIO_WritePin(PRESSURE_VALVE_GPIO_Port, PRESSURE_VALVE_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(COOLER_FAN_GPIO_Port, COOLER_FAN_Pin, GPIO_PIN_RESET);
+        
         PrintError(balloonState.error);
         BuzzerBeep(750, 1);
       }
@@ -367,6 +385,138 @@ void MonitorError(void) {
     osMutexRelease(configMutexHandle);
     osMutexRelease(stateMutexHandle);
 }
+
+// Operation State Machine - handles pedal-based welding operation
+void HandleOperationStateMachine(void) {
+    static uint32_t operation_start_time = 0;
+    static uint8_t pedal_lock_counter = 0;
+    static uint8_t last_pedal_state = 1;  // 1 = released
+    uint32_t elapsed;  // Declare at function scope to avoid shadowing
+    
+    osMutexAcquire(stateMutexHandle, osWaitForever);
+    osMutexAcquire(configMutexHandle, osWaitForever);
+    
+    uint32_t current_time = HAL_GetTick();
+    uint8_t pedal = balloonState.pedal;
+    uint8_t proximity = balloonState.proximity;
+    
+    switch(balloonState.op_state) {
+        case OP_STANDBY:
+            // Blink standby indicator
+            balloonState.standby_blink++;
+            if(balloonState.standby_blink > 20) {
+                balloonState.standby_blink = 0;
+            }
+            
+            // Check for pedal press to enter READY state
+            if(pedal == 0 && last_pedal_state == 1) {  // Pedal pressed (falling edge)
+                balloonState.op_state = OP_READY;
+                balloonState.standby_blink = 0;
+                BuzzerBeep(100, 8);  // 8 short beeps
+                usb_printf("STATE: READY\r\n");
+            }
+            break;
+            
+        case OP_READY:
+            // Monitor pedal for pressure valve control
+            if(pedal == 0) {  // Pedal pressed
+                HAL_GPIO_WritePin(PRESSURE_VALVE_GPIO_Port, PRESSURE_VALVE_Pin, GPIO_PIN_SET);
+                pedal_lock_counter++;
+                
+                // Check for pedal lock error (pressed too long without proximity)
+                if(pedal_lock_counter > 25 && proximity == 1) {
+                    balloonState.error = ERR_PEDAL_LOCKED;
+                    balloonState.op_state = OP_STANDBY;
+                    usb_printf("ERROR: Pedal locked\r\n");
+                    BuzzerBeep(100, 24);  // Long error beep
+                    pedal_lock_counter = 0;
+                }
+                
+                // Start welding if proximity sensor detects material
+                if(proximity == 0) {  // Proximity active (material detected)
+                    balloonState.op_state = OP_WELDING;
+                    balloonState.prtime = 0;
+                    operation_start_time = current_time;
+                    BuzzerBeep(100, 1);  // Single beep to start welding
+                    usb_printf("STATE: WELDING (optime=%d seconds)\r\n", balloonConfig.optime);
+                }
+            } else {  // Pedal released
+                HAL_GPIO_WritePin(PRESSURE_VALVE_GPIO_Port, PRESSURE_VALVE_Pin, GPIO_PIN_RESET);
+                pedal_lock_counter = 0;
+            }
+            
+            // Return to standby if menu button or specific condition
+            // (Menu button handling would be integrated here if available)
+            break;
+            
+        case OP_WELDING:
+            // Keep pressure valve active during welding
+            HAL_GPIO_WritePin(PRESSURE_VALVE_GPIO_Port, PRESSURE_VALVE_Pin, GPIO_PIN_SET);
+            
+            // Update operation time counter
+            elapsed = (current_time - operation_start_time) / 1000;  // Convert to seconds
+            balloonState.prtime = (uint8_t)(elapsed > 255 ? 255 : elapsed);
+            
+            // Check if operation time has elapsed
+            if(balloonState.prtime >= balloonConfig.optime) {
+                HAL_GPIO_WritePin(PRESSURE_VALVE_GPIO_Port, PRESSURE_VALVE_Pin, GPIO_PIN_RESET);
+                balloonState.op_state = OP_COOLING;
+                balloonState.cltime = 0;
+                operation_start_time = current_time;
+                BuzzerBeep(250, 1);  // Beep to indicate cooling start
+                usb_printf("STATE: COOLING (cotime=%d seconds)\r\n", balloonConfig.cotime);
+            }
+            break;
+            
+        case OP_COOLING:
+            // Activate cooling fan
+            HAL_GPIO_WritePin(COOLER_FAN_GPIO_Port, COOLER_FAN_Pin, GPIO_PIN_SET);
+            
+            // Update cooling time counter
+            elapsed = (current_time - operation_start_time) / 1000;  // Convert to seconds
+            balloonState.cltime = (uint8_t)(elapsed > 255 ? 255 : elapsed);
+            
+            // Check if cooling time has elapsed
+            if(balloonState.cltime >= balloonConfig.cotime) {
+                HAL_GPIO_WritePin(COOLER_FAN_GPIO_Port, COOLER_FAN_Pin, GPIO_PIN_RESET);
+                balloonState.op_state = OP_READY;
+                balloonState.cltime = 0;
+                usb_printf("STATE: READY (cooling complete)\r\n");
+                
+                // Check if pedal is still pressed (error condition)
+                // Release mutexes before waiting to avoid deadlock
+                if(pedal == 0) {
+                    usb_printf("ERROR: Pedal locked after cooling\r\n");
+                    BuzzerBeep(100, 24);  // Long error beep
+                    
+                    // Release mutexes before waiting loop to avoid deadlock
+                    osMutexRelease(configMutexHandle);
+                    osMutexRelease(stateMutexHandle);
+                    
+                    // Wait for pedal release with timeout (max 5 seconds)
+                    uint32_t wait_start = HAL_GetTick();
+                    while(HAL_GPIO_ReadPin(PEDAL_SWITCH_GPIO_Port, PEDAL_SWITCH_Pin) == 0) {
+                        osDelay(10);  // Wait for pedal release
+                        if((HAL_GetTick() - wait_start) > 5000) {
+                            usb_printf("WARNING: Pedal still pressed after 5s timeout\r\n");
+                            break;  // Timeout to prevent infinite loop
+                        }
+                    }
+                    
+                    // No need to re-acquire mutexes, just exit
+                    // last_pedal_state will be updated on next call
+                    return;  // Exit function, mutexes already released
+                }
+            }
+            break;
+    }
+    
+    last_pedal_state = pedal;
+    
+    osMutexRelease(configMutexHandle);
+    osMutexRelease(stateMutexHandle);
+}
+
 
 
 // --------------------------- UART Serial Ops -----------------------------------------

@@ -30,7 +30,7 @@ char config_uart_buffer[256*2];
 void print_config(BalloonConfig_t* cfg) {
     systemconfig_t mb_cfg;
 
-    if(osSemaphoreAcquire(configMutexHandle, 100) == osOK) {
+    if(osMutexAcquire(configMutexHandle, 100) == osOK) {
         mb_cfg.opTime = cfg->optime;
         mb_cfg.coTime = cfg->cotime;
         mb_cfg.topTempThreshold = cfg->top_temp_threshold;
@@ -49,7 +49,7 @@ void print_config(BalloonConfig_t* cfg) {
         mb_cfg.coolingDelay = cfg->cooling_delay;
         mb_cfg.useInternalADC = cfg->use_internal_adc;
 
-        osSemaphoreRelease(configMutexHandle);
+        osMutexRelease(configMutexHandle);
     }
 
     // Prepend "CONFIG: " and serialize directly after prefix
@@ -80,7 +80,7 @@ void print_status(BalloonState_t* state) {
     systemdata_t data;
 
     // Safely copy state under mutex
-    if(osSemaphoreAcquire(stateMutexHandle, 100) == osOK) {
+    if(osMutexAcquire(stateMutexHandle, 100) == osOK) {
         data.topTemp = (float)state->temp1;
         data.bottomTemp = (float)state->temp2;
         data.powerSupplyTemp = (float)state->temp3;
@@ -95,7 +95,7 @@ void print_status(BalloonState_t* state) {
         data.menuActive = state->menu_active;
         data.powerSupplyVoltage = (float)state->vcc;
 
-        osSemaphoreRelease(stateMutexHandle);
+        osMutexRelease(stateMutexHandle);
     }
 
     // Serialize directly into status_uart_buffer after the prefix
@@ -150,7 +150,7 @@ void print_version() {
 
 void handle_commands(const char *key, const char *value, BalloonConfig_t* config, BalloonState_t* state)
 {
-    if (osSemaphoreAcquire(stateMutexHandle, 1000) == osOK) {
+    if (osMutexAcquire(stateMutexHandle, 1000) == osOK) {
         if (strcmp(key, "MANUAL_PEDAL") == 0) {
             if (strcmp(value, "ON") == 0) {
                 state->pedal = 1;
@@ -167,44 +167,61 @@ void handle_commands(const char *key, const char *value, BalloonConfig_t* config
             }
         } 
 				else if (strcmp(key, "MANUAL_PRESSURE") == 0) {
-					HAL_GPIO_WritePin(
-						PRESSURE_VALVE_GPIO_Port, PRESSURE_VALVE_Pin, (
-							(strcmp(value, "ON") == 0) ? GPIO_PIN_SET : GPIO_PIN_RESET): (
-								(strcmp(value, "OFF") == 0) ? GPIO_PIN_RESET : HAL_GPIO_ReadPin(PRESSURE_VALVE_GPIO_Port, PRESSURE_VALVE_Pin)
-						)
-					);
+					GPIO_PinState newState;
+					if (strcmp(value, "ON") == 0) {
+						newState = GPIO_PIN_SET;
+					} else if (strcmp(value, "OFF") == 0) {
+						newState = GPIO_PIN_RESET;
+					} else {
+						newState = HAL_GPIO_ReadPin(PRESSURE_VALVE_GPIO_Port, PRESSURE_VALVE_Pin);
+					}
+					HAL_GPIO_WritePin(PRESSURE_VALVE_GPIO_Port, PRESSURE_VALVE_Pin, newState);
 				}
 				else if (strcmp(key, "MANUAL_COOLING") == 0) {
-					HAL_GPIO_WritePin(
-						COOLER_FAN_GPIO_Port, COOLER_FAN_Pin, (
-							(strcmp(value, "ON") == 0) ? GPIO_PIN_SET : GPIO_PIN_RESET): (
-								(strcmp(value, "OFF") == 0) ? GPIO_PIN_RESET : HAL_GPIO_ReadPin(COOLER_FAN_GPIO_Port, COOLER_FAN_Pin)
-						)
-					);
+					GPIO_PinState newState;
+					if (strcmp(value, "ON") == 0) {
+						newState = GPIO_PIN_SET;
+					} else if (strcmp(value, "OFF") == 0) {
+						newState = GPIO_PIN_RESET;
+					} else {
+						newState = HAL_GPIO_ReadPin(COOLER_FAN_GPIO_Port, COOLER_FAN_Pin);
+					}
+					HAL_GPIO_WritePin(COOLER_FAN_GPIO_Port, COOLER_FAN_Pin, newState);
 				}
 				else if (strcmp(key, "MANUAL_TOP_HEATER") == 0) {
-					HAL_GPIO_WritePin(
-						TOP_HEATER1_GPIO_Port, TOP_HEATER1_Pin,
-						(strcmp(value, "ON") == 0) ? GPIO_PIN_SET : (
-							(strcmp(value, "OFF") == 0) ? GPIO_PIN_RESET : HAL_GPIO_ReadPin(TOP_HEATER1_GPIO_Port, TOP_HEATER1_Pin))
-						);
+					GPIO_PinState newState;
+					if (strcmp(value, "ON") == 0) {
+						newState = GPIO_PIN_SET;
+					} else if (strcmp(value, "OFF") == 0) {
+						newState = GPIO_PIN_RESET;
+					} else {
+						newState = HAL_GPIO_ReadPin(TOP_HEATER1_GPIO_Port, TOP_HEATER1_Pin);
+					}
+					// Control both heater pins simultaneously for redundancy/parallel heating
+					HAL_GPIO_WritePin(TOP_HEATER1_GPIO_Port, TOP_HEATER1_Pin, newState);
+					HAL_GPIO_WritePin(TOP_HEATER2_GPIO_Port, TOP_HEATER2_Pin, newState);
 				}
 				else if (strcmp(key, "MANUAL_BOTTOM_HEATER") == 0) {
-					HAL_GPIO_WritePin(
-						BOTTOM_HEATER1_GPIO_Port, BOTTOM_HEATER1_Pin,
-						(strcmp(value, "ON") == 0) ? GPIO_PIN_SET : (
-							(strcmp(value, "OFF") == 0) ? GPIO_PIN_RESET : HAL_GPIO_ReadPin(BOTTOM_HEATER1_GPIO_Port, BOTTOM_HEATER1_Pin)
-						);
-					);
+					GPIO_PinState newState;
+					if (strcmp(value, "ON") == 0) {
+						newState = GPIO_PIN_SET;
+					} else if (strcmp(value, "OFF") == 0) {
+						newState = GPIO_PIN_RESET;
+					} else {
+						newState = HAL_GPIO_ReadPin(BOTTOM_HEATER1_GPIO_Port, BOTTOM_HEATER1_Pin);
+					}
+					// Control both heater pins simultaneously for redundancy/parallel heating
+					HAL_GPIO_WritePin(BOTTOM_HEATER1_GPIO_Port, BOTTOM_HEATER1_Pin, newState);
+					HAL_GPIO_WritePin(BOTTOM_HEATER2_GPIO_Port, BOTTOM_HEATER2_Pin, newState);
 				}
-        osSemaphoreRelease(stateMutexHandle);
+        osMutexRelease(stateMutexHandle);
     }
-    if (osSemaphoreAcquire(configMutexHandle, 1000) == osOK) {
+    if (osMutexAcquire(configMutexHandle, 1000) == osOK) {
 			  // SET CONFIG_OPTIME
 				if (strcmp(key, "CONFIG_OPTIME") == 0) {
 					uint8_t optime = atoi(value);
 					if (optime >= 1 && optime <= 100) {
-						config.optime = optime;
+						config->optime = optime;
 						BalloonConfig_Update(VAR_OPTIME, optime);
 					} else {
 						usb_printf("ERROR: Invalid OPTIME value. Must be between 1 and 100.\r\n");
@@ -214,7 +231,7 @@ void handle_commands(const char *key, const char *value, BalloonConfig_t* config
 				else if (strcmp(key, "CONFIG_COTIME") == 0) {
 					uint8_t cotime = atoi(value);
 					if (cotime >= 1 && cotime <= 100) {
-						config.cotime = cotime;
+						config->cotime = cotime;
 						BalloonConfig_Update(VAR_COTIME, cotime);
 					} else {
 						usb_printf("ERROR: Invalid COTIME value. Must be between 1 and 100.\r\n");
@@ -224,7 +241,7 @@ void handle_commands(const char *key, const char *value, BalloonConfig_t* config
 				else if (strcmp(key, "CONFIG_TOP_TEMP_THRESHOLD") == 0) {
 					uint8_t top_temp = atoi(value);
 					if (top_temp > 50 && top_temp < 200) {
-						config.top_temp_threshold = top_temp;
+						config->top_temp_threshold = top_temp;
 						BalloonConfig_Update(VAR_TOP_TEMP_THRESHOLD, top_temp);
 					} else {
 						usb_printf("ERROR: Invalid TOP_TEMP_THRESHOLD value. Must be between 1 and 100.\r\n");
@@ -234,7 +251,7 @@ void handle_commands(const char *key, const char *value, BalloonConfig_t* config
 				else if (strcmp(key, "CONFIG_BOTTOM_TEMP_THRESHOLD") == 0) {
 					uint8_t bottom_temp = atoi(value);
 					if (bottom_temp > 50 && bottom_temp < 200) {
-						config.bottom_temp_threshold = bottom_temp;
+						config->bottom_temp_threshold = bottom_temp;
 						BalloonConfig_Update(VAR_BOTTOM_TEMP_THRESHOLD, bottom_temp);
 					} else {
 						usb_printf("ERROR: Invalid BOTTOM_TEMP_THRESHOLD value. Must be between 1 and 100.\r\n");
@@ -245,7 +262,7 @@ void handle_commands(const char *key, const char *value, BalloonConfig_t* config
 				else if (strcmp(key, "CONFIG_TEMP1_OFFSET") == 0) {
 					uint8_t top_temp_offset = atoi(value);
 					if (top_temp_offset < 500) {
-						config.top_temp_offset = top_temp_offset;
+						config->top_temp_offset = top_temp_offset;
 						BalloonConfig_Update(VAR_TOP_TEMP_OFFSET, top_temp_offset);
 					} else {
 						usb_printf("ERROR: Invalid TEMP1_OFFSET value. Must be less than 100.\r\n");
@@ -256,7 +273,7 @@ void handle_commands(const char *key, const char *value, BalloonConfig_t* config
 				else if (strcmp(key, "CONFIG_TEMP2_OFFSET") == 0) {
 					uint8_t bottom_temp_offset = atoi(value);
 					if (bottom_temp_offset < 500) {
-						config.bottom_temp_offset = bottom_temp_offset;
+						config->bottom_temp_offset = bottom_temp_offset;
 						BalloonConfig_Update(VAR_BOTTOM_TEMP_OFFSET, bottom_temp_offset);
 					} else {
 						usb_printf("ERROR: Invalid TEMP2_OFFSET value. Must be less than 100.\r\n");
@@ -267,7 +284,7 @@ void handle_commands(const char *key, const char *value, BalloonConfig_t* config
 				else if (strcmp(key, "CONFIG_MAX_TEMP_ERROR") == 0) {
 					uint8_t max_temp_error = atoi(value);
 					if (max_temp_error <= 100) {
-						config.max_temp_error = max_temp_error;
+						config->max_temp_error = max_temp_error;
 						BalloonConfig_Update(VAR_MAX_TEMP_ERROR, max_temp_error);
 					} else {
 						usb_printf("ERROR: Invalid MAX_TEMP_ERROR value. Must be between 0 and 100.\r\n");
@@ -278,7 +295,7 @@ void handle_commands(const char *key, const char *value, BalloonConfig_t* config
 				if (strcmp(key, "RESET") == 0 && strcmp(value, "CONFIG") == 0) {
 					BalloonConfig_ForceReset();
 				}
-				osSemaphoreRelease(configMutexHandle);
+				osMutexRelease(configMutexHandle);
 		}
 }
 
@@ -326,6 +343,16 @@ void process_command(const char *input, BalloonConfig_t* config, BalloonState_t*
 
 						else if (strcmp(key, "VERSION") == 0) {
 							  print_version();
+						}
+						
+						else if (strcmp(key, "OPSTATE") == 0) {
+						    const char* state_names[] = {"STANDBY", "READY", "WELDING", "COOLING"};
+						    usb_printf("Operation State: %s\r\n", state_names[state->op_state]);
+						    if(state->op_state == OP_WELDING) {
+						        usb_printf("  Welding Time: %d / %d seconds\r\n", state->prtime, balloonConfig.optime);
+						    } else if(state->op_state == OP_COOLING) {
+						        usb_printf("  Cooling Time: %d / %d seconds\r\n", state->cltime, balloonConfig.cotime);
+						    }
 						}
         } else {
             usb_printf("ERROR: Invalid GET command format\r\n");

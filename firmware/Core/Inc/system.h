@@ -7,6 +7,11 @@
 #include "flash.h"
 #include "config.h"
 
+// Firmware version
+#define VERSION_MAJOR 1
+#define VERSION_MINOR 0
+#define VERSION_PATCH 0
+
 //config variables within flash
 
 
@@ -50,26 +55,10 @@ typedef enum {
   SEL_NONE = 0,
   SEL_OPTIME = 1,
   SEL_COTIME = 2,
-  SEL_TOP_TEMP = 1,
-  SEL_BOT_TEMP = 2,
-  SEL_TEMP_RESET = 3
+  SEL_TOP_TEMP = 3,
+  SEL_BOT_TEMP = 4,
+  SEL_TEMP_RESET = 5
 } SelectionState_t;
-
-// NTC Constants
-#define NTC1 0.001129148
-#define NTC2 0.000234125
-#define NTC3 0.0000000876741
-
-// Whestone bridge variables for tempreture sensor for better accuracy.
-#define ADC_MAX     52800.0
-#define V_SUPPLY    3.3
-#define R_FIXED     10000.0     // 10kΩ
-#define R0          10000.0     // NTC resistance at 25°C
-#define BETA        3950.0
-#define T0          298.15      // 25°C in Kelvin
-
-
-
 
 // System State Structure
 typedef struct {
@@ -86,6 +75,8 @@ typedef struct {
   bool proximity;
   bool menu_active;
   bool pedal;
+  bool cooling_fan;
+  bool pressure_valve;
 //  uint8_t pedal_lock_cnt;
   uint8_t standby_blink;
   uint32_t menu_timeout;
@@ -102,6 +93,7 @@ typedef struct {
 void MonitorSensors(void);
 void ControlHeater(void);
 void MonitorError(void);
+void HandleOperationStateMachine(void);
 
 void BalloonSystemInit(void);
 

@@ -41,32 +41,33 @@ void StartHeater(void *argument);
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-int counter = 0;
 
-void StartLog(void *argument){
-  EE_Init();
+void StartLog(void *argument) {
   BalloonConfig_Init(); // Load config from EEPROM or set defaults
 
   for (;;) {
-
 		LogCallbackHandler();
 		osDelay(1);
+		HandleOperationStateMachine();  // Handle pedal operation state machine
+		osDelay(1);
 		MonitorError();
-
-    osDelay(1); // Print every 2 seconds
+    osDelay(1);
   }
 }
-void StartSensor(void *argument){for (;;) {
-	MonitorSensors();
-	osDelay(100);
-}};
 
-void StartHeater(void *argument){
+void StartSensor(void *argument) {
 	for (;;) {
-//	ControlHeater();
-		osDelay(1);
-}}
+		MonitorSensors();
+		osDelay(100);
+	}
+}
 
+void StartHeater(void *argument) {
+	for (;;) {
+		ControlHeater();
+		osDelay(100);
+	}
+}
 
 /* USER CODE END PD */
 
@@ -87,24 +88,6 @@ void StartHeater(void *argument){
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
-void StartLog(void *argument){
-  EE_Init();
-  BalloonConfig_Init(); // Load config from EEPROM or set defaults
-
-  for (;;) {
-
-		LogCallbackHandler();
-		osDelay(1);
-		MonitorError();
-
-    osDelay(1); // Print every 2 seconds
-  }
-}
-void StartSensor(void *argument){for (;;) {
-	MonitorSensors();
-	osDelay(1);
-}};
-void StartHeater(void *argument){for (;;) {ControlHeater(); osDelay(100);}};
 
 /* USER CODE END Application */
 
