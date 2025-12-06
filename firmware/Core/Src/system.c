@@ -47,25 +47,34 @@ static inline double compute_ntc_temperature(float v_out_mv)
         return -999.0; // invalid reading
     }
 
-    // Convert voltage to resistance
-    // Vout = Vsupply * Rntc / (Rfixed + Rntc)  <-- assuming Rntc is bottom resistor
-    // OR
-    // Vout = Vsupply * Rfixed / (Rfixed + Rntc) <-- assuming Rfixed is bottom resistor
-    
-    // Based on previous code: r_ntc = R_FIXED * (V_SUPPLY - 2 * v_out) / (V_SUPPLY + 2 * v_out);
-    // That was for a bridge.
-    // The new code: R_ntc = R_FIXED * (ADC_MAX / adc_raw - 1.0);
-    // This implies a simple divider where ADC_MAX/adc_raw = Vsupply/Vout
-    // So Vsupply/Vout = (Rfixed + Rntc) / Rntc  (if Rntc is bottom) -> Rfixed/Rntc + 1 -> Rntc = Rfixed / (Vsupply/Vout - 1)
-    // The user's formula: R_ntc = R_FIXED * (Vsupply/Vout - 1.0)
-    // This implies Vsupply/Vout = Rntc/Rfixed + 1 -> Vsupply/Vout = (Rntc + Rfixed)/Rfixed -> Vout = Vsupply * Rfixed / (Rntc + Rfixed)
-    // So Rfixed is the bottom resistor (across which we measure Vout).
+    // Convert voltage to NTC resistance
+    // Circuit topology (voltage divider):
+    //   VCC (3.3V)
+    //       |
+    //   R_FIXED (10kΩ) - top resistor
+    //       |
+    //       +--- Vout (measured voltage)
+    //       |
+    //   R_NTC - bottom resistor (temperature dependent)
+    //       |
+    //      GND
+    //
+    // Voltage divider formula: Vout = Vsupply * R_NTC / (R_FIXED + R_NTC)
+    // Solving for R_NTC:
+    //   Vout * (R_FIXED + R_NTC) = Vsupply * R_NTC
+    //   Vout * R_FIXED + Vout * R_NTC = Vsupply * R_NTC
+    //   Vout * R_FIXED = Vsupply * R_NTC - Vout * R_NTC
+    //   Vout * R_FIXED = R_NTC * (Vsupply - Vout)
+    //   R_NTC = R_FIXED * Vout / (Vsupply - Vout)
+    //
+    // Rearranging: R_NTC = R_FIXED * (Vsupply/Vout - 1)
     
     double R_ntc = R_FIXED * (V_SUPPLY_MV / v_out_mv - 1.0);
 
     double lnR = log(R_ntc);
 
-    // Steinhart–Hart equation
+    // Steinhart–Hart equation: 1/T = A + B*ln(R) + C*(ln(R))^3
+    // where T is in Kelvin
     double inv_T = NTC_A + NTC_B * lnR + NTC_C * lnR * lnR * lnR;
     double temp_K = 1.0 / inv_T;
 
@@ -124,8 +133,9 @@ double ComputePowerSupplyTemperature(float mv)
 {
     double baseTempC = compute_ntc_temperature(mv);
 
-    // Your calibration constant
-    return baseTempC - 275.15;
+    // No offset needed for power supply temperature sensor
+    // If calibration is required, add a small offset (not 275.15!)
+    return baseTempC;
 }
 
 
