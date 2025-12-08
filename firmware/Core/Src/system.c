@@ -100,11 +100,13 @@ double ComputeTopHeaterTemperature(float mv)
 
     double offset = 0;
     if (osMutexAcquire(configMutexHandle, osWaitForever) == osOK) {
-        offset = balloonConfig.top_temp_offset;
+        // Interpret offset as signed int8_t (-128 to +127)
+        int8_t signed_offset = (int8_t)balloonConfig.top_temp_offset;
+        offset = (double)signed_offset;
         osMutexRelease(configMutexHandle);
     }
 
-    return baseTempC - offset;
+    return baseTempC + offset;
 }
 
 double ComputeBottomHeaterTemperature(float mv)
@@ -113,19 +115,21 @@ double ComputeBottomHeaterTemperature(float mv)
 
     double offset = 0;
     if (osMutexAcquire(configMutexHandle, osWaitForever) == osOK) {
-        offset = balloonConfig.bottom_temp_offset;
+        // Interpret offset as signed int8_t (-128 to +127)
+        int8_t signed_offset = (int8_t)balloonConfig.bottom_temp_offset;
+        offset = (double)signed_offset;
         osMutexRelease(configMutexHandle);
     }
 
-    return baseTempC - offset;
+    return baseTempC + offset;
 }
 
 double ComputePowerSupplyTemperature(float mv)
 {
     double baseTempC = compute_ntc_temperature(mv);
 
-    // Your calibration constant
-    return baseTempC - 275.15;
+    // No offset applied for power supply temperature
+    return baseTempC;
 }
 
 
@@ -313,7 +317,7 @@ void ControlHeater(void){
 	  HAL_GPIO_WritePin(BOTTOM_HEATER2_GPIO_Port, BOTTOM_HEATER2_Pin, GPIO_PIN_RESET);
 	}
 
-	// If either of the heater tempretures is above threshold, enable cooling fan
+	// If either of the heater temperatures is above threshold, enable cooling fan
 	if(
 		(balloonState.temp1 > balloonConfig.top_temp_threshold) ||
 		(balloonState.temp2 > balloonConfig.bottom_temp_threshold)

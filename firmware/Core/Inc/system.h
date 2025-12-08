@@ -60,7 +60,7 @@ typedef enum {
 #define NTC2 0.000234125
 #define NTC3 0.0000000876741
 
-// Whestone bridge variables for tempreture sensor for better accuracy.
+// Wheatstone bridge variables for temperature sensor for better accuracy.
 #define ADC_MAX     52800.0
 #define V_SUPPLY    3.3
 #define R_FIXED     10000.0     // 10kΩ
