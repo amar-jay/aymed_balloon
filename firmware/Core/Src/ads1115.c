@@ -93,7 +93,7 @@ HAL_StatusTypeDef ads1115_read_single_ended(ADS1115_HandleTypeDef *ads,
 
   // convert_raw_to_mv - cast to int16_t for proper signed conversion
   *mv = (int16_t)raw_buf *
-        _get_pga_coefficients(ADS1115_PGA_2_048V);
+        _get_pga_coefficients(ads->pga_coeff);
 
   return HAL_OK;
 }
