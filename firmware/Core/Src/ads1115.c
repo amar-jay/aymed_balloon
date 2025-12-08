@@ -91,8 +91,8 @@ HAL_StatusTypeDef ads1115_read_single_ended(ADS1115_HandleTypeDef *ads,
   if (ads1115_read_raw(ads, mux, &raw_buf) != HAL_OK)
     return HAL_ERROR;
 
-  // convert_raw_to_mv
-  *mv = (raw_buf) *
+  // convert_raw_to_mv - cast to int16_t for proper signed conversion
+  *mv = (int16_t)raw_buf *
         _get_pga_coefficients(ADS1115_PGA_2_048V);
 
   return HAL_OK;
