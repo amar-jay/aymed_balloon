@@ -64,6 +64,11 @@ void StartLog(void *argument){
   for (;;) {
 		LogCallbackHandler();
 		osDelay(1);
+		ManageOperation();
+		osDelay(1);
+		MonitorError();
+
+    osDelay(1); //
   }
 }
 

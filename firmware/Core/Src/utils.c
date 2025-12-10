@@ -137,6 +137,10 @@ void print_status(BalloonState_t* state) {
 
         data.pedalActive = state->pedal;
         data.proximityActive = state->proximity;
+<<<<<<< HEAD
+=======
+        // data.menuActive = state->menu_active;
+>>>>>>> 577963cc7c8b368c95b809dc43204b32bc79439e
         data.powerSupplyVoltage = (float)state->vcc;
 
         osMutexRelease(stateMutexHandle);

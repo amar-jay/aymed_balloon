@@ -26,17 +26,6 @@ typedef enum {
   ERR_PEDAL_LOCKED = 11
 } ErrorCode_t;
 
-// Menu States
-typedef enum {
-  MENU_MAIN = 0,
-  MENU_HEATER_TEMP = 1,
-  MENU_FACTORY_SETTINGS = 2,
-  MENU_SYSTEM_ERROR = 3,
-  MENU_SYSTEM_SETTINGS4 = 4,
-  MENU_SYSTEM_SETTINGS = 6,
-  MENU_SYSTEM_SETTINGS2 = 7
-} MenuState_t;
-
 // Operation States
 typedef enum {
   OP_STANDBY = 0,
@@ -44,16 +33,6 @@ typedef enum {
   OP_WELDING = 2,
   OP_COOLING = 3
 } OperationState_t;
-
-// Menu Selection State
-typedef enum {
-  SEL_NONE = 0,
-  SEL_OPTIME = 1,
-  SEL_COTIME = 2,
-  SEL_TOP_TEMP = 1,
-  SEL_BOT_TEMP = 2,
-  SEL_TEMP_RESET = 3
-} SelectionState_t;
 
 // NTC Constants
 #define NTC1 0.001129148
@@ -73,24 +52,23 @@ typedef enum {
 
 // System State Structure
 typedef struct {
-  OperationState_t op_state;
-  MenuState_t menu_state;
-  SelectionState_t selection;
-  ErrorCode_t error;
-  uint8_t prtime;
-  uint8_t cltime;
-  int16_t temp1;
-  int16_t temp2;
-  int16_t temp3;
-  uint16_t vcc;
-  bool proximity;
-  bool menu_active;
-  bool pedal;
-  bool cooling_fan;
-  bool pressure_valve;
-//  uint8_t pedal_lock_cnt;
-  uint8_t standby_blink;
-  uint32_t menu_timeout;
+  OperationState_t op_state; // Current operation state (standby, ready, welding, cooling)
+  // MenuState_t menu_state;
+  ErrorCode_t error; // Current error code
+  uint8_t prtime; // current pressure time
+  uint8_t cltime; // current cooling time
+  int16_t temp1; // Top heater temperature
+  int16_t temp2; // Bottom heater temperature
+  int16_t temp3; // Power supply temperature
+  uint16_t vcc; // Supply voltage
+  bool proximity; // Proximity sensor state
+  // bool menu_active;
+  bool pedal; // Pedal state (Input)
+  bool cooling_fan; // Cooling fan state (Output)
+  bool pressure_valve; // Pressure valve state (Output)
+
+ 	uint8_t pedal_lock_cnt; // Pedal lock counter
+  uint8_t standby_blink; // Standby blink counter
 
   ADS1115_HandleTypeDef *ads1115;
 } BalloonState_t;
@@ -104,6 +82,8 @@ typedef struct {
 void MonitorSensors(void);
 void ControlHeater(void);
 void MonitorError(void);
+void ManageOperation(void);
+
 
 void BalloonSystemInit(void);
 
