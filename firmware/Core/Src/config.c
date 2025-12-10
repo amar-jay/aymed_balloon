@@ -81,14 +81,14 @@ void BalloonConfig_Init(void) {
             balloonConfig.cotime                = 5;
             balloonConfig.top_temp_threshold    = 110;
             balloonConfig.bottom_temp_threshold = 110;
-            balloonConfig.top_temp_offset       = 43;
-            balloonConfig.bottom_temp_offset    = 28;
+            balloonConfig.top_temp_offset       = 0;
+            balloonConfig.bottom_temp_offset    = 0;
             balloonConfig.menu_reset_delay      = 15;
             balloonConfig.time_calibration      = 100;
             balloonConfig.max_temp_error        = 150;
             balloonConfig.vcc_voltage_error     = 24;
             balloonConfig.power_temp_error      = 40;
-            balloonConfig.power_vcc_error       = 0;
+            balloonConfig.power_vcc_error       = 28;
             balloonConfig.sys_error             = 0;
             balloonConfig.voltage_calibration   = 125;
             balloonConfig.heater_error_enable   = 5;

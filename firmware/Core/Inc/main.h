@@ -65,7 +65,7 @@ void Error_Handler(void);
 #define BUTTON_RIGHT_GPIO_Port GPIOA
 #define BUTTON_OK_Pin GPIO_PIN_3
 #define BUTTON_OK_GPIO_Port GPIOA
-#define PROXIMITY_SENSOR_Pin GPIO_PIN_4
+#define PROXIMITY_SENSOR_Pin GPIO_PIN_5
 #define PROXIMITY_SENSOR_GPIO_Port GPIOA
 #define MCU_NTC1_Pin GPIO_PIN_4
 #define MCU_NTC1_GPIO_Port GPIOC

@@ -137,12 +137,11 @@ void print_status(BalloonState_t* state) {
 
         data.pedalActive = state->pedal;
         data.proximityActive = state->proximity;
-<<<<<<< HEAD
-=======
-        // data.menuActive = state->menu_active;
->>>>>>> 577963cc7c8b368c95b809dc43204b32bc79439e
-        data.powerSupplyVoltage = (float)state->vcc;
 
+        // data.menuActive = state->menu_active;
+        data.powerSupplyVoltage = (float)(state->vcc / 1000);
+        data.coolingTime = state->cltime;
+        data.weldingTime = state->prtime;
         osMutexRelease(stateMutexHandle);
     }
 
@@ -267,6 +266,7 @@ void handle_commands(const char *key, const char *value, BalloonConfig_t* config
 					if (optime >= 1 && optime <= 100) {
 						config->optime = optime;
 						BalloonConfig_Update(VAR_OPTIME, optime);
+		                usb_printf("ACK\r\n");
 					} else {
 						usb_printf("ERROR: Invalid OPTIME value. Must be between 1 and 100.\r\n");
 					}
@@ -277,6 +277,7 @@ void handle_commands(const char *key, const char *value, BalloonConfig_t* config
 					if (cotime >= 1 && cotime <= 100) {
 						config->cotime = cotime;
 						BalloonConfig_Update(VAR_COTIME, cotime);
+		                usb_printf("ACK\r\n");
 					} else {
 						usb_printf("ERROR: Invalid COTIME value. Must be between 1 and 100.\r\n");
 					}
@@ -284,9 +285,10 @@ void handle_commands(const char *key, const char *value, BalloonConfig_t* config
 				// SET CONFIG_TOP_TEMP_THRESHOLD
 				else if (strcmp(key, "CONFIG_TOP_TEMP_THRESHOLD") == 0) {
 					uint8_t top_temp = atoi(value);
-					if (top_temp > 50 && top_temp < 200) {
+					if (top_temp > 50 && top_temp < 400) {
 						config->top_temp_threshold = top_temp;
 						BalloonConfig_Update(VAR_TOP_TEMP_THRESHOLD, top_temp);
+		                usb_printf("ACK\r\n");
 					} else {
 						usb_printf("ERROR: Invalid TOP_TEMP_THRESHOLD value. Must be between 1 and 100.\r\n");
 					}
@@ -294,31 +296,36 @@ void handle_commands(const char *key, const char *value, BalloonConfig_t* config
 				// SET CONFIG_BOTTOM_TEMP_THRESHOLD
 				else if (strcmp(key, "CONFIG_BOTTOM_TEMP_THRESHOLD") == 0) {
 					uint8_t bottom_temp = atoi(value);
-					if (bottom_temp > 50 && bottom_temp < 200) {
+					if (bottom_temp > 50 && bottom_temp < 400) {
 						config->bottom_temp_threshold = bottom_temp;
 						BalloonConfig_Update(VAR_BOTTOM_TEMP_THRESHOLD, bottom_temp);
+		                usb_printf("ACK\r\n");
 					} else {
 						usb_printf("ERROR: Invalid BOTTOM_TEMP_THRESHOLD value. Must be between 1 and 100.\r\n");
 					}
 				}
 
 				// SET CONFIG_TEMP1_OFFSET
-				else if (strcmp(key, "CONFIG_TEMP1_OFFSET") == 0) {
+				else if (strcmp(key, "CONFIG_TOP_TEMP_OFFSET") == 0) {
 					uint8_t top_temp_offset = atoi(value);
 					if (top_temp_offset < 500) {
 						config->top_temp_offset = top_temp_offset;
 						BalloonConfig_Update(VAR_TOP_TEMP_OFFSET, top_temp_offset);
+						osDelay(1);
+		                usb_printf("ACK\r\n");
 					} else {
 						usb_printf("ERROR: Invalid TEMP1_OFFSET value. Must be less than 100.\r\n");
 					}
 				}
 
 				// SET CONFIG_TEMP2_OFFSET
-				else if (strcmp(key, "CONFIG_TEMP2_OFFSET") == 0) {
+				else if (strcmp(key, "CONFIG_BOTTOM_TEMP_OFFSET") == 0) {
 					uint8_t bottom_temp_offset = atoi(value);
 					if (bottom_temp_offset < 500) {
 						config->bottom_temp_offset = bottom_temp_offset;
 						BalloonConfig_Update(VAR_BOTTOM_TEMP_OFFSET, bottom_temp_offset);
+						osDelay(1);
+						usb_printf("ACK\r\n");
 					} else {
 						usb_printf("ERROR: Invalid TEMP2_OFFSET value. Must be less than 100.\r\n");
 					}
@@ -330,6 +337,7 @@ void handle_commands(const char *key, const char *value, BalloonConfig_t* config
 					if (max_temp_error <= 100) {
 						config->max_temp_error = max_temp_error;
 						BalloonConfig_Update(VAR_MAX_TEMP_ERROR, max_temp_error);
+		                usb_printf("ACK\r\n");
 					} else {
 				usb_printf("ERROR: Invalid MAX_TEMP_ERROR value. Must be between 0 and 100.\r\n");
 			}
@@ -365,7 +373,7 @@ void process_command(const char *input, BalloonConfig_t* config, BalloonState_t*
     	if (sscanf(input + 4, "%31s", key) == 1) {
             // if its config print config
             if (strcmp(key, "CONFIG") == 0) {
-            	usb_printf("DEBUG: Printing Config\r\n");
+//            	usb_printf("DEBUG: Printing Config\r\n");
                 print_config(config);
             }
             // set config reset
