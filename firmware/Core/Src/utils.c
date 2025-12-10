@@ -92,7 +92,7 @@ void print_status(BalloonState_t* state) {
 
         data.pedalActive = state->pedal;
         data.proximityActive = state->proximity;
-        data.menuActive = state->menu_active;
+        // data.menuActive = state->menu_active;
         data.powerSupplyVoltage = (float)state->vcc;
 
         osSemaphoreRelease(stateMutexHandle);

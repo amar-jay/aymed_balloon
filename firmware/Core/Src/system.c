@@ -27,7 +27,6 @@ BalloonState_t balloonState;
 extern UART_HandleTypeDef huart4;
 extern ADC_HandleTypeDef hadc2;
 
-extern osSemaphoreId_t uartSemaphoreHandle;
 extern osMutexId_t configMutexHandle;
 extern osMutexId_t stateMutexHandle;
 
@@ -369,13 +368,149 @@ void MonitorError(void) {
 
       // If error detected and system error checking is enabled
       if(balloonState.error != ERR_NONE && balloonConfig.sys_error == 0) {
-        balloonState.menu_active = true;
-        balloonState.menu_state = MENU_SYSTEM_ERROR;
+        // balloonState.menu_active = true;
+        // balloonState.menu_state = MENU_SYSTEM_ERROR;
         balloonState.op_state = OP_STANDBY;
         PrintError(balloonState.error);
         BuzzerBeep(750, 1);
       }
     }
+    osMutexRelease(configMutexHandle);
+    osMutexRelease(stateMutexHandle);
+}
+
+static uint8_t last_pedal_state = 1;  // 1 = released
+static uint32_t operation_start_time = 0;
+void ManageOperation(void) {
+    uint32_t elapsed;  // Declare at function scope to avoid shadowing
+
+    if(osMutexAcquire(stateMutexHandle, 100) != osOK) {
+        return; // Cannot acquire, skip this iteration
+    }
+
+    if(osMutexAcquire(configMutexHandle, 100) != osOK) {
+        osMutexRelease(stateMutexHandle); // Release first mutex
+        return; // Cannot acquire, skip this iteration
+    }
+    
+    uint32_t current_time = HAL_GetTick();
+    uint8_t pedal = balloonState.pedal;
+    uint8_t proximity = balloonState.proximity;
+
+    
+    switch(balloonState.op_state) {
+        case OP_STANDBY:
+            // Blink standby indicator
+            balloonState.standby_blink++;
+            if(balloonState.standby_blink > 20) {
+                balloonState.standby_blink = 0;
+            }
+            
+            // Check for pedal press to enter READY state
+            if(pedal == 0 && last_pedal_state == 1) {  // Pedal pressed (falling edge)
+                balloonState.op_state = OP_READY;
+                balloonState.standby_blink = 0;
+                BuzzerBeep(100, 8);  // 8 short beeps
+                usb_printf("STATE: READY\r\n");
+            }
+            break;
+            
+        case OP_READY:
+            // Monitor pedal for pressure valve control
+            if(pedal == 0) {  // Pedal pressed
+                HAL_GPIO_WritePin(PRESSURE_VALVE_GPIO_Port, PRESSURE_VALVE_Pin, GPIO_PIN_SET);
+                balloonState.pedal_lock_cnt++;
+                
+                // Check for pedal lock error (pressed too long without proximity)
+                if(balloonState.pedal_lock_cnt > 25 && proximity == 1) {
+                    balloonState.error = ERR_PEDAL_LOCKED;
+                    balloonState.op_state = OP_STANDBY;
+                    usb_printf("ERROR: Pedal locked. Cathater undetected!.\r\n");
+                    BuzzerBeep(100, 24);  // Long error beep
+                    balloonState.pedal_lock_cnt = 0;
+                }
+                
+                // Start welding if proximity sensor detects material
+                if(proximity == 0) {  // Proximity active (material detected)
+                    balloonState.op_state = OP_WELDING;
+                    balloonState.prtime = 0;
+                    operation_start_time = current_time;
+                    BuzzerBeep(100, 1);  // Single beep to start welding
+                    usb_printf("STATE: WELDING (optime=%d seconds)\r\n", balloonConfig.optime);
+                }
+            } else {  // Pedal released
+                HAL_GPIO_WritePin(PRESSURE_VALVE_GPIO_Port, PRESSURE_VALVE_Pin, GPIO_PIN_RESET);
+                balloonState.pedal_lock_cnt = 0;
+            }
+            
+            // Return to standby if menu button or specific condition
+            // (Menu button handling would be integrated here if available)
+            break;
+            
+        case OP_WELDING:
+            // Keep pressure valve active during welding
+            HAL_GPIO_WritePin(PRESSURE_VALVE_GPIO_Port, PRESSURE_VALVE_Pin, GPIO_PIN_SET);
+            
+            // Update operation time counter
+            elapsed = (current_time - operation_start_time) / 1000;  // Convert to seconds
+            balloonState.prtime = (uint8_t)(elapsed > 255 ? 255 : elapsed);
+            
+            // Check if operation time has elapsed
+            if(balloonState.prtime >= balloonConfig.optime) {
+                HAL_GPIO_WritePin(PRESSURE_VALVE_GPIO_Port, PRESSURE_VALVE_Pin, GPIO_PIN_RESET);
+                balloonState.op_state = OP_COOLING;
+                balloonState.cltime = 0;
+                operation_start_time = current_time;
+                BuzzerBeep(250, 1);  // Beep to indicate cooling start
+                usb_printf("STATE: COOLING (cotime=%d seconds)\r\n", balloonConfig.cotime);
+            }
+            break;
+            
+        case OP_COOLING:
+            // Activate cooling fan
+            HAL_GPIO_WritePin(COOLER_FAN_GPIO_Port, COOLER_FAN_Pin, GPIO_PIN_SET);
+            
+            // Update cooling time counter
+            elapsed = (current_time - operation_start_time) / 1000;  // Convert to seconds
+            balloonState.cltime = (uint8_t)(elapsed > 255 ? 255 : elapsed);
+            
+            // Check if cooling time has elapsed
+            if(balloonState.cltime >= balloonConfig.cotime) {
+                HAL_GPIO_WritePin(COOLER_FAN_GPIO_Port, COOLER_FAN_Pin, GPIO_PIN_RESET);
+                balloonState.op_state = OP_READY;
+                balloonState.cltime = 0;
+                usb_printf("STATE: READY (cooling complete)\r\n");
+                
+                // Check if pedal is still pressed (error condition)
+                // Release mutexes before waiting to avoid deadlock
+                if(pedal == 0) {
+                    usb_printf("ERROR: Pedal locked after cooling\r\n");
+                    BuzzerBeep(100, 24);  // Long error beep
+                    
+                    // Release mutexes before waiting loop to avoid deadlock
+                    osMutexRelease(configMutexHandle);
+                    osMutexRelease(stateMutexHandle);
+                    
+                    // Wait for pedal release with timeout (max 5 seconds)
+                    uint32_t wait_start = HAL_GetTick();
+                    while(HAL_GPIO_ReadPin(PEDAL_SWITCH_GPIO_Port, PEDAL_SWITCH_Pin) == 0) {
+                        osDelay(10);  // Wait for pedal release
+                        if((HAL_GetTick() - wait_start) > 5000) {
+                            usb_printf("WARNING: Pedal still pressed after 5s timeout\r\n");
+                            break;  // Timeout to prevent infinite loop
+                        }
+                    }
+                    
+                    // No need to re-acquire mutexes, just exit
+                    // last_pedal_state will be updated on next call
+                    return;  // Exit function, mutexes already released
+                }
+            }
+            break;
+    }
+    
+    last_pedal_state = pedal;
+    
     osMutexRelease(configMutexHandle);
     osMutexRelease(stateMutexHandle);
 }

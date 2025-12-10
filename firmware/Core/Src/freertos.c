@@ -69,9 +69,11 @@ void StartLog(void *argument){
 
 		LogCallbackHandler();
 		osDelay(1);
+		ManageOperation();
+		osDelay(1);
 		MonitorError();
 
-    osDelay(1); // Print every 2 seconds
+    osDelay(1); //
   }
 }
 void StartSensor(void *argument){for (;;) {

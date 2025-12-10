@@ -59,21 +59,21 @@ const osThreadAttr_t defaultTask_attributes = {
 osThreadId_t logTaskHandle;
 const osThreadAttr_t logTask_attributes = {
   .name = "logTask",
-  .stack_size = 128 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for sensorTask */
 osThreadId_t sensorTaskHandle;
 const osThreadAttr_t sensorTask_attributes = {
   .name = "sensorTask",
-  .stack_size = 128 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal2,
 };
 /* Definitions for heaterTask */
 osThreadId_t heaterTaskHandle;
 const osThreadAttr_t heaterTask_attributes = {
   .name = "heaterTask",
-  .stack_size = 128 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal1,
 };
 /* Definitions for configMutex */
