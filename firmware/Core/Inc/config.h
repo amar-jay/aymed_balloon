@@ -40,7 +40,7 @@ typedef struct {
   uint8_t bottom_temp_offset;
   uint8_t menu_reset_delay;
   uint8_t time_calibration;
-  uint8_t max_temp_error;
+  uint16_t max_temp_error;
   uint8_t vcc_voltage_error;
   uint8_t power_temp_error;
   uint8_t power_vcc_error;
@@ -58,7 +58,7 @@ void BalloonConfig_Init(void);
 void BalloonConfig_ForceReset(void);
 void BalloonConfig_Load(void);
 void BalloonConfig_SaveAll(void);
-void BalloonConfig_Update(uint16_t varID, uint8_t value);
+void BalloonConfig_Update(uint16_t varID, uint16_t value);
 uint8_t BalloonConfig_Validate(void);
 
 #endif /* INC_CONFIG_H_ */

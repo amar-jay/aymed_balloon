@@ -86,13 +86,11 @@ float ReadInternalADC(uint32_t channel) {
 
     HAL_ADC_Start(&hadc2);
     if (HAL_ADC_PollForConversion(&hadc2, 100) == HAL_OK) {
-        uint32_t raw = HAL_ADC_GetValue(&hadc2);
-        return (raw * 3.3f) / 4096.0f * 1000.0f; // convert to mV
+        return (HAL_ADC_GetValue(&hadc2) * 3.3f) / 4096.0f * 1000.0f; // convert to mV
     }
     return -1.0f;
 }
 
-static ADS1115_HandleTypeDef ads1115_instance;
 
 double ComputeTopHeaterTemperature(float mv)
 {
@@ -101,6 +99,7 @@ double ComputeTopHeaterTemperature(float mv)
     double offset = 0;
     if (osMutexAcquire(configMutexHandle, osWaitForever) == osOK) {
         offset = balloonConfig.top_temp_offset;
+
         osMutexRelease(configMutexHandle);
     }
 
@@ -114,6 +113,7 @@ double ComputeBottomHeaterTemperature(float mv)
     double offset = 0;
     if (osMutexAcquire(configMutexHandle, osWaitForever) == osOK) {
         offset = balloonConfig.bottom_temp_offset;
+
         osMutexRelease(configMutexHandle);
     }
 
@@ -139,58 +139,19 @@ void BuzzerBeep(uint16_t duration_ms, uint16_t count) {
   }
 }
 
-void PrintError(ErrorCode_t code) {
-    switch (code) {
-        case ERR_NONE:
-            break;
-        case ERR_TOP_HEATER_NTC:
-            usb_printf("ERROR: Top heater NTC sensor fault.\r\n");
-            break;
-        case ERR_BOTTOM_HEATER_NTC:
-            usb_printf("ERROR: Bottom heater NTC sensor fault.\r\n");
-            break;
-        case ERR_POWER_SUPPLY_NTC:
-            usb_printf("ERROR: Power supply NTC sensor fault.\r\n");
-            break;
-        case ERR_POWER_SUPPLY_HIGH_TEMP:
-            usb_printf("ERROR: Power supply temperature too high.\r\n");
-            break;
-        case ERR_LOW_VOLTAGE:
-            usb_printf("ERROR: Input voltage too low.\r\n");
-            break;
-        case ERR_HIGH_VOLTAGE:
-            usb_printf("ERROR: Input voltage too high.\r\n");
-            break;
-        case ERR_TOP_HEATER_HIGH_TEMP:
-            usb_printf("ERROR: Top heater temperature too high.\r\n");
-            break;
-        case ERR_BOTTOM_HEATER_HIGH_TEMP:
-            usb_printf("ERROR: Bottom heater temperature too high.\r\n");
-            break;
-        case ERR_TOP_HEATER_HEATING:
-            usb_printf("ERROR: Top heater failed to heat properly.\r\n");
-            break;
-        case ERR_BOTTOM_HEATER_HEATING:
-            usb_printf("ERROR: Bottom heater failed to heat properly.\r\n");
-            break;
-        case ERR_PEDAL_LOCKED:
-            usb_printf("ERROR: Pedal is locked or not responding.\r\n");
-            break;
-        default:
-            usb_printf("Unknown error code.\r\n");
-            break;
-    }
-}
-
 
 // -------------------------------------------
 void MonitorSensors(void) {
-    float value;
+
 
     // --- Local variables to store all results BEFORE taking mutex ---
+    float value;
+    float mv;
+
     int16_t temp1 = 0;
     int16_t temp2 = 0;
     int16_t temp3 = 0;
+
     uint16_t vcc  = 0;
     uint8_t  proximity = 0;
     uint8_t  pedal     = 0;
@@ -199,14 +160,18 @@ void MonitorSensors(void) {
 
     uint8_t use_internal = 0;
     if (osMutexAcquire(configMutexHandle, 100) == osOK) {
+        // usb_printf("MS DEBUG: Internal ADC: %d\r\n", balloonConfig.use_internal_adc);
         use_internal = balloonConfig.use_internal_adc;
         osMutexRelease(configMutexHandle);
     }
-
+    
     // --- Sensor reads: prefer internal ADC if enabled, else ADS1115 ---
+    static uint32_t last_i2c_error = 0;
+    uint8_t i2c_error_occurred = 0;
+
     // Temp1
     if (use_internal) {
-        float mv = ReadInternalADC(ADC_CHANNEL_14);
+        mv = ReadInternalADC(ADC_CHANNEL_14);
         if (mv > 0) temp1 = (int16_t)ComputeTopHeaterTemperature(mv);
         else temp1 = 0; // invalid
     } else if (balloonState.ads1115 == NULL) {
@@ -214,12 +179,13 @@ void MonitorSensors(void) {
     } else if (ads1115_read_P0NG(balloonState.ads1115, &value) == HAL_OK) {
         temp1 = (int16_t)ComputeTopHeaterTemperature(value);
     } else {
-        temp1 = 0; // invalid
+        temp1 = 0; 
+        i2c_error_occurred = 1;
     }
 
     // Temp2
     if (use_internal) {
-        float mv = ReadInternalADC(ADC_CHANNEL_15);
+        mv = ReadInternalADC(ADC_CHANNEL_15);
         if (mv > 0) temp2 = (int16_t)ComputeBottomHeaterTemperature(mv);
         else temp2 = 0; // invalid
     } else if (balloonState.ads1115 == NULL) {
@@ -227,12 +193,13 @@ void MonitorSensors(void) {
     } else if (ads1115_read_P1NG(balloonState.ads1115, &value) == HAL_OK) {
         temp2 = (int16_t)ComputeBottomHeaterTemperature(value);
     } else {
-        temp2 = 0; // invalid
+        temp2 = 0; 
+        i2c_error_occurred = 1;
     }
 
     // Temp3
     if (use_internal) {
-        float mv = ReadInternalADC(ADC_CHANNEL_8);
+        mv = ReadInternalADC(ADC_CHANNEL_8);
         if (mv > 0) temp3 = (int16_t)ComputePowerSupplyTemperature(mv);
         else temp3 = 0; // invalid
     } else if (balloonState.ads1115 == NULL) {
@@ -240,12 +207,13 @@ void MonitorSensors(void) {
     } else if (ads1115_read_P2NG(balloonState.ads1115, &value) == HAL_OK) {
         temp3 = (int16_t)ComputePowerSupplyTemperature(value);
     } else {
-        temp3 = 0; // invalid
+        temp3 = 0; 
+        i2c_error_occurred = 1;
     }
 
     // VCC
     if (use_internal) {
-        float mv = ReadInternalADC(ADC_CHANNEL_9);
+        mv = ReadInternalADC(ADC_CHANNEL_9);
         if (mv > 0) vcc = (uint16_t)(mv / 3.3 * 100); // rough conversion
         else vcc = 0;
     } else if (balloonState.ads1115 == NULL) {
@@ -254,31 +222,34 @@ void MonitorSensors(void) {
         vcc = (uint16_t)value;
     } else {
         vcc = 0;
+        i2c_error_occurred = 1;
+    }
+
+    if (!use_internal && i2c_error_occurred && (HAL_GetTick() - last_i2c_error > 2000)) {
+        usb_printf("ERROR: I2C/Sensor Read Fault\r\n");
+        last_i2c_error = HAL_GetTick();
     }
 
     // --- GPIO reads (also no mutex needed yet) ---
-    proximity = HAL_GPIO_ReadPin(PROXIMITY_SENSOR_GPIO_Port, PROXIMITY_SENSOR_Pin);
-    pedal     = HAL_GPIO_ReadPin(PEDAL_SWITCH_GPIO_Port,  PEDAL_SWITCH_Pin);
-		pressure_valve = HAL_GPIO_ReadPin(PRESSURE_VALVE_GPIO_Port, PRESSURE_VALVE_Pin);
-		cooling_fan   = HAL_GPIO_ReadPin(COOLER_FAN_GPIO_Port, COOLER_FAN_Pin);
+    proximity		= HAL_GPIO_ReadPin(PROXIMITY_SENSOR_GPIO_Port, PROXIMITY_SENSOR_Pin);
+    pedal     		= HAL_GPIO_ReadPin(PEDAL_SWITCH_GPIO_Port,  PEDAL_SWITCH_Pin);
+	pressure_valve	= HAL_GPIO_ReadPin(PRESSURE_VALVE_GPIO_Port, PRESSURE_VALVE_Pin);
+	cooling_fan		= HAL_GPIO_ReadPin(COOLER_FAN_GPIO_Port, COOLER_FAN_Pin);
 
     // --- NOW do a SINGLE SHORT mutex-protected update ---
     osMutexAcquire(stateMutexHandle, osWaitForever);
-
+    
     balloonState.temp1 = temp1;
     balloonState.temp2 = temp2;
     balloonState.temp3 = temp3;
     balloonState.vcc   = vcc;
     balloonState.proximity = proximity;
     balloonState.pedal     = pedal;
-		balloonState.cooling_fan = cooling_fan;
-		balloonState.pressure_valve = pressure_valve;
+	balloonState.cooling_fan = cooling_fan;
+	balloonState.pressure_valve = pressure_valve;
 
     osMutexRelease(stateMutexHandle);
 
-    // --- Printing outside the lock ---
-    usb_printf("DEBUG: T1:%d T2:%d T3:%d V:%d Prox:%d Ped:%d CF:%d PV:%d\r\n",
-             temp1, temp2, temp3, vcc, proximity, pedal, cooling_fan, pressure_valve);
     osDelay(10);
 }
 
@@ -313,7 +284,7 @@ void ControlHeater(void){
 	  HAL_GPIO_WritePin(BOTTOM_HEATER2_GPIO_Port, BOTTOM_HEATER2_Pin, GPIO_PIN_RESET);
 	}
 
-	// If either of the heater tempretures is above threshold, enable cooling fan
+	// If either of the heater's temperatures is above threshold, enable cooling fan
 	if(
 		(balloonState.temp1 > balloonConfig.top_temp_threshold) ||
 		(balloonState.temp2 > balloonConfig.bottom_temp_threshold)
@@ -344,7 +315,7 @@ void MonitorError(void) {
       // Temperature sensor errors
       if(balloonState.temp1 < 1) balloonState.error = ERR_TOP_HEATER_NTC;
       else if(balloonState.temp2 < 1) balloonState.error = ERR_BOTTOM_HEATER_NTC;
-      else if(balloonState.temp3 < 1) balloonState.error = ERR_POWER_SUPPLY_NTC;
+//      else if(balloonState.temp3 < 1) balloonState.error = ERR_POWER_SUPPLY_NTC;
 
       // Temperature limit errors
       else if(balloonState.temp1 > balloonConfig.max_temp_error) balloonState.error = ERR_TOP_HEATER_HIGH_TEMP;
@@ -372,10 +343,11 @@ void MonitorError(void) {
         balloonState.menu_active = true;
         balloonState.menu_state = MENU_SYSTEM_ERROR;
         balloonState.op_state = OP_STANDBY;
-        PrintError(balloonState.error);
+        print_error(balloonState.error);
         BuzzerBeep(750, 1);
       }
     }
+    // usb_printf("ME DEBUG\r\n");
     osMutexRelease(configMutexHandle);
     osMutexRelease(stateMutexHandle);
 }
@@ -391,7 +363,7 @@ uint8_t rx_byte = 0;   // the only RX byte variable
 // Build line buffer and process commands
 void LogCallbackHandler()
 {
-	  while (HAL_UART_Receive(&huart4, &rx_byte, 1, 10) == HAL_OK)
+	  while (HAL_UART_Receive(&huart4, &rx_byte, 1, 5) == HAL_OK)
 	  {
 			if (rx_byte == '\n' || rx_byte == '\r')
 			{
@@ -405,10 +377,12 @@ void LogCallbackHandler()
 				rx_line[rx_index++] = rx_byte;
 			}
 	  }
+    //   usb_printf("LCH DEBUG\r\n");
 }
 
 
 // Initialize the system and start RX interrupt
+static ADS1115_HandleTypeDef ads1115_instance;
 void BalloonSystemInit(void)
 {
     BalloonConfig_Init();

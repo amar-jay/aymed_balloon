@@ -76,15 +76,13 @@ void BalloonConfig_Init(void) {
         // Note: We access Flash directly like memory
         if (flashConfig->first_boot != CONFIG_MAGIC_VAL) {
             
-            usb_printf("Config uninitialized. Writing defaults...\r\n");
-
             // --- SET DEFAULTS ---
             balloonConfig.optime                = 10;
             balloonConfig.cotime                = 5;
             balloonConfig.top_temp_threshold    = 110;
             balloonConfig.bottom_temp_threshold = 110;
-            balloonConfig.top_temp_offset       = 0;
-            balloonConfig.bottom_temp_offset    = 0;
+            balloonConfig.top_temp_offset       = 43;
+            balloonConfig.bottom_temp_offset    = 28;
             balloonConfig.menu_reset_delay      = 15;
             balloonConfig.time_calibration      = 100;
             balloonConfig.max_temp_error        = 150;
@@ -96,7 +94,7 @@ void BalloonConfig_Init(void) {
             balloonConfig.heater_error_enable   = 5;
             balloonConfig.cooling_delay         = 75;
             balloonConfig.first_boot            = CONFIG_MAGIC_VAL; // 0xA5
-            balloonConfig.use_internal_adc      = 0;
+            balloonConfig.use_internal_adc      = 1;
 
             BalloonConfig_SaveAll(); 
         } else {
@@ -104,25 +102,24 @@ void BalloonConfig_Init(void) {
             
             // Validate Loaded Data
             if (!BalloonConfig_Validate()) {
-                usb_printf("Flash integrity check failed, using defaults\r\n");
-                BalloonConfig_ForceReset();
+                usb_printf("ERROR: Flash integrity check failed, using defaults\r\n");
+                // BalloonConfig_ForceReset(); // I dont think there is a need to force restart when obviously the user can `GET RESET`.
             }
         }
         osMutexRelease(configMutexHandle);
-    } else {
-        usb_printf("ERROR: Mutex acquire failed in BalloonConfig_Init\r\n");
     }
 }
 
 void BalloonConfig_Load(void) {
     // Direct memory copy from Flash Address to RAM Struct
     // This is much faster than reading variables one by one
+    // BalloonConfig_Init();
     memcpy(&balloonConfig, (void*)CONFIG_FLASH_ADDR, sizeof(BalloonConfig_t));
 }
 
 void BalloonConfig_SaveAll(void) {
     if (Internal_SaveToFlash() != HAL_OK) {
-        usb_printf("ERROR: Failed to save config to Internal Flash\r\n");
+        usb_printf("ERROR: Failed to save configs\r\n");
     }
 }
 
@@ -131,27 +128,27 @@ NOTE: This function updates a single variable in RAM and then commits the entire
 This is because Flash memory requires erasing entire sectors before writing, so we must rewrite
 the whole struct anyway. Be cautious about calling this function too frequently.
 */
-void BalloonConfig_Update(uint16_t varID, uint8_t value) {
+void BalloonConfig_Update(uint16_t varID, uint16_t value) {
     // 1. Update the RAM copy
     switch (varID) {
-        case VAR_OPTIME:                balloonConfig.optime = value; break;
-        case VAR_COTIME:                balloonConfig.cotime = value; break;
-        case VAR_TOP_TEMP_THRESHOLD:    balloonConfig.top_temp_threshold = value; break;
-        case VAR_BOTTOM_TEMP_THRESHOLD: balloonConfig.bottom_temp_threshold = value; break;
-        case VAR_TOP_TEMP_OFFSET:       balloonConfig.top_temp_offset = value; break;
-        case VAR_BOTTOM_TEMP_OFFSET:    balloonConfig.bottom_temp_offset = value; break;
-        case VAR_MENU_RESET_DELAY:      balloonConfig.menu_reset_delay = value; break;
-        case VAR_TIME_CALIBRATION:      balloonConfig.time_calibration = value; break;
-        case VAR_MAX_TEMP_ERROR:        balloonConfig.max_temp_error = value; break;
-        case VAR_VCC_VOLTAGE_ERROR:     balloonConfig.vcc_voltage_error = value; break;
-        case VAR_POWER_TEMP_ERROR:      balloonConfig.power_temp_error = value; break;
-        case VAR_POWER_VCC_ERROR:       balloonConfig.power_vcc_error = value; break;
-        case VAR_SYS_ERROR:             balloonConfig.sys_error = value; break;
-        case VAR_VOLTAGE_CALIBRATION:   balloonConfig.voltage_calibration = value; break;
-        case VAR_HEATER_ERROR_ENABLE:   balloonConfig.heater_error_enable = value; break;
-        case VAR_COOLING_DELAY:         balloonConfig.cooling_delay = value; break;
-        case VAR_FIRST_BOOT:            balloonConfig.first_boot = value; break;
-        case VAR_USE_INTERNAL_ADC:      balloonConfig.use_internal_adc = value; break;
+        case VAR_OPTIME:                balloonConfig.optime = (uint8_t)value; break;
+        case VAR_COTIME:                balloonConfig.cotime = (uint8_t)value; break;
+        case VAR_TOP_TEMP_THRESHOLD:    balloonConfig.top_temp_threshold = (uint8_t)value; break;
+        case VAR_BOTTOM_TEMP_THRESHOLD: balloonConfig.bottom_temp_threshold = (uint8_t)value; break;
+        case VAR_TOP_TEMP_OFFSET:       balloonConfig.top_temp_offset = (uint8_t)value; break;
+        case VAR_BOTTOM_TEMP_OFFSET:    balloonConfig.bottom_temp_offset = (uint8_t)value; break;
+        case VAR_MENU_RESET_DELAY:      balloonConfig.menu_reset_delay = (uint8_t)value; break;
+        case VAR_TIME_CALIBRATION:      balloonConfig.time_calibration = (uint8_t)value; break;
+        case VAR_MAX_TEMP_ERROR:        balloonConfig.max_temp_error = (uint16_t)value; break;
+        case VAR_VCC_VOLTAGE_ERROR:     balloonConfig.vcc_voltage_error = (uint8_t)value; break;
+        case VAR_POWER_TEMP_ERROR:      balloonConfig.power_temp_error = (uint8_t)value; break;
+        case VAR_POWER_VCC_ERROR:       balloonConfig.power_vcc_error = (uint8_t)value; break;
+        case VAR_SYS_ERROR:             balloonConfig.sys_error = (uint8_t)value; break;
+        case VAR_VOLTAGE_CALIBRATION:   balloonConfig.voltage_calibration = (uint8_t)value; break;
+        case VAR_HEATER_ERROR_ENABLE:   balloonConfig.heater_error_enable = (uint8_t)value; break;
+        case VAR_COOLING_DELAY:         balloonConfig.cooling_delay = (uint8_t)value; break;
+        case VAR_FIRST_BOOT:            balloonConfig.first_boot = (uint8_t)value; break;
+        case VAR_USE_INTERNAL_ADC:      balloonConfig.use_internal_adc = (uint8_t)value; break;
         default: return; // Unknown varID, do nothing
     }
 
@@ -196,7 +193,7 @@ uint8_t BalloonConfig_Validate(void) {
     if (balloonConfig.bottom_temp_offset > 500) return 0;
     if (balloonConfig.menu_reset_delay < 1 || balloonConfig.menu_reset_delay > 60) return 0;
     if (balloonConfig.time_calibration < 50 || balloonConfig.time_calibration > 150) return 0;
-    if (balloonConfig.max_temp_error < 100 || balloonConfig.max_temp_error > 250) return 0;
+    if (balloonConfig.max_temp_error < 100 || balloonConfig.max_temp_error > 350) return 0;
     if (balloonConfig.vcc_voltage_error < 10 || balloonConfig.vcc_voltage_error > 50) return 0;
     if (balloonConfig.power_temp_error < 20 || balloonConfig.power_temp_error > 100) return 0;
     if (balloonConfig.power_vcc_error > 50) return 0; // Add check

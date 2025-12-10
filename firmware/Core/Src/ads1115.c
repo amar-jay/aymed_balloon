@@ -14,7 +14,7 @@ HAL_StatusTypeDef ads1115_set_config(ADS1115_HandleTypeDef *ads, uint16_t config
 
   if (HAL_I2C_Mem_Write(ads->i2c_handler,
                         (uint16_t)(ADS1115_DEFAULT_ADDRESS << 1),
-                        ADS1115_CONFIG_REG, 1, buf, 2, HAL_MAX_DELAY) != HAL_OK)
+                        ADS1115_CONFIG_REG, 1, buf, 2, 100) != HAL_OK)
     return HAL_ERROR;
   ads->config = config;
   return HAL_OK;
@@ -25,7 +25,7 @@ uint16_t ads1115_get_config(ADS1115_HandleTypeDef *ads) {
 
   if (HAL_I2C_Mem_Read(ads->i2c_handler,
                        (uint16_t)((ADS1115_DEFAULT_ADDRESS << 1) | 0x1),
-                       ADS1115_CONFIG_REG, 1, buf, 2, HAL_MAX_DELAY) != HAL_OK)
+                       ADS1115_CONFIG_REG, 1, buf, 2, 100) != HAL_OK)
     return HAL_ERROR;
 
   ads->config = (buf[0] << 8) | buf[1];
@@ -40,7 +40,7 @@ HAL_StatusTypeDef ads1115_set_conv(ADS1115_HandleTypeDef *ads, uint16_t conv) {
 
   if (HAL_I2C_Mem_Write(ads->i2c_handler,
                         (uint16_t)(ADS1115_DEFAULT_ADDRESS << 1),
-                        ADS1115_CONV_REG, 1, buf, 2, HAL_MAX_DELAY) != HAL_OK)
+                        ADS1115_CONV_REG, 1, buf, 2, 100) != HAL_OK)
     return HAL_ERROR;
   return HAL_OK;
 }
@@ -51,7 +51,7 @@ HAL_StatusTypeDef ads1115_get_conv(ADS1115_HandleTypeDef *ads, uint16_t *conv) {
 
   if (HAL_I2C_Mem_Read(ads->i2c_handler,
                        (uint16_t)((ADS1115_DEFAULT_ADDRESS << 1) | 0x1),
-                       ADS1115_CONV_REG, 1, buf, 2, HAL_MAX_DELAY) != HAL_OK)
+                       ADS1115_CONV_REG, 1, buf, 2, 100) != HAL_OK)
     return HAL_ERROR;
 
   *conv = (buf[0] << 8) | buf[1];

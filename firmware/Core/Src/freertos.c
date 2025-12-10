@@ -41,7 +41,6 @@ void StartHeater(void *argument);
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-int counter = 0;
 
 /* USER CODE END PD */
 
@@ -61,24 +60,28 @@ int counter = 0;
 /* USER CODE END FunctionPrototypes */
 
 /* Private application code --------------------------------------------------*/
-/* USER CODE BEGIN Application */
 void StartLog(void *argument){
-  BalloonConfig_Init(); // Load config from Flash or set defaults
-
   for (;;) {
-
 		LogCallbackHandler();
 		osDelay(1);
-		MonitorError();
-
-    osDelay(1); // Print every 2 seconds
   }
 }
-void StartSensor(void *argument){for (;;) {
-	MonitorSensors();
-	osDelay(1);
-}};
-void StartHeater(void *argument){for (;;) {ControlHeater(); osDelay(100);}};
+
+void StartSensor(void *argument){
+	for (;;) {
+		MonitorSensors();
+		osDelay(50);
+	}
+}
+
+void StartHeater(void *argument){
+	for (;;) {
+		ControlHeater();
+		osDelay(100);
+		MonitorError();
+		osDelay(100);
+	}
+}
 
 /* USER CODE END Application */
 
