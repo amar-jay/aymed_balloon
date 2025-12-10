@@ -41,7 +41,6 @@ void StartHeater(void *argument);
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-int counter = 0;
 
 /* USER CODE END PD */
 

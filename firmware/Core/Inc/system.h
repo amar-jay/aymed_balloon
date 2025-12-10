@@ -26,17 +26,6 @@ typedef enum {
   ERR_PEDAL_LOCKED = 11
 } ErrorCode_t;
 
-// Menu States
-typedef enum {
-  MENU_MAIN = 0,
-  MENU_HEATER_TEMP = 1,
-  MENU_FACTORY_SETTINGS = 2,
-  MENU_SYSTEM_ERROR = 3,
-  MENU_SYSTEM_SETTINGS4 = 4,
-  MENU_SYSTEM_SETTINGS = 6,
-  MENU_SYSTEM_SETTINGS2 = 7
-} MenuState_t;
-
 // Operation States
 typedef enum {
   OP_STANDBY = 0,
