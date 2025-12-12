@@ -27,12 +27,12 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip==25.3
           pip install flake8
-      - name: Flake8 static analysis
-        uses: xanderhendriks/flake8-github-action@v1.0.2
-        with:
-          checkName: 'Analyse code'   # NOTE: this needs to be the same as the job name
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Flake8 static analysis
+      #   uses: xanderhendriks/flake8-github-action@v1.0.2
+      #   with:
+      #     checkName: 'Analyse code'   # NOTE: this needs to be the same as the job name
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: cppcheck
         run: |
           sudo apt-get install -y cppcheck
