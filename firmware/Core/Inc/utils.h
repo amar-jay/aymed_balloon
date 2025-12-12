@@ -13,4 +13,7 @@
 void usb_printf(const char *fmt, ...);
 void process_command(const char *input, BalloonConfig_t* config, BalloonState_t* state);
 void print_config(BalloonConfig_t* cfg);
+void print_error(ErrorCode_t code);
+void print_status(BalloonState_t* state);
+void print_version();
 #endif /* INC_UTILS_H_ */
