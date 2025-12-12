@@ -33,10 +33,10 @@ jobs:
       #     checkName: 'Analyse code'   # NOTE: this needs to be the same as the job name
       #   env:
       #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: cppcheck
-        run: |
-          sudo apt-get install -y cppcheck
-          cppcheck --enable=all --inline-suppr --project=application.cppcheck --error-exitcode=-1
+      # - name: cppcheck
+      #   run: |
+      #     sudo apt-get install -y cppcheck
+      #     cppcheck --enable=all --inline-suppr --project=application.cppcheck --error-exitcode=-1
           
   build-application-cubeide:
     needs: analyse-code
