@@ -170,9 +170,11 @@ export const useSerial = () => {
     loadDevices()
     const interval = setInterval(() => {
       loadDevices()
+      if (!connectionId) return
     }, 5000)
     return () => clearInterval(interval)
-  }, [loadDevices])
+  }, [loadDevices, connectionId])
+
   React.useEffect(() => {
     // Disable Ctrl+R reload and refresh devices instead
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -187,6 +189,16 @@ export const useSerial = () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [loadDevices])
+
+  // Fetch config and version on connect
+  React.useEffect(() => {
+    const load = async () => {
+      if (!connectionId) return
+      window.api.SerialsendCommand(connectionId, 'GET CONFIG')
+      window.api.SerialsendCommand(connectionId, 'GET VERSION')
+    }
+    load()
+  }, [connectionId])
 
   return {
     devices,

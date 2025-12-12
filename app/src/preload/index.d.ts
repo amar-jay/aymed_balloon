@@ -16,9 +16,20 @@ import type {
   getActiveConnections,
   getDevicePath,
   isDeviceConnected,
-  getSystemVersion
+  getSystemVersion,
+  setSystemConfig,
+  resetSystemConfig
 } from '../lib/serial'
 import type { Session, Weld } from '../lib/types/session'
+import type {
+  deleteVersion,
+  downloadVersion,
+  getDownloadedVersions,
+  getVersionFile,
+  isVersionDownloaded,
+  getLatestVersion,
+	getOnlineVersions
+} from '../lib/update'
 
 export interface SystemConfig {
   /** Operation/welding time (seconds, 5-60) */
@@ -101,6 +112,8 @@ declare global {
       SerialgetSystemStatus: typeof getSystemStatus
       SerialgetSystemConfig: typeof getSystemConfig
       SerialgetSystemVersion: typeof getSystemVersion
+      SerialsetSystemConfig: typeof setSystemConfig
+      SerialresetSystemConfig: typeof resetSystemConfig
       SerialclearDataBuffer: typeof clearBuffer
       SerialdisconnectAll: typeof disconnectAll
       SerialconnectToFirstUSBDevice: typeof connectToFirstUSBDevice
@@ -124,6 +137,15 @@ declare global {
       ) => Promise<number>
       DBendSession: (sessionId: number) => Promise<boolean>
       DBgenerateSessionPDF: (sessionId: number) => Promise<string | null>
+
+      // Update APIs
+      UpdatedownloadVersion: typeof downloadVersion
+      UpdategetOnlineVersions: typeof getOnlineVersions
+      UpdategetDownloadedVersions: typeof getDownloadedVersions
+      UpdategetVersionFile: typeof getVersionFile
+      UpdatedeleteVersion: typeof deleteVersion
+      UpdateisVersionDownloaded: typeof isVersionDownloaded
+      UpdategetLatestVersion: typeof getLatestVersion
     }
   }
 }

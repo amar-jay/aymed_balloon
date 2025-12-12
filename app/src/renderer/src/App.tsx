@@ -20,11 +20,7 @@ function App(): React.JSX.Element {
           <Main isConnected={serial.isConnected} receivedData={serial.receivedData} />
         )}
         {currentPath === 'dashboard' && (
-          <Dashboard
-            isConnected={serial.isConnected}
-            receivedData={serial.receivedData}
-            connectionId={serial.connectionId}
-          />
+          <Dashboard isConnected={serial.isConnected} connectionId={serial.connectionId} />
         )}
         {currentPath === 'sessions' && <History />}
         {currentPath.startsWith('sessions/') && (

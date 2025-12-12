@@ -3,6 +3,15 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { initializeDatabase, closeDatabase, setupDatabaseHandlers } from '../lib/db'
 import { Session, Weld } from '../lib/types/session'
+import {
+  downloadVersion,
+  getDownloadedVersions,
+  getVersionFile,
+  deleteVersion,
+  isVersionDownloaded,
+  getLatestVersion,
+	getOnlineVersions
+} from '../lib/update'
 
 import icon from '../../resources/logo.jpeg?asset'
 
@@ -106,11 +115,17 @@ app.whenReady().then(() => {
   ipcMain.handle('db:sessions:generatePDF', async (_, sessionId: number) =>
     generateSessionPDF(sessionId)
   )
-  // IPC handlers for sessions PDF generation
-  // ipcMain.handle('generate-session-pdf', async (event, sessionId) => {
-  //   return generateSessionPDF(sessionId)
-  // })
 
+  // Update handlers
+  ipcMain.handle('update:get-online-versions', async () => getOnlineVersions())
+  ipcMain.handle('update:download-version', async (_, version: string) => downloadVersion(version))
+  ipcMain.handle('update:get-downloaded-versions', async () => getDownloadedVersions())
+  ipcMain.handle('update:get-version-file', async (_, version: string) => getVersionFile(version))
+  ipcMain.handle('update:delete-version', async (_, version: string) => deleteVersion(version))
+  ipcMain.handle('update:is-version-downloaded', async (_, version: string) =>
+    isVersionDownloaded(version)
+  )
+  ipcMain.handle('update:get-latest-version', async () => getLatestVersion())
   createWindow()
 
   app.on('activate', function () {

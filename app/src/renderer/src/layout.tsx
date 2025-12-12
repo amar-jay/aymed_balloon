@@ -90,7 +90,11 @@ export function MainLayout({
               <RefreshCcw className={cn('size-4', loading ? 'animate-spin text-gray-500' : '')} />
             </Button>
 
-            <Profile selectedPage={selectedPage} setSelectedPage={setSelectedPage} />
+            <Profile
+              selectedPage={selectedPage}
+              setSelectedPage={setSelectedPage}
+              connectionId={connectionId}
+            />
           </div>
         </div>
       </header>

@@ -38,7 +38,8 @@ import {
   SystemDataParse,
   SystemData,
   SystemConfigParse,
-  SystemVersion
+  SystemVersion,
+  SystemConfigSerialize
 } from './types/minibuf'
 
 export interface SerialDevice {
@@ -391,6 +392,41 @@ export function getSystemConfig(connectionId: string): SystemConfig | null {
     throw new Error(`Connection ${connectionId} not found`)
   }
   return connection.config || null
+}
+
+/**
+ * Set the system config for a connection
+ * @param connectionId The connection ID returned by connect()
+ * @param config The SystemConfig object to set
+ */
+export function setSystemConfig(connectionId: string, config: SystemConfig) {
+  const connection = activeConnections.get(connectionId)
+  if (!connection) {
+    throw new Error(`Connection ${connectionId} not found`)
+  }
+  connection.config = config
+
+  try {
+    const serialized = SystemConfigSerialize(config) // just to validate
+    sendCommand(connectionId, `SET CONFIG ${serialized}`) // send to device
+  } catch (error) {
+    connection.dataBuffer.unshift(
+      'ERROR: Failed to serialize and send config. ' + (error as Error).message
+    )
+  }
+}
+
+/**
+ * Reset the system config on the device to defaults
+ * @param connectionId The connection ID returned by connect()
+ */
+export function resetSystemConfig(connectionId: string) {
+  const connection = activeConnections.get(connectionId)
+  if (!connection) {
+    throw new Error(`Connection ${connectionId} not found`)
+  }
+  connection.config = undefined
+  sendCommand(connectionId, `GET RESET`)
 }
 
 /**

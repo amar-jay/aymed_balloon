@@ -13,9 +13,11 @@ import { SettingsDialog } from './settings-dialog'
 import { currentPathType } from '@renderer/lib/jotai'
 
 function Profile({
+  connectionId,
   selectedPage,
   setSelectedPage
 }: {
+  connectionId: string | null
   selectedPage: currentPathType
   setSelectedPage: (page: currentPathType) => void
 }): React.JSX.Element {
@@ -62,7 +64,11 @@ function Profile({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
+      <SettingsDialog
+        open={showSettings}
+        onOpenChange={setShowSettings}
+        connectionId={connectionId}
+      />
     </div>
   )
 }

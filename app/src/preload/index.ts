@@ -18,10 +18,13 @@ import {
   getActiveConnections,
   getDevicePath,
   isDeviceConnected,
-  getSystemVersion
+  getSystemVersion,
+  setSystemConfig,
+  resetSystemConfig
 } from '../lib/serial'
 import { Session, Weld } from '../lib/types/session'
 import './index.d'
+import type { VersionInfo, DownloadedVersion } from '../lib/update'
 
 // Custom APIs for renderer
 const api = {
@@ -38,6 +41,8 @@ const api = {
   SerialgetSystemStatus: getSystemStatus,
   SerialgetSystemConfig: getSystemConfig,
   SerialgetSystemVersion: getSystemVersion,
+  SerialsetSystemConfig: setSystemConfig,
+  SerialresetSystemConfig: resetSystemConfig,
   SerialclearDataBuffer: clearBuffer,
   SerialdisconnectAll: disconnectAll,
   SerialconnectToFirstUSBDevice: connectToFirstUSBDevice,
@@ -62,7 +67,23 @@ const api = {
   DBendSession: (sessionId: number): Promise<boolean> =>
     ipcRenderer.invoke('db:sessions:end', sessionId),
   DBgenerateSessionPDF: (sessionId: number): Promise<string | null> =>
-    ipcRenderer.invoke('db:sessions:generatePDF', sessionId)
+    ipcRenderer.invoke('db:sessions:generatePDF', sessionId),
+
+  // Update APIs
+  UpdategetOnlineVersions: (): Promise<VersionInfo[]> =>
+    ipcRenderer.invoke('update:get-online-versions'),
+  UpdatedownloadVersion: (version: string): Promise<void> =>
+    ipcRenderer.invoke('update:download-version', version),
+  UpdategetDownloadedVersions: (): Promise<DownloadedVersion[]> =>
+    ipcRenderer.invoke('update:get-downloaded-versions'),
+  UpdategetVersionFile: (version: string): Promise<Buffer> =>
+    ipcRenderer.invoke('update:get-version-file', version),
+  UpdatedeleteVersion: (version: string): Promise<void> =>
+    ipcRenderer.invoke('update:delete-version', version),
+  UpdateisVersionDownloaded: (version: string): Promise<boolean> =>
+    ipcRenderer.invoke('update:is-version-downloaded', version),
+  UpdategetLatestVersion: (): Promise<VersionInfo | null> =>
+    ipcRenderer.invoke('update:get-latest-version')
 } satisfies Window['api']
 
 // Use `contextBridge` APIs to expose Electron APIs to

@@ -6,73 +6,30 @@ import { useCallback, useEffect, useState, useRef } from 'react'
 import { SystemConfig, SystemData } from 'src/lib/types/minibuf'
 import { TempGraph } from './components/temp-graph'
 import { useAtom } from 'jotai/react'
-import { historyLimitAtom } from './lib/jotai'
+import { historyLimitAtom, settingsAtom, versionAtom } from './lib/jotai'
 import VoltageCard from './components/voltage-card'
 import { OperationCard } from './components/operation-card'
 import { CreateSessionForm } from './components/CreateSessionForm'
 import { ActiveSessionPanel } from './components/ActiveSessionPanel'
-import { toast } from 'sonner'
 import { useSessionById } from './use-sessions'
 
 interface DashboardProps {
   isConnected: boolean
-  receivedData: string[]
   connectionId: string | null
 }
 
-export function generateMockBalloonStatus() {
-  return {
-    data: {
-      topTemp: Math.random() * 150,
-      bottomTemp: Math.random() * 150,
-      powerSupplyTemp: Math.random() * 80,
-      topHeaterActive: Math.random() < 0.5,
-      bottomHeaterActive: Math.random() < 0.5,
-      weldingTime: Math.random() * 30,
-      coolingTime: Math.random() * 15,
-      pressureValveActive: Math.random() < 0.5,
-      coolingFanActive: Math.random() < 0.5,
-      pedalPressed: Math.random() < 0.5,
-      proximityActive: Math.random() < 0.5,
-      powerSupplyVoltage: Math.random() * 30
-    },
-    config: {
-      opTime: Math.floor(Math.random() * 56) + 5,
-      coTime: Math.floor(Math.random() * 28) + 3,
-      topTempThreshold: 150,
-      bottomTempThreshold: 140,
-      topTempOffset: 128,
-      bottomTempOffset: 128,
-      menuResetDelay: 30,
-      timeCalibration: 0,
-      maxTempError: 150,
-      vccVoltageError: 24,
-      powerTempError: 60,
-      powerVccErrorEnabled: true,
-      sysErrorEnabled: Math.random() < 0.5,
-      voltageCalibration: 0,
-      heaterErrorEnable: 10,
-      coolingDelay: 5,
-      useInternalADC: true
-    },
-    firmwareVersion: '1.2.3'
-  }
-}
-
-export function Dashboard({ isConnected, receivedData, connectionId }: DashboardProps) {
+export function Dashboard({ isConnected, connectionId }: DashboardProps) {
   const [systemData, setSystemData] = useState<SystemData | null>(null)
-  const [version, setVersion] = useState<string | null>(null)
-  const [config, setConfig] = useState<SystemConfig | null>(null)
+  // const [version, setVersion] = useState<string | null>(null)
+  // const [config, setConfig] = useState<SystemConfig | null>(null)
   const [HISTORY_LIMIT] = useAtom(historyLimitAtom)
-  // if (connectionId) {
-  //   const latestData = window.api.SerialgetSystemStatus(connectionId)
-  //   if (latestData) setSystemData(latestData)
-  // }
+  const [config, setConfig] = useAtom(settingsAtom)
+  const [version, setVersion] = useAtom(versionAtom)
+
   const [sessionId, setSessionId] = useState<number | null>(null)
   const { session, addWeld, endSession, deleteSession, generatePDF } = useSessionById(sessionId)
 
-  // it is meant to be used in the temp graphs later
-  const [pastSystemData, setPastSystemData] = useState<SystemData[]>([])
+  const [pastSystemData, setPastSystemData] = useState<SystemData[]>([]) // it is meant to be used in the temp graphs later
 
   // Use refs to track the latest values without causing re-renders
   const systemDataRef = useRef<SystemData | null>(null)
@@ -88,85 +45,42 @@ export function Dashboard({ isConnected, receivedData, connectionId }: Dashboard
     configRef.current = config
   }, [config])
 
+  // ring-buffer style
   const pushSystemSnapshot = useCallback(
     (next: SystemData) => {
       setSystemData(next)
       setPastSystemData((prev) => {
-        const updated = [...prev, { ...next }]
-        return updated.length > HISTORY_LIMIT
-          ? updated.slice(updated.length - HISTORY_LIMIT)
-          : updated
+        if (prev.length >= HISTORY_LIMIT) {
+          // drop the first
+          return [...prev.slice(1), next]
+        }
+        return [...prev, next]
       })
     },
     [HISTORY_LIMIT]
   )
 
-  // const systemStatus: BalloonStatus | null = latestData?.data || null
-  // if in dev, use mock data
-  // let systemStatus: BalloonStatus | null
-  // try {
-  //   systemStatus = (latestData && JSON.parse(latestData)) || null
-  // } catch (e) {
-  //   // use a much better error handling here, perhaps an alert or notification
-  //   systemStatus = null
-  // }
-
-  // send GET STATUS command every half second if connected
-  useEffect(() => {
-    // if (!isConnected) return
-    // if (!connectionId) return
-    const interval = setInterval(async () => {
-      if (!connectionId) return
-      // if in dev mode, use mock data
-      if (process.env.NODE_ENV !== 'development') {
-        console.log('Requesting FAKE system status...')
-        const fake_status = generateMockBalloonStatus()
-        const mockData: SystemData = {
-          bottomHeaterActive: fake_status.data.bottomHeaterActive,
-          bottomTemp: fake_status.data.bottomTemp,
-          pedalActive: fake_status.data.pedalPressed,
-          powerSupplyTemp: fake_status.data.powerSupplyTemp,
-          topHeaterActive: fake_status.data.topHeaterActive,
-          topTemp: fake_status.data.topTemp,
-          powerSupplyVoltage: fake_status.data.powerSupplyVoltage,
-          proximityActive: fake_status.data.proximityActive,
-          coolingFanActive: fake_status.data.coolingFanActive,
-          pressureValveActive: fake_status.data.pressureValveActive,
-          weldingTime: Math.floor(fake_status.data.weldingTime),
-          coolingTime: Math.floor(fake_status.data.coolingTime)
-        }
-        pushSystemSnapshot(mockData)
-        setConfig(fake_status.config)
-        setVersion(fake_status.firmwareVersion)
-      }
-      await window.api.SerialsendCommand(connectionId, 'GET STATUS')
-      const status = window.api.SerialgetSystemStatus(connectionId)
-      if (status) {
-        pushSystemSnapshot({ ...status })
-      }
-
-      const version = window.api.SerialgetSystemVersion(connectionId)
-      setVersion(`${version?.major}.${version?.minor}.${version?.patch}`)
-
-      // if (!config) {
-      //   const c = window.api.SerialgetSystemConfig(connectionId)
-      //   setConfig(c)
-      // }
-    }, 1000)
-
-    // config fetching interval
-    const configInterval = setInterval(() => {
-      if (!isConnected) return
-      if (!connectionId) return
-      const c = window.api.SerialgetSystemConfig(connectionId)
-      if (c) setConfig(c)
-    }, 10000)
-
-    return () => {
-      clearInterval(interval)
-      clearInterval(configInterval)
+  const createWeld = (currentSystemData, currentConfig) => {
+    const newWeld = {
+      topHeaterTemperature: currentSystemData.topTemp,
+      bottomHeaterTemperature: currentSystemData.bottomTemp,
+      powerSupplyVoltage: currentSystemData.powerSupplyVoltage,
+      weldingDuration: currentSystemData.weldingTime,
+      coolingDuration: currentSystemData.coolingTime,
+      isSuccessful:
+        currentSystemData.topTemp <= (currentConfig?.topTempThreshold || 110) &&
+        currentSystemData.bottomTemp <= (currentConfig?.bottomTempThreshold || 140),
+      error:
+        currentSystemData.topTemp < (currentConfig?.topTempThreshold || 110)
+          ? 'Top heater too low temperature'
+          : currentSystemData.bottomTemp < (currentConfig?.bottomTempThreshold || 140)
+            ? 'Bottom heater too low temperature'
+            : undefined
     }
-  }, [isConnected, connectionId, pushSystemSnapshot])
+
+    console.log('Created weld:', newWeld)
+    return newWeld
+  }
 
   const handleAddWeld = useCallback(
     async (notify = false) => {
@@ -174,30 +88,8 @@ export function Dashboard({ isConnected, receivedData, connectionId }: Dashboard
       const currentConfig = configRef.current
 
       if (currentSystemData?.pedalActive) {
-        // Prevent duplicate welds - only add when pedal transitions from inactive to active
-        if (lastPedalStateRef.current === true) {
-          return
-        }
-        lastPedalStateRef.current = true
-
-        const newWeld = {
-          topHeaterTemperature: currentSystemData.topTemp,
-          bottomHeaterTemperature: currentSystemData.bottomTemp,
-          powerSupplyVoltage: currentSystemData.powerSupplyVoltage,
-          weldingDuration: currentSystemData.weldingTime,
-          coolingDuration: currentSystemData.coolingTime,
-          isSuccessful:
-            currentSystemData.topTemp <= (currentConfig?.topTempThreshold || 110) &&
-            currentSystemData.bottomTemp <= (currentConfig?.bottomTempThreshold || 140),
-          error:
-            currentSystemData.topTemp < (currentConfig?.topTempThreshold || 110)
-              ? 'Top heater too low temperature'
-              : currentSystemData.bottomTemp < (currentConfig?.bottomTempThreshold || 140)
-                ? 'Bottom heater too low temperature'
-                : undefined
-        }
+        const newWeld = createWeld(currentSystemData, currentConfig)
         await addWeld(newWeld, notify)
-        console.log('Added weld:', newWeld)
       } else {
         // Reset the pedal state when pedal is released
         lastPedalStateRef.current = false
@@ -206,21 +98,64 @@ export function Dashboard({ isConnected, receivedData, connectionId }: Dashboard
     [addWeld]
   )
 
-  // timer to add welds every second when pedal is pressed
   useEffect(() => {
     if (!isConnected) return
-    if (!sessionId) return
+    if (!connectionId) return
+    const interval = setInterval(async () => {
+      if (!connectionId) return
 
-    console.log('Setting up weld checker interval...')
-    const interval = setInterval(() => {
-      handleAddWeld(true)
+      await window.api.SerialsendCommand(connectionId, 'GET STATUS')
+      const status = window.api.SerialgetSystemStatus(connectionId)
+      if (status) {
+        pushSystemSnapshot({ ...status })
+      }
+
+      // request version and config frequently if not present already
+      // especially useful on initial connect
+      if (!version) {
+        await window.api.SerialsendCommand(connectionId, 'GET VERSION')
+      }
+
+      if (!configRef.current) {
+        await window.api.SerialsendCommand(connectionId, 'GET CONFIG')
+      }
+
+      const v = window.api.SerialgetSystemVersion(connectionId)
+      if (v && v?.major && v?.minor && v?.patch) setVersion(v)
+
+      const c = window.api.SerialgetSystemConfig(connectionId)
+      if (c) setConfig(c)
+
+      // to handle whenever the pedal is pressed
+      // this is used to add welds automatically when the pedal is pressed
+      // and avoid debouncing when held down
+      if (lastPedalStateRef.current !== true) {
+        lastPedalStateRef.current = true
+        if (status?.pedalActive) {
+          const newWeld = createWeld(status, c)
+          await addWeld(newWeld, false)
+        } else {
+          // Reset the pedal state when pedal is released
+          lastPedalStateRef.current = false
+        }
+      }
     }, 1000)
 
+    const configInterval = setInterval(async () => {
+      if (!isConnected) return
+      if (!connectionId) return
+      await window.api.SerialsendCommand(connectionId, 'GET CONFIG')
+      await window.api.SerialsendCommand(connectionId, 'GET VERSION')
+      // this way to ensure that config and version are updated less frequently
+      // especially useful when connection is stable and we don't need to spam requests
+      /// reduces load on the MCU
+    }, 10000)
+
     return () => {
-      console.log('Clearing weld checker interval...')
       clearInterval(interval)
+      clearInterval(configInterval)
     }
-  }, [isConnected, sessionId, handleAddWeld])
+  }, [isConnected, connectionId, pushSystemSnapshot, version, addWeld, setVersion, setConfig])
 
   return (
     <main className="flex-1 flex flex-col rounded-tl-2xl p-6 overflow-auto bg-background">
@@ -234,7 +169,9 @@ export function Dashboard({ isConnected, receivedData, connectionId }: Dashboard
         </div>
         {version && (
           <div className="text-right text-sm text-muted-foreground">
-            <div>Firmware: {version}</div>
+            <div>
+              Firmware: {version.major}.{version.minor}.{version.patch}
+            </div>
           </div>
         )}
       </div>
