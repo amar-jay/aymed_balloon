@@ -43,12 +43,17 @@ jobs:
     name: STM32CubeIde sample application build
     runs-on: ubuntu-24.04
     steps:
+      - name: Install ARM toolchain
+        run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi
+      
       - name: Checkout the repository
         uses: actions/checkout@v4.2.2
+      
       - name: Determine short GIT hash
         id: short-sha
         run: |
           echo "sha=$(echo ${{github.sha}} | sed 's/^\(.\{10\}\).*$/\1/')" >> $GITHUB_OUTPUT
+      
       - name: Bump version
         if: success()
         # if: github.ref == 'refs/heads/master'
@@ -59,6 +64,7 @@ jobs:
           dry_run: true
           default_bump: minor
           fetch_all_tags: true
+      
       - name: Version handling
         id: version_handling
         run: |
@@ -77,6 +83,7 @@ jobs:
           echo "major=$(echo $version | sed 's/\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\).*/\1/')" >> $GITHUB_OUTPUT
           echo "minor=$(echo $version | sed 's/\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\).*/\2/')" >> $GITHUB_OUTPUT
           echo "bugfix=$(echo $version | sed 's/\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\).*/\3/')" >> $GITHUB_OUTPUT
+      
       - name: Build the application binary
         uses: xanderhendriks/action-build-stm32cubeide@v15.0
         with:
@@ -87,12 +94,23 @@ jobs:
           ENV_VERSION_MINOR: ${{ steps.version_handling.outputs.minor }}
           ENV_VERSION_BUGFIX: ${{ steps.version_handling.outputs.bugfix }}
           ENV_SHORT_GIT_HASH: ${{ steps.short-sha.outputs.sha }}
+      
       - name: Rename and copy files
         run: |
-          mkdir stm32-firmware
+          mkdir -p stm32-firmware
           cp firmware/Debug/balloon_machine_v3.elf stm32-firmware/application-${{ steps.version_handling.outputs.file_postfix }}.elf
           cp firmware/Debug/balloon_machine_v3.list stm32-firmware/application-${{ steps.version_handling.outputs.file_postfix }}.list
           cp firmware/Debug/balloon_machine_v3.map stm32-firmware/application-${{ steps.version_handling.outputs.file_postfix }}.map
+      
+      - name: Convert to HEX and BIN files
+        run: |
+          set -e
+          BASE=application-${{ steps.version_handling.outputs.file_postfix }}
+          arm-none-eabi-objcopy -O ihex   "stm32-firmware/$BASE.elf" "stm32-firmware/$BASE.hex"
+          arm-none-eabi-objcopy -O binary "stm32-firmware/$BASE.elf" "stm32-firmware/$BASE.bin"      
+          echo "Generated firmware artifacts:"
+          ls -lh stm32-firmware
+      
       - name: Upload application artifacts
         uses: actions/upload-artifact@v4.6.1
         with:
@@ -118,27 +136,10 @@ jobs:
           asset=$(find stm32-firmware -name "stm32-firmware-application-ide-* " -o -name "stm32-firmware-application-ide-*" | head -n 1)
           base=$(basename "$asset")
           version="${base#stm32-firmware-application-ide-}"
-      
           echo "version=$version" >> $GITHUB_OUTPUT
           echo "file_postfix=$version" >> $GITHUB_OUTPUT
           echo "isprelease=$isprelease" >> $GITHUB_OUTPUT
 
-      # - name: Determine version
-      #   id: determine_version
-      #   run: |
-      #     if [ -n "$(find stm32-firmware -name 'stm32-firmware-*-dev')" ]
-      #     then
-      #         version=0.0.0
-      #         isprelease=1
-      #         file=$(find stm32-firmware -name "stm32-firmware-*" -type f | head -n 1)
-      #         file_postfix=$(basename "$file" | sed 's/^stm32-firmware-//')
-      #     else
-      #         isprelease=0
-      #         file=$(find stm32-firmware -name "stm32-firmware-*" -type f | head -n 1)
-      #         file_postfix=$(basename "$file" | sed 's/^stm32-firmware-//')
-      #     fi
-      #     echo "file_postfix=$file_postfix" >> $GITHUB_OUTPUT
-      #     echo "isprelease=$isprelease" >> $GITHUB_OUTPUT
       - name: Release to Github        
         id: create_release
         uses: ncipollo/release-action@v1.16.0
