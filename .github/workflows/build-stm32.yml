@@ -1,9 +1,9 @@
 name: Build & Release STM32 Firmware
 
 on:
-  push:
-    branches:
-      - hal_flash
+  # push:
+  #   branches:
+  #     - hal_flash
     # tags:
     #   - "v*"        # not implemented yet!
   pull_request:
@@ -71,6 +71,7 @@ jobs:
             file_postfix=$version
           fi
           echo "version=$version" >> $GITHUB_OUTPUT
+          echo $version
           echo "file_postfix=$file_postfix" >> $GITHUB_OUTPUT
           echo "major=$(echo $version | sed 's/\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\).*/\1/')" >> $GITHUB_OUTPUT
           echo "minor=$(echo $version | sed 's/\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\).*/\2/')" >> $GITHUB_OUTPUT
@@ -116,9 +117,9 @@ jobs:
           then
               version=0.0.0
               isprelease=1
-              file_postfix=$(find stm32-firmware -name "stm32-firmware-*" | sed 's/stm32-firmware\/stm32-firmware-\(.*\)/\1/')
+              file_postfix=$(find stm32-firmware -name "stm32-firmware-*" | sed 's/stm32-firmware\/application-\(.*\)/\1/')
           else
-              version=$(find stm32-firmware -name "stm32-firmware-*" | sed 's/stm32-firmware\/stm32-firmware-\([0-9\.]*\)/\1/')
+              version=$(find stm32-firmware -name "stm32-firmware-*" | sed 's/stm32-firmware\/application-\([0-9\.]*\)/\1/')
               isprelease=0
               file_postfix=$version
           fi
