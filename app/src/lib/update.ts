@@ -41,8 +41,14 @@ interface GitHubRelease {
  */
 export async function getOnlineVersions(): Promise<VersionInfo[]> {
   try {
-    const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases`)
-    if (!response.ok) throw new Error('Failed to fetch releases')
+    const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases`, {
+      headers: {
+        Authorization: `Bearer ${import.meta.env.MAIN_VITE_GITHUB_TOKEN}`,
+        Accept: 'application/vnd.github+json'
+      }
+    })
+
+    if (!response.ok) throw new Error('Failed to fetch releases, error: ' + response.statusText)
     const releases: GitHubRelease[] = await response.json()
     const validReleases: VersionInfo[] = []
     const urlRegex = /\.hex$/i

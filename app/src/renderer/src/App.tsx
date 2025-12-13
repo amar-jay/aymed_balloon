@@ -8,6 +8,7 @@ import { Toaster } from './components/ui/sonner'
 import { MainLayout } from './layout'
 import { History } from './history'
 import { WeldSession } from './session'
+import { SystemUpdateToast } from './components/systemUpdateToast'
 
 function App(): React.JSX.Element {
   const serial = useSerial()
@@ -28,6 +29,7 @@ function App(): React.JSX.Element {
         )}
       </MainLayout>
       <Toaster />
+      <SystemUpdateToast />
     </>
   )
 }

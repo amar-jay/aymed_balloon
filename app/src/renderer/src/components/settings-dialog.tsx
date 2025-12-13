@@ -32,7 +32,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { useAtom } from 'jotai/react'
-import { defaultConfig, settingsAtom } from '@renderer/lib/jotai'
+import { defaultConfig, settingsAtom, updateAvailableAtom } from '@renderer/lib/jotai'
 import {
   Empty,
   EmptyDescription,
@@ -62,12 +62,14 @@ import {
 } from '@renderer/components/ui/file-upload'
 import { useMCUUpdate } from '@renderer/hooks/use-mcu-update'
 
+const FIRMWARE_EXTS = ['.bin', '.hex']
+
 function FileUploadComponent({
   file,
   setFile
 }: {
   file: File | null
-  setFile: (file: File) => void
+  setFile: (file: File | null) => void
 }) {
   const onFileReject = React.useCallback((file: File, message: string) => {
     toast(message, {
@@ -83,7 +85,7 @@ function FileUploadComponent({
       value={file ? [file] : []}
       onValueChange={(f) => (f.length > 0 ? setFile(f[0]) : null)}
       onFileReject={onFileReject}
-      accept=".bin,.hex"
+      accept={FIRMWARE_EXTS.join(',')}
       // multiple
     >
       <FileUploadDropzone>
@@ -108,7 +110,7 @@ function FileUploadComponent({
           <FileUploadItem value={file}>
             <FileUploadItemPreview />
             <FileUploadItemMetadata />
-            <FileUploadItemDelete asChild>
+            <FileUploadItemDelete asChild onClick={() => setFile(null)}>
               <Button variant="ghost" size="icon" className="size-7">
                 <X />
               </Button>
@@ -171,6 +173,15 @@ export function SettingsDialog({
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
   const [selectedVersion, setSelectedVersion] = React.useState('')
   const { uploadFirmware, downloadVersion, versions } = useMCUUpdate(connectionId)
+  const [updateAvailable, setUpdateAvailable] = useAtom(updateAvailableAtom)
+
+  React.useEffect(() => {
+    if (updateAvailable) {
+      onOpenChange?.(true)
+      setSelectedSection('upgrade')
+      setUpdateAvailable(false)
+    }
+  }, [updateAvailable, setUpdateAvailable, onOpenChange])
 
   React.useEffect(() => {
     if (!config) {
@@ -180,6 +191,11 @@ export function SettingsDialog({
   }, [config, setSystemConfig])
 
   const handleSave = async () => {
+    if (!connectionId) {
+      toast.info('No active connection', { description: 'Please connect to a device first.' })
+      return
+    }
+
     // Save local config to atom (which persists to localStorage)
     setSystemConfig(config)
     //console.log('Config saved to localStorage:', config)
@@ -192,7 +208,10 @@ export function SettingsDialog({
   }
 
   const handleReset = async () => {
-    if (!connectionId) return
+    if (!connectionId) {
+      toast.info('No active connection', { description: 'Please connect to a device first.' })
+      return
+    }
     setIsResetting(true)
     setSystemConfig(null)
     await window.api.SerialresetSystemConfig(connectionId)
@@ -208,24 +227,45 @@ export function SettingsDialog({
     setIsResetting(false)
   }
 
-  const handleUpgradeToLatest = async () => {
-    if (!connectionId) return
+  const handleUploadFirmware = async (firmware?: string | File | null) => {
+    if (!connectionId) {
+      toast.error('No active connection', { description: 'Please connect to a device first.' })
+      return
+    }
+    if (!firmware) {
+      toast.error('No firmware file provided', { description: 'Please select a firmware file.' })
+      return
+    }
+    // has to be only two types: string (version) or File
+    if (typeof firmware !== 'string' && !(firmware instanceof File)) {
+      toast.error('Invalid firmware type', {
+        description: 'Firmware must be a version string or File.'
+      })
+      return
+    }
+    // if its a string or file name should end with .bin or .hex
+    if (typeof firmware === 'string') {
+      if (!FIRMWARE_EXTS.some((ext) => firmware.endsWith(ext))) {
+        toast.error('Invalid firmware file', { description: 'Firmware file must be .bin or .hex.' })
+        return
+      }
+    } else if (firmware instanceof File) {
+      if (!FIRMWARE_EXTS.some((ext) => firmware.name.endsWith(ext))) {
+        toast.error('Invalid firmware file', { description: 'Firmware file must be .bin or .hex.' })
+        return
+      }
+    }
     setIsDownloading(true)
     try {
-      const latest = await window.api.UpdategetLatestVersion()
-      if (latest) {
-        await downloadVersion(latest.version)
-      }
-    } catch (e) {
-      toast.error('Firmware Download failed', { description: (e as Error).message })
+      await uploadFirmware(firmware)
+      toast.success('Firmware upgraded successfully')
+    } catch (error) {
+      toast.error('Firmware upgrade failed', {
+        description: `Error: ${(error as Error).message}`
+      })
     } finally {
       setIsDownloading(false)
     }
-  }
-
-  const handleUpload = async () => {
-    if (!selectedFile || !connectionId) return
-    await uploadFirmware(selectedFile)
   }
 
   return (
@@ -607,7 +647,7 @@ export function SettingsDialog({
                       <FieldGroup className="grid grid-cols-1 gap-6 mt-4">
                         <Field>
                           <FieldContent>
-                            <div className="space-x-2 grid grid-cols-2 grid-rows-2 gap-2">
+                            <div className="space-x-2 grid grid-cols-2 grid-rows-2 gap-2 pl-2 pr-24">
                               <Select
                                 value={selectedVersion}
                                 onValueChange={(e) => setSelectedVersion(e)}
@@ -653,17 +693,19 @@ export function SettingsDialog({
                         <Field>
                           <FieldLabel>Upload Specific Version</FieldLabel>
                           <FieldContent className="flex gap-2 ">
-                            <FileUploadComponent file={selectedFile} setFile={setSelectedFile} />
-                            <Button
-                              onClick={handleUpload}
-                              disabled={!selectedFile}
-                              size={'sm'}
-                              className="max-w-md"
-                            >
-                              Upload Firmware
-                            </Button>
+                            <div className="w-full flex flex-col items-center gap-2">
+                              <FileUploadComponent file={selectedFile} setFile={setSelectedFile} />
+                              <Button
+                                onClick={() => handleUploadFirmware(selectedFile)}
+                                disabled={!selectedFile}
+                                size={'sm'}
+                                className="w-md mx-auto"
+                              >
+                                Upload Firmware
+                              </Button>
+                            </div>
                             <FieldDescription>
-                              Download the device to a specific version
+                              Upload firmware file to be loaded to the device
                             </FieldDescription>
                           </FieldContent>
                         </Field>
