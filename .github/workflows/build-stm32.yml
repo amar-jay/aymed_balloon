@@ -116,7 +116,7 @@ jobs:
         run: |
           asset=$(find stm32-firmware -name "stm32-firmware-application-ide-* " -o -name "stm32-firmware-application-ide-*" | head -n 1)
           base=$(basename "$asset")
-          version="v${base#stm32-firmware-application-ide-}"
+          version="${base#stm32-firmware-application-ide-}"
       
           echo "version=$version" >> $GITHUB_OUTPUT
           echo "file_postfix=$version" >> $GITHUB_OUTPUT
