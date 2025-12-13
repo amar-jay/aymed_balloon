@@ -18,6 +18,9 @@ export interface VersionInfo {
 }
 
 export interface DownloadedVersion {
+  /** tag name from GitHub (unique identifier) */
+  tag: string
+  // : string
   /** version (vx.x.x) */
   version?: string
   /** ISO date string when downloaded */
@@ -52,6 +55,8 @@ export async function getOnlineVersions(): Promise<VersionInfo[]> {
     const releases: GitHubRelease[] = await response.json()
     const validReleases: VersionInfo[] = []
     const urlRegex = /\.hex$/i
+    // temporary disable url check to allow testing with other file types
+    // const urlRegex = /.*/i
     for (const release of releases) {
       if (release.assets.length === 0) continue // Skip releases without assets
       const validAssetIdx = release.assets.findIndex(
@@ -88,8 +93,9 @@ export async function getDownloadedVersions(): Promise<DownloadedVersion[]> {
         string,
         DownloadedVersion
       >) || {}
-    return Object.entries(data).map(([version, info]: [string, DownloadedVersion]) => ({
-      version,
+    return Object.entries(data).map(([tag, info]: [string, DownloadedVersion]) => ({
+      tag,
+      version: info.version || '',
       downloadedAt: info.downloadedAt || '',
       filePath: info.filePath || ''
     }))
@@ -102,20 +108,22 @@ export async function getDownloadedVersions(): Promise<DownloadedVersion[]> {
 /**
  * Download a specific firmware version from GitHub releases, save it locally, and update the Info file.
  * An optional force parameter can be set to true to re-download even if already present.
- * @param version version (vx.x.x)
+ * @param version version (vx.x.x), tag is a must-have for identification
  * @param force whether to force re-download if already present
  */
-export async function downloadVersion(version: string, force = false): Promise<void> {
+export async function downloadVersion(versionTag: string, force = false): Promise<void> {
   try {
     // check if already downloaded
     const downloaded = await getDownloadedVersions()
-    if (downloaded.find((v) => v.version === version) && !force) {
+    if (downloaded.find((v) => v.tag === versionTag) && !force) {
       return
     }
+
+    // fetch the download URL from version tag online
     const versions = await getOnlineVersions()
-    const versionInfo = versions.find((v) => v.version === version)
+    const versionInfo = versions.find((v) => v.tag === versionTag)
     if (!versionInfo || !versionInfo.url) {
-      throw new Error(`Version ${version} not found or no download URL available`)
+      throw new Error(`Version ${versionTag} not found or no download URL available`)
     }
 
     const response = await fetch(versionInfo.url)
@@ -126,29 +134,29 @@ export async function downloadVersion(version: string, force = false): Promise<v
     // Ensure updates directory exists
     await fs.mkdir(updatesDir, { recursive: true })
 
-    const filePath = join(updatesDir, `${version}.hex`)
+    const filePath = join(updatesDir, `${versionTag}.hex`)
     await fs.writeFile(filePath, Buffer.from(buffer))
 
     // Update the YAML file with download info
-    await updateDownloadedVersions(version, filePath)
+    await updateDownloadedVersions(versionInfo, filePath)
   } catch (error) {
-    console.error(`Error downloading version ${version}:`, error)
-    throw new Error(`Error downloading version ${version}: ${(error as Error).message}`)
+    console.error(`Error downloading version ${versionTag}:`, error)
+    throw new Error(`Error downloading version ${versionTag}: ${(error as Error).message}`)
   }
 }
 
 /**
  * Get the file buffer for a downloaded version
  */
-export async function getVersionFile(version: string): Promise<Buffer> {
+export async function getVersionFile(version: VersionInfo): Promise<Buffer> {
   try {
     const downloaded = await getDownloadedVersions()
-    const versionData = downloaded.find((v) => v.version === version)
+    const versionData = downloaded.find((v) => v.version === version.version)
     if (!versionData) {
-      return await downloadVersion(version).then(() => {
-        return getVersionFile(version)
-      })
-      // throw new Error(`Version ${version} not downloaded. Try again after download.`)
+      // return await downloadVersion(version.tag).then(() => {
+      // 		return getVersionFile(version)
+      // })
+      throw new Error(`Version ${version} not downloaded. Try again after download.`)
     }
 
     return await fs.readFile(versionData.filePath)
@@ -162,10 +170,10 @@ export async function getVersionFile(version: string): Promise<Buffer> {
  * Delete a downloaded version and update the Info file
  * @param version version (vx.x.x)
  */
-export async function deleteVersion(version: string) {
+export async function deleteVersion(versionTag: string) {
   try {
     const downloaded = await getDownloadedVersions()
-    const versionData = downloaded.find((v) => v.version === version)
+    const versionData = downloaded.find((v) => v.tag === versionTag)
     if (!versionData) return
 
     // Remove file
@@ -179,11 +187,11 @@ export async function deleteVersion(version: string) {
         string,
         DownloadedVersion
       >) || {}
-    delete data[version]
+    delete data[versionTag]
     await fs.writeFile(updateInfosPath, yaml.dump(data))
   } catch (error) {
-    console.error(`Error deleting version ${version}:`, error)
-    throw new Error(`Error deleting version ${version}: ${(error as Error).message}`)
+    console.error(`Error deleting version ${versionTag}:`, error)
+    throw new Error(`Error deleting version ${versionTag}: ${(error as Error).message}`)
   }
 }
 
@@ -208,12 +216,17 @@ export async function getLatestVersion(): Promise<VersionInfo | null> {
 }
 
 // Helper function to update the YAML file
-async function updateDownloadedVersions(version: string, filePath: string): Promise<void> {
+async function updateDownloadedVersions(version: VersionInfo, filePath: string): Promise<void> {
   const data = (await fileExists(updateInfosPath))
-    ? (yaml.load(await fs.readFile(updateInfosPath, 'utf8')) as Record<string, DownloadedVersion>)
+    ? (yaml.load(await fs.readFile(updateInfosPath, 'utf8')) as Record<
+        string,
+        DownloadedVersion
+      >) || {}
     : {}
 
-  data[version] = {
+  data[version.tag] = {
+    tag: version.tag,
+    version: version.version,
     downloadedAt: new Date().toISOString(),
     filePath
   }

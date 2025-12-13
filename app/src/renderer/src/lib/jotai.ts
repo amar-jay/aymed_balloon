@@ -1,5 +1,4 @@
 // jotai state managment funcs
-import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 import { SystemConfig, SystemVersion } from 'src/lib/types/minibuf'
 

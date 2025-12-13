@@ -76,12 +76,12 @@ const api = {
     ipcRenderer.invoke('update:download-version', version),
   UpdategetDownloadedVersions: (): Promise<DownloadedVersion[]> =>
     ipcRenderer.invoke('update:get-downloaded-versions'),
-  UpdategetVersionFile: (version: string): Promise<Buffer> =>
+  UpdategetVersionFile: (version: VersionInfo): Promise<Buffer> =>
     ipcRenderer.invoke('update:get-version-file', version),
-  UpdatedeleteVersion: (version: string): Promise<void> =>
-    ipcRenderer.invoke('update:delete-version', version),
-  UpdateisVersionDownloaded: (version: string): Promise<boolean> =>
-    ipcRenderer.invoke('update:is-version-downloaded', version),
+  UpdatedeleteVersion: (versionTag: string): Promise<void> =>
+    ipcRenderer.invoke('update:delete-version', versionTag),
+  UpdateisVersionDownloaded: (tag: string): Promise<boolean> =>
+    ipcRenderer.invoke('update:is-version-downloaded', tag),
   UpdategetLatestVersion: (): Promise<VersionInfo | null> =>
     ipcRenderer.invoke('update:get-latest-version')
 } satisfies Window['api']

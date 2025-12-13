@@ -168,11 +168,10 @@ export function SettingsDialog({
   >('temperature')
   const [systemConfig, setSystemConfig] = useAtom(settingsAtom)
   const [config, setConfig] = React.useState<NonNullable<typeof systemConfig>>(systemConfig!)
-  const [isDownloading, setIsDownloading] = React.useState(false)
   const [isResetting, setIsResetting] = React.useState(false)
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
   const [selectedVersion, setSelectedVersion] = React.useState('')
-  const { uploadFirmware, downloadVersion, versions } = useMCUUpdate(connectionId)
+  const { uploadFirmware, isDownloading, downloadVersion, versions } = useMCUUpdate(connectionId)
   const [updateAvailable, setUpdateAvailable] = useAtom(updateAvailableAtom)
 
   React.useEffect(() => {
@@ -255,17 +254,17 @@ export function SettingsDialog({
         return
       }
     }
-    setIsDownloading(true)
-    try {
-      await uploadFirmware(firmware)
-      toast.success('Firmware upgraded successfully')
-    } catch (error) {
-      toast.error('Firmware upgrade failed', {
-        description: `Error: ${(error as Error).message}`
-      })
-    } finally {
-      setIsDownloading(false)
-    }
+    // setIsDownloading(true)
+    // try {
+    await uploadFirmware(firmware)
+    // toast.success('Firmware upgraded successfully')
+    // } catch (error) {
+    //   toast.error('Firmware upgrade failed', {
+    //     description: `Error: ${(error as Error).message}`
+    //   })
+    // } finally {
+    // setIsDownloading(false)
+    // }
   }
 
   return (
@@ -662,8 +661,8 @@ export function SettingsDialog({
                                   <SelectGroup>
                                     <SelectLabel>versions (tags)</SelectLabel>
                                     {versions.map((version) => (
-                                      <SelectItem key={version.tag} value={version.version}>
-                                        {version.version}({version.tag})
+                                      <SelectItem key={version.tag} value={version.tag}>
+                                        {version.version}
                                       </SelectItem>
                                     ))}
                                   </SelectGroup>
@@ -681,7 +680,14 @@ export function SettingsDialog({
                                 ) : null}
                                 Upload specific version
                               </Button>
-                              <Button className="max-w-xs" onClick={() => uploadFirmware()}>
+                              <Button
+                                className="max-w-xs"
+                                onClick={() => uploadFirmware()}
+                                disabled={isDownloading}
+                              >
+                                {isDownloading ? (
+                                  <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                                ) : null}
                                 Upgrade to Latest
                               </Button>
                             </div>
@@ -696,7 +702,10 @@ export function SettingsDialog({
                             <div className="w-full flex flex-col items-center gap-2">
                               <FileUploadComponent file={selectedFile} setFile={setSelectedFile} />
                               <Button
-                                onClick={() => handleUploadFirmware(selectedFile)}
+                                onClick={() => {
+                                  if (!selectedFile) return
+                                  handleUploadFirmware(selectedFile)
+                                }}
                                 disabled={!selectedFile}
                                 size={'sm'}
                                 className="w-md mx-auto"

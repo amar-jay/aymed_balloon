@@ -10,7 +10,8 @@ import {
   deleteVersion,
   isVersionDownloaded,
   getLatestVersion,
-	getOnlineVersions
+  getOnlineVersions,
+  VersionInfo
 } from '../lib/update'
 
 import icon from '../../resources/logo.jpeg?asset'
@@ -120,7 +121,9 @@ app.whenReady().then(() => {
   ipcMain.handle('update:get-online-versions', async () => getOnlineVersions())
   ipcMain.handle('update:download-version', async (_, version: string) => downloadVersion(version))
   ipcMain.handle('update:get-downloaded-versions', async () => getDownloadedVersions())
-  ipcMain.handle('update:get-version-file', async (_, version: string) => getVersionFile(version))
+  ipcMain.handle('update:get-version-file', async (_, version: VersionInfo) =>
+    getVersionFile(version)
+  )
   ipcMain.handle('update:delete-version', async (_, version: string) => deleteVersion(version))
   ipcMain.handle('update:is-version-downloaded', async (_, version: string) =>
     isVersionDownloaded(version)

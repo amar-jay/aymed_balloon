@@ -481,3 +481,11 @@ export async function listUSBPorts(): Promise<string[]> {
   const devices = await findUSBDevices()
   return devices.map((device) => device.path)
 }
+
+export async function uploadFirmware(filepath: string, file_type: 'hex' | 'bin' = 'hex'): Promise<void> {
+	// firmware upload it's in three steps:
+	// 1. send command to enter bootloader mode
+	// 2. use external tool (e.g., avrdude, bossac) to upload firmware
+	// 3. send command to exit bootloader mode
+
+}
