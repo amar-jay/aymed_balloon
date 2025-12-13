@@ -50,7 +50,8 @@ jobs:
         run: |
           echo "sha=$(echo ${{github.sha}} | sed 's/^\(.\{10\}\).*$/\1/')" >> $GITHUB_OUTPUT
       - name: Bump version
-        if: github.ref == 'refs/heads/master'
+        if: success()
+        # if: github.ref == 'refs/heads/master'
         id: tag_version
         uses: mathieudutour/github-tag-action@v6.2
         with:
