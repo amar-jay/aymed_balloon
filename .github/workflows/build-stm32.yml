@@ -50,7 +50,7 @@ jobs:
         run: |
           echo "sha=$(echo ${{github.sha}} | sed 's/^\(.\{10\}\).*$/\1/')" >> $GITHUB_OUTPUT
       - name: Bump version
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/hal_flash'
         id: tag_version
         uses: mathieudutour/github-tag-action@v6.2
         with:
@@ -117,13 +117,13 @@ jobs:
           then
               version=0.0.0
               isprelease=1
-              file_postfix=$(find stm32-firmware -name "stm32-firmware-*" | sed 's/stm32-firmware\/application-\(.*\)/\1/')
+              file=$(find stm32-firmware -name "stm32-firmware-*" -type f | head -n 1)
+              file_postfix=$(basename "$file" | sed 's/^stm32-firmware-//')
           else
-              version=$(find stm32-firmware -name "stm32-firmware-*" | sed 's/stm32-firmware\/application-\([0-9\.]*\)/\1/')
               isprelease=0
-              file_postfix=$version
+              file=$(find stm32-firmware -name "stm32-firmware-*" -type f | head -n 1)
+              file_postfix=$(basename "$file" | sed 's/^stm32-firmware-//')
           fi
-          echo "version=$version" >> $GITHUB_OUTPUT
           echo "file_postfix=$file_postfix" >> $GITHUB_OUTPUT
           echo "isprelease=$isprelease" >> $GITHUB_OUTPUT
       - name: Release to Github        
