@@ -79,7 +79,7 @@ jobs:
         uses: xanderhendriks/action-build-stm32cubeide@v15.0
         with:
           project-path: 'firmware'
-          project-target: 'application'
+          project-target: 'balloon_machine_v3'
         env:
           ENV_VERSION_MAJOR: ${{ steps.version_handling.outputs.major }}
           ENV_VERSION_MINOR: ${{ steps.version_handling.outputs.minor }}
@@ -88,10 +88,10 @@ jobs:
       - name: Rename and copy files
         run: |
           mkdir stm32-firmware
-          cp firmware/Release/application.bin stm32-firmware/application-${{ steps.version_handling.outputs.file_postfix }}.bin
-          cp firmware/Release/application.elf stm32-firmware/application-${{ steps.version_handling.outputs.file_postfix }}.elf
-          cp firmware/Release/application.list stm32-firmware/application-${{ steps.version_handling.outputs.file_postfix }}.list
-          cp firmware/Release/application.map stm32-firmware/application-${{ steps.version_handling.outputs.file_postfix }}.map
+          cp firmware/Release/balloon_machine_v3.bin stm32-firmware/application-${{ steps.version_handling.outputs.file_postfix }}.bin
+          cp firmware/Release/balloon_machine_v3.elf stm32-firmware/application-${{ steps.version_handling.outputs.file_postfix }}.elf
+          cp firmware/Release/balloon_machine_v3.list stm32-firmware/application-${{ steps.version_handling.outputs.file_postfix }}.list
+          cp firmware/Release/balloon_machine_v3.map stm32-firmware/application-${{ steps.version_handling.outputs.file_postfix }}.map
       - name: Upload application artifacts
         uses: actions/upload-artifact@v4.6.1
         with:
