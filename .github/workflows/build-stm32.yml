@@ -50,7 +50,7 @@ jobs:
         run: |
           echo "sha=$(echo ${{github.sha}} | sed 's/^\(.\{10\}\).*$/\1/')" >> $GITHUB_OUTPUT
       - name: Bump version
-        if: github.ref == 'refs/heads/hal_flash'
+        if: github.ref == 'refs/heads/master'
         id: tag_version
         uses: mathieudutour/github-tag-action@v6.2
         with:
@@ -110,22 +110,34 @@ jobs:
         uses: actions/download-artifact@v4.1.9
         with:
           path: stm32-firmware
+
       - name: Determine version
         id: determine_version
         run: |
-          if [ -n "$(find stm32-firmware -name 'stm32-firmware-*-dev')" ]
-          then
-              version=0.0.0
-              isprelease=1
-              file=$(find stm32-firmware -name "stm32-firmware-*" -type f | head -n 1)
-              file_postfix=$(basename "$file" | sed 's/^stm32-firmware-//')
-          else
-              isprelease=0
-              file=$(find stm32-firmware -name "stm32-firmware-*" -type f | head -n 1)
-              file_postfix=$(basename "$file" | sed 's/^stm32-firmware-//')
-          fi
-          echo "file_postfix=$file_postfix" >> $GITHUB_OUTPUT
+          asset=$(find stm32-firmware -name "stm32-firmware-application-ide-* " -o -name "stm32-firmware-application-ide-*" | head -n 1)
+          base=$(basename "$asset")
+          version="v${base#stm32-firmware-application-ide-}"
+      
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "file_postfix=$version" >> $GITHUB_OUTPUT
           echo "isprelease=$isprelease" >> $GITHUB_OUTPUT
+
+      # - name: Determine version
+      #   id: determine_version
+      #   run: |
+      #     if [ -n "$(find stm32-firmware -name 'stm32-firmware-*-dev')" ]
+      #     then
+      #         version=0.0.0
+      #         isprelease=1
+      #         file=$(find stm32-firmware -name "stm32-firmware-*" -type f | head -n 1)
+      #         file_postfix=$(basename "$file" | sed 's/^stm32-firmware-//')
+      #     else
+      #         isprelease=0
+      #         file=$(find stm32-firmware -name "stm32-firmware-*" -type f | head -n 1)
+      #         file_postfix=$(basename "$file" | sed 's/^stm32-firmware-//')
+      #     fi
+      #     echo "file_postfix=$file_postfix" >> $GITHUB_OUTPUT
+      #     echo "isprelease=$isprelease" >> $GITHUB_OUTPUT
       - name: Release to Github        
         id: create_release
         uses: ncipollo/release-action@v1.16.0
