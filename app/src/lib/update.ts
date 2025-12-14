@@ -148,21 +148,17 @@ export async function downloadVersion(versionTag: string, force = false): Promis
 /**
  * Get the file buffer for a downloaded version
  */
-export async function getVersionFile(version: VersionInfo): Promise<Buffer> {
+export async function getVersion(versionTag: string): Promise<DownloadedVersion> {
   try {
     const downloaded = await getDownloadedVersions()
-    const versionData = downloaded.find((v) => v.version === version.version)
+    const versionData = downloaded.find((v) => v.tag === versionTag)
     if (!versionData) {
-      // return await downloadVersion(version.tag).then(() => {
-      // 		return getVersionFile(version)
-      // })
-      throw new Error(`Version ${version} not downloaded. Try again after download.`)
+      throw new Error(`Version ${versionTag} not downloaded. Try again after download.`)
     }
-
-    return await fs.readFile(versionData.filePath)
+    return versionData
   } catch (error) {
-    console.error(`Error getting file for version ${version}:`, error)
-    throw new Error(`Error getting file for version ${version}: ${(error as Error).message}`)
+    console.error(`Error getting version ${versionTag}:`, error)
+    throw new Error(`Error getting version ${versionTag}: ${(error as Error).message}`)
   }
 }
 

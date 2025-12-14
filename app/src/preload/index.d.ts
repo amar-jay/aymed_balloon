@@ -18,17 +18,18 @@ import type {
   isDeviceConnected,
   getSystemVersion,
   setSystemConfig,
-  resetSystemConfig
+  resetSystemConfig,
+  uploadFirmware
 } from '../lib/serial'
 import type { Session, Weld } from '../lib/types/session'
 import type {
   deleteVersion,
   downloadVersion,
   getDownloadedVersions,
-  getVersionFile,
   isVersionDownloaded,
   getLatestVersion,
-	getOnlineVersions
+  getOnlineVersions,
+  getVersion
 } from '../lib/update'
 
 export interface SystemConfig {
@@ -121,6 +122,7 @@ declare global {
       SerialgetActiveConnections: typeof getActiveConnections
       SerialgetDevicePath: typeof getDevicePath
       SerialisDeviceConnected: typeof isDeviceConnected
+      SerialuploadFirmware: typeof uploadFirmware
 
       // Session APIs
       DBgetSessions: () => Promise<Session[]>
@@ -142,7 +144,7 @@ declare global {
       UpdatedownloadVersion: typeof downloadVersion
       UpdategetOnlineVersions: typeof getOnlineVersions
       UpdategetDownloadedVersions: typeof getDownloadedVersions
-      UpdategetVersionFile: typeof getVersionFile
+      UpdategetVersion: typeof getVersion
       UpdatedeleteVersion: typeof deleteVersion
       UpdateisVersionDownloaded: typeof isVersionDownloaded
       UpdategetLatestVersion: typeof getLatestVersion

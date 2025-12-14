@@ -20,7 +20,8 @@ import {
   isDeviceConnected,
   getSystemVersion,
   setSystemConfig,
-  resetSystemConfig
+  resetSystemConfig,
+  uploadFirmware
 } from '../lib/serial'
 import { Session, Weld } from '../lib/types/session'
 import './index.d'
@@ -50,6 +51,7 @@ const api = {
   SerialgetActiveConnections: getActiveConnections,
   SerialgetDevicePath: getDevicePath,
   SerialisDeviceConnected: isDeviceConnected,
+  SerialuploadFirmware: uploadFirmware,
 
   // Session APIs
   DBgetSessions: (): Promise<Session[]> => ipcRenderer.invoke('db:sessions:getAll'),
@@ -76,8 +78,8 @@ const api = {
     ipcRenderer.invoke('update:download-version', version),
   UpdategetDownloadedVersions: (): Promise<DownloadedVersion[]> =>
     ipcRenderer.invoke('update:get-downloaded-versions'),
-  UpdategetVersionFile: (version: VersionInfo): Promise<Buffer> =>
-    ipcRenderer.invoke('update:get-version-file', version),
+  UpdategetVersion: (versionTag: string): Promise<DownloadedVersion> =>
+    ipcRenderer.invoke('update:get-version', versionTag),
   UpdatedeleteVersion: (versionTag: string): Promise<void> =>
     ipcRenderer.invoke('update:delete-version', versionTag),
   UpdateisVersionDownloaded: (tag: string): Promise<boolean> =>

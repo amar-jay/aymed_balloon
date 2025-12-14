@@ -21,45 +21,58 @@ export const useMCUUpdate = (connectionId?: string | null) => {
       //   toast.info('No active connection')
       //   return
       // }
+
       setIsDownloading(true)
+
       try {
-        // if it is a file, then...
+        let firmwarePath: string
+
+        // 1. Resolve firmware source
         if (file instanceof File) {
-          console.log('Uploading firmware file to MCU...', file)
-        } else if (typeof file === 'string') {
-          const version = versions.find((v) => v.version === file || v.tag === file)
-          try {
-            if (!version) return
-            await window.api.UpdatedownloadVersion(version?.tag || file)
-            toast.success('Firmware downloaded successfully')
-            const versionFile = await window.api.UpdategetVersionFile(version)
-            console.log('Fetched firmware to MCU...', versionFile)
-          } catch (error) {
-            console.error('Error uploading firmware:', error)
-            toast.error(`Error uploading firmware: ${(error as Error).message}`)
-          }
-        } else {
-          try {
-            const version = await window.api.UpdategetLatestVersion()
-            // convert buffer to file object
-            // const firmwareFile = new File([file], 'firmware.hex', {
-            //   type: 'application/octet-stream'
-            // })
-            if (version) {
-              await window.api.UpdatedownloadVersion(version.tag)
-              toast.success('Latest firmware downloaded successfully')
-            }
-            const versionFile = await window.api.UpdategetVersionFile(version!)
-            console.log('Uploading latest firmware to MCU...', versionFile)
-          } catch (error) {
-            console.error('Error downloading latest firmware:', error)
-            toast.error(`Error downloading latest firmware: ${(error as Error).message}`)
-          }
+          // Not implemented yet, but fail loudly and clearly
+          throw new Error('Local firmware file upload is not implemented yet')
         }
+
+        if (typeof file === 'string') {
+          const version = versions.find((v) => v.version === file || v.tag === file)
+
+          if (!version) {
+            throw new Error(`Firmware version "${file}" not found`)
+          }
+
+          toast.info(`Downloading firmware ${version.tag}...`)
+          await window.api.UpdatedownloadVersion(version.tag)
+
+          const data = await window.api.UpdategetVersion(version.tag)
+          firmwarePath = data.filePath
+        } else {
+          const version = await window.api.UpdategetLatestVersion()
+
+          if (!version) {
+            throw new Error('No latest firmware version found')
+          }
+
+          toast.info(`Downloading latest firmware (${version.tag})...`)
+          await window.api.UpdatedownloadVersion(version.tag)
+
+          const data = await window.api.UpdategetVersion(version.tag)
+          firmwarePath = data.filePath
+        }
+
+        // 2. Upload to MCU
+        toast.info('Uploading firmware to MCU. Do not disconnect.', {
+          duration: 10000
+        })
+
+        // await window.api.SerialuploadFirmware(connectionId, firmwarePath)
+
+        // toast.success('Firmware uploaded successfully')
       } catch (error) {
-        console.error('Error uploading firmware:', error)
+        console.error('[Firmware Update]', error)
+        toast.error((error as Error).message)
+      } finally {
+        setIsDownloading(false)
       }
-      setIsDownloading(false)
     },
     [versions, connectionId]
   )

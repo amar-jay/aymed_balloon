@@ -41,6 +41,7 @@ import {
   SystemVersion,
   SystemConfigSerialize
 } from './types/minibuf'
+import { open } from 'fs/promises'
 
 export interface SerialDevice {
   path: string
@@ -482,10 +483,121 @@ export async function listUSBPorts(): Promise<string[]> {
   return devices.map((device) => device.path)
 }
 
-export async function uploadFirmware(filepath: string, file_type: 'hex' | 'bin' = 'hex'): Promise<void> {
-	// firmware upload it's in three steps:
-	// 1. send command to enter bootloader mode
-	// 2. use external tool (e.g., avrdude, bossac) to upload firmware
-	// 3. send command to exit bootloader mode
+/**
+ * Helper to wait for a specific string in the data buffer
+ */
+async function waitForResponse(
+  connectionId: string,
+  match: string,
+  timeoutMs: number
+): Promise<void> {
+  const connection = activeConnections.get(connectionId)
+  if (!connection) throw new Error(`Connection ${connectionId} not found`)
 
+  const startTime = Date.now()
+  while (Date.now() - startTime < timeoutMs) {
+    // Check if the response is in the buffer
+    for (let i = connection.dataBuffer.length - 1; i >= 0; i--) {
+      if (connection.dataBuffer[i].includes(match)) {
+        return
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100))
+  }
+  throw new Error(`Timeout waiting for response: "${match}"`)
+}
+
+export async function uploadFirmware(
+  connectionId: string,
+  filepath: string,
+  file_type: 'hex' | 'bin' = 'hex'
+): Promise<void> {
+  if (file_type === 'bin') {
+    console.log(
+      'BINARY FIRMWARE IS MUCH DIFFICUT TO UPLOAD OVER SERIAL. ITS SUPPORT IS EXPERIMENTAL AND MAY NOT WORK RELIABLY.'
+    )
+  }
+
+  const connection = activeConnections.get(connectionId)
+  if (!connection) {
+    throw new Error(`Connection ${connectionId} not found`)
+  }
+
+  // 1. Read the firmware file
+  let fileData: Buffer
+  try {
+    // check if file type is binary or hex
+    const ext = filepath.split('.').pop()?.toLowerCase()
+    if (file_type != ext) {
+      throw new Error(`File extension .${ext} does not match specified file type ${file_type}`)
+    }
+    const fileHandle = await open(filepath, 'r')
+    fileData = await fileHandle.readFile()
+    await fileHandle.close()
+  } catch (error) {
+    throw new Error(`Failed to read firmware file: ${(error as Error).message}`)
+  }
+
+  // 2. Enter bootloader mode
+  // Clear buffer to avoid false positives
+  connection.dataBuffer = []
+
+  console.log('[Firmware] Sending start command...')
+  // Corrected typo from FIRWARE to FIRMWARE
+  await sendCommand(connectionId, 'SET FIRMWARE_UPDATE START')
+
+  // 3. Wait for device to be ready
+  console.log('[Firmware] Waiting for device...')
+  try {
+    await waitForResponse(connectionId, 'UPDATE READY', 10000)
+  } catch {
+    throw new Error('Device did not enter bootloader mode. Check connection and try again.')
+  }
+
+  console.log('[Firmware] Device ready. Starting upload...')
+
+  // 4. Send firmware data
+  if (file_type === 'hex') {
+    // Send line by line
+    const content = fileData.toString('utf-8')
+    const lines = content.split(/\r?\n/)
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim() // perhaps there is no need to trim?
+      if (!line) continue
+
+      await sendCommand(connectionId, line)
+
+      // Small delay to prevent buffer overflow on device
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    }
+  } else {
+    // Send binary chunks
+    const chunkSize = 256
+
+    for (let i = 0; i < fileData.length; i += chunkSize) {
+      const chunk = fileData.subarray(i, i + chunkSize)
+
+      await new Promise<void>((resolve, reject) => {
+        connection.port.write(chunk, (error) => {
+          if (error) reject(error)
+          else resolve()
+        })
+      })
+
+      // Small delay
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+  }
+
+  console.log('[Firmware] Upload complete.')
+
+  // 5. Exit bootloader / Reset
+  await sendCommand(connectionId, 'SET FIRMWARE_UPDATE END')
+
+  // 6. Wait for completion confirmation
+  console.log('[Firmware] Waiting for completion confirmation...')
+  await waitForResponse(connectionId, 'UPDATE COMPLETE', 10000)
+
+  console.log('[Firmware] Firmware update successful.')
 }
