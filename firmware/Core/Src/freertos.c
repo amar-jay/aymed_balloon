@@ -19,8 +19,8 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "FreeRTOS.h"
-#include "main.h"
 #include "task.h"
+#include "main.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -60,6 +60,8 @@ void StartHeater(void *argument);
 /* USER CODE END FunctionPrototypes */
 
 /* Private application code --------------------------------------------------*/
+/* USER CODE BEGIN Application */
+
 // This is the UART thread (cooperative thread), it doesn't do alot but can
 // preempt all other thread(heaters and sensors) when in session
 // it is blocking. so make sure nothing blocking is within this thread. and
@@ -100,3 +102,4 @@ void StartHeater(
 }
 
 /* USER CODE END Application */
+

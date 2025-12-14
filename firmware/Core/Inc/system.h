@@ -86,4 +86,5 @@ void BuzzerUpdate(void);
 void BalloonSystemInit(void);
 
 void LogCallbackHandler();
+
 #endif

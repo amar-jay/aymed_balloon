@@ -22,6 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "system.h"
 #include "utils.h"
 /* USER CODE END Includes */
 
@@ -52,7 +53,7 @@ UART_HandleTypeDef huart4;
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 512 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal,
 };
 /* Definitions for logTask */
@@ -66,7 +67,7 @@ const osThreadAttr_t logTask_attributes = {
 osThreadId_t sensorTaskHandle;
 const osThreadAttr_t sensorTask_attributes = {
   .name = "sensorTask",
-  .stack_size = 512 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal2,
 };
 /* Definitions for heaterTask */
@@ -420,7 +421,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : PROXIMITY_SENSOR_Pin */
   GPIO_InitStruct.Pin = PROXIMITY_SENSOR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(PROXIMITY_SENSOR_GPIO_Port, &GPIO_InitStruct);
 
