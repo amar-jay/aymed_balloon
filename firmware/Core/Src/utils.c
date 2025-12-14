@@ -411,8 +411,7 @@ void process_command(const char *input, BalloonConfig_t* config, BalloonState_t*
         // This is an Intel HEX line
         if (Bootloader_GetState() == BOOTLOADER_RECEIVING) {
             Bootloader_ProcessHEXLine(input);
-            // Optional: send ACK for each line (can slow down transfer)
-            // usb_printf("ACK\r\n");
+            // Note: ACK responses are controlled by BOOTLOADER_SEND_ACK define in bootloader.c
         } else {
             usb_printf("ERROR: Not in firmware update mode\r\n");
         }

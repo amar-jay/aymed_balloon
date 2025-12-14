@@ -28,9 +28,12 @@
 
 /* Configuration -------------------------------------------------------------*/
 #define APP_START_ADDRESS   0x08000000      /**< Application base address */
-#define APP_SIZE            (896 * 1024)    /**< Maximum application size (896KB) */
+#define APP_SIZE            (832 * 1024)    /**< Maximum application size (832KB) - matches updateable area */
 #define FIRST_SECTOR        FLASH_SECTOR_4  /**< First sector to erase */
 #define LAST_SECTOR         FLASH_SECTOR_10 /**< Last sector to erase */
+
+/* Enable ACK responses for each HEX line (useful for debugging) */
+// #define BOOTLOADER_SEND_ACK
 
 /* Private variables ---------------------------------------------------------*/
 static BootloaderState_t bootloaderState = BOOTLOADER_IDLE;
@@ -195,6 +198,11 @@ HAL_StatusTypeDef Bootloader_ProcessHEXLine(const char* line) {
                        record.recordType);
             break;
     }
+    
+    // Optional ACK for each line (enable BOOTLOADER_SEND_ACK to activate)
+    #ifdef BOOTLOADER_SEND_ACK
+    usb_printf("ACK\r\n");
+    #endif
     
     return HAL_OK;
 }
