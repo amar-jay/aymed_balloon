@@ -12,6 +12,8 @@ import {
   getLatestVersion,
   getOnlineVersions
 } from '../lib/update'
+import fs from 'fs/promises'
+import { tmpdir } from 'os'
 
 import icon from '../../resources/logo.jpeg?asset'
 
@@ -126,6 +128,25 @@ app.whenReady().then(() => {
     isVersionDownloaded(version)
   )
   ipcMain.handle('update:get-latest-version', async () => getLatestVersion())
+  
+  // Local firmware file handler
+  ipcMain.handle('update:save-local-firmware', async (_, fileBuffer: ArrayBuffer, fileName: string): Promise<string> => {
+    try {
+      // Create a temporary file path
+      const tempDir = tmpdir()
+      const timestamp = Date.now()
+      const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_')
+      const tempFilePath = join(tempDir, `firmware_${timestamp}_${sanitizedFileName}`)
+      
+      // Write the buffer to the temporary file
+      await fs.writeFile(tempFilePath, Buffer.from(fileBuffer))
+      
+      return tempFilePath
+    } catch (error) {
+      throw new Error(`Failed to save local firmware file: ${(error as Error).message}`)
+    }
+  })
+  
   createWindow()
 
   app.on('activate', function () {
