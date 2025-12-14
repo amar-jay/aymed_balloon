@@ -60,13 +60,17 @@ export const useMCUUpdate = (connectionId?: string | null) => {
         }
 
         // 2. Upload to MCU
+        if (!connectionId) {
+          throw new Error('No active connection. Please connect to device first.')
+        }
+
         toast.info('Uploading firmware to MCU. Do not disconnect.', {
           duration: 10000
         })
 
-        // await window.api.SerialuploadFirmware(connectionId, firmwarePath)
+        await window.api.SerialuploadFirmware(connectionId, firmwarePath)
 
-        // toast.success('Firmware uploaded successfully')
+        toast.success('Firmware uploaded successfully')
       } catch (error) {
         console.error('[Firmware Update]', error)
         toast.error((error as Error).message)
