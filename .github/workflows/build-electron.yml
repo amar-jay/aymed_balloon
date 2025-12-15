@@ -20,16 +20,29 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
+      
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 22
-
-      - name: Install build tools (for native modules)
+      
+      - name: Install node-gyp
+        run: npm install --global node-gyp
+      
+      - name: Configure node-gyp
         run: |
-          npm install --global --production windows-build-tools@5.0.0
-          npm install --global node-gyp
+          npm config set python python3
+          npm config set msvs_version 2022
+      
+      - name: Install dependencies
+        run: yarn install
+      
+      - name: Rebuild native modules
+        run: npx electron-rebuild -v 39.1.0
+      
+      - name: Build Windows Electron app
+        run: yarn build:win
+
 
       - name: Configure Node-gyp
         run: |
