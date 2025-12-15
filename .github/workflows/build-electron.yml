@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - hal_flash
+  workflow_dispatch:
+
 permissions:
   contents: write
   
@@ -19,42 +21,37 @@ jobs:
         working-directory: app
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
       
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-      
-      - name: Install node-gyp
-        run: npm install --global node-gyp
-      
-      - name: Configure node-gyp
-        run: |
-          npm config set python python3
-          npm config set msvs_version 2022
+          cache: 'pnpm'
+          cache-dependency-path: app/pnpm-lock.yaml
       
       - name: Install dependencies
-        run: yarn install
-      
-      - name: Rebuild native modules
-        run: npx electron-rebuild -v 39.1.0
+        env:
+          npm_config_python: python3
+        run: pnpm install --frozen-lockfile
       
       - name: Build Windows Electron app
-        run: yarn build:win
+        run: pnpm run build:win
 
-      - name: List output
-        run: dir .\electron_dist\squirrel-windows
+      - name: List output directory
+        run: dir dist
 
-      - name: Upload release
-        uses: lucyio/upload-to-release@master
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
         with:
-          name: lucyio/electron
-          path: ./dist
-          action: unpublished
-          release_id: 1.0.0
-          release-repo: lucyio/electron
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          name: windows-executable
+          path: app/dist/*.exe
+          if-no-files-found: error
 
   build_linux:
     name: Build Linux AppImage
@@ -67,21 +64,34 @@ jobs:
         working-directory: app
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: 'pnpm'
+          cache-dependency-path: app/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: yarn install
-
-      - name: Rebuild native modules for Electron
-        run: npx electron-rebuild -v 39.1.0
+        run: pnpm install --frozen-lockfile
 
       - name: Build Linux Electron app
-        run: yarn build:linux
+        run: pnpm run build:linux
 
-      - name: List output
-        run: ls ./dist
+      - name: List output directory
+        run: ls -lah dist
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: |
+            app/dist/*.AppImage
+            app/dist/*.deb
+          if-no-files-found: error
