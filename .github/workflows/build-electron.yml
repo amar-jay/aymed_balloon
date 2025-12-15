@@ -4,7 +4,9 @@ on:
   push:
     branches:
       - hal_flash
-
+permissions:
+  contents: write
+  
 jobs:
   build_windows:
     name: Build Windows .exe
