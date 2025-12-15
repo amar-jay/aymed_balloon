@@ -3,8 +3,7 @@ name: Build Electron App
 on:
   push:
     branches:
-      - main
-      - electronjobs
+      - hal_flash
 
 jobs:
   build_windows:
