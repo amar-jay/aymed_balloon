@@ -1,9 +1,9 @@
 name: Build Electron App
 
 on:
-  push:
-    branches:
-      - hal_flash
+  # push:
+  #   branches:
+  #     - hal_flash
   workflow_dispatch:
 
 permissions:
@@ -15,7 +15,8 @@ jobs:
     runs-on: windows-2022
     env:
       ELECTRON: true
-      APP_VERSION_NUMBER: 1.0.0
+      APP_VERSION_NUMBER: 1.0.1
+      MAIN_VITE_GITHUB_TOKEN: ${{ secrets.API_GITHUB_TOKEN }}
     defaults:
       run:
         working-directory: app
@@ -58,7 +59,8 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       ELECTRON: true
-      APP_VERSION_NUMBER: 1.0.0
+      APP_VERSION_NUMBER: 1.0.1
+      MAIN_VITE_GITHUB_TOKEN: ${{ secrets.API_GITHUB_TOKEN }}
     defaults:
       run:
         working-directory: app
