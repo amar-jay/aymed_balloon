@@ -1,13 +1,13 @@
 name: Release Electron App
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
+  # push:
+  #   tags:
+  #     - 'app*.*.*' # so that it doesn't conflict with the firmware releases
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g., v1.0.0)'
+        description: 'Version to release (e.g., app1.0.0)'
         required: true
         type: string
 
