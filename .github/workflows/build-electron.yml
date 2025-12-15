@@ -43,22 +43,6 @@ jobs:
       - name: Build Windows Electron app
         run: yarn build:win
 
-
-      - name: Configure Node-gyp
-        run: |
-          npm config set python python3
-          npm config set msvs_version 2022
-
-      - name: Install dependencies
-        run: yarn install
-
-      - name: Rebuild native modules for Electron
-        run: npx electron-rebuild -v 39.1.0
-        # -v should match your electron version in package.json
-
-      - name: Build Windows Electron app
-        run: yarn build:win
-
       - name: List output
         run: dir .\electron_dist\squirrel-windows
 
