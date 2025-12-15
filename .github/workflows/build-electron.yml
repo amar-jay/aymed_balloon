@@ -50,13 +50,14 @@ jobs:
         run: dir .\electron_dist\squirrel-windows
 
       - name: Upload release
-        uses: lucyio/upload-to-release@v3
+        uses: lucyio/upload-to-release@release
         with:
           name: lucyio/electron
-          path: ./electron_dist/squirrel-windows
+          path: ./dist
           action: unpublished
           release_id: 1.0.0
           release-repo: lucyio/electron
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
   build_linux:
     name: Build Linux AppImage
