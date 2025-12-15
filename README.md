@@ -4,12 +4,14 @@ This repository contains the firmware, schematics and application software durin
 
 #### Firmware
 
-The MCU used in the system is the STM32F407VGTx and it is programmed with STM32 HAL (via the CubeIDE). This includes managing the reading temperature sensors via ADS1115(i2c to adc converter) or internal ADCs, Top Heater, Bottom Heater, and Power Supply tempretures, UART-based console interface for writing commands and reading logs as well as persistent config storage on flash.
+The MCU used in the system is the STM32F407VGTx and it is programmed with STM32 HAL (via the CubeIDE). This includes managing the reading temperature sensors via ADS1115(i2c to adc converter) or internal ADCs, Top Heater, Bottom Heater, and Power Supply tempretures, UART-based console interface for writing commands and reading logs as well as persistent config storage on flash. 
 
 #### Application
 
 The desktop application built with Electron/React/TS, provides a dashboard interface to monitor every state of the machine as well as record welds (weld recording - not fully tested). The application also has a console interface to set configs by writing to flash, write commands for specific controls or read logs from device. It also has USB device scanning of devices, as well as compatibility with USB.
 (Currently, the application is tried and tested on Ubuntu, but not shipped to Windows yet!-but may be used in dev server)*, 
+
+Additional note, firmware update is implemented on the application side currently but not on the firmware side.
 
 #### Communication Protocol
 
