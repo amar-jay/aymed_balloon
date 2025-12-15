@@ -50,7 +50,7 @@ jobs:
         run: dir .\electron_dist\squirrel-windows
 
       - name: Upload release
-        uses: lucyio/upload-to-release@release
+        uses: lucyio/upload-to-release@master
         with:
           name: lucyio/electron
           path: ./dist
