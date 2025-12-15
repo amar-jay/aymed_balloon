@@ -1,0 +1,153 @@
+name: Build & Release STM32 Firmware
+
+on:
+  # push:
+  #   branches:
+  #     - hal_flash
+    # tags:
+    #   - "v*"        # not implemented yet!
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Release (y/n)?'
+        required: true
+        default: 'y'
+permissions:
+  contents: write
+
+jobs:
+  analyse-code:
+    name: Analyse code
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4.2.2
+      - name: Install packages and dependencies
+        run: |
+          python3 -m pip install --upgrade pip==25.3
+          pip install flake8
+      # - name: Flake8 static analysis
+      #   uses: xanderhendriks/flake8-github-action@v1.0.2
+      #   with:
+      #     checkName: 'Analyse code'   # NOTE: this needs to be the same as the job name
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # - name: cppcheck
+      #   run: |
+      #     sudo apt-get install -y cppcheck
+      #     cppcheck --enable=all --inline-suppr --project=application.cppcheck --error-exitcode=-1
+          
+  build-application-cubeide:
+    needs: analyse-code
+    name: STM32CubeIde sample application build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Install ARM toolchain
+        run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi
+      
+      - name: Checkout the repository
+        uses: actions/checkout@v4.2.2
+      
+      - name: Determine short GIT hash
+        id: short-sha
+        run: |
+          echo "sha=$(echo ${{github.sha}} | sed 's/^\(.\{10\}\).*$/\1/')" >> $GITHUB_OUTPUT
+      
+      - name: Bump version
+        if: success()
+        # if: github.ref == 'refs/heads/master'
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          dry_run: true
+          default_bump: minor
+          fetch_all_tags: true
+      
+      - name: Version handling
+        id: version_handling
+        run: |
+          # Use the bumped version when on master or otherwise 0.0.0
+          if [ -z ${{ steps.tag_version.outputs.new_tag }} ]
+          then
+            version=0.0.0
+            file_postfix=${{ steps.short-sha.outputs.sha }}-dev
+          else
+            version=${{ steps.tag_version.outputs.new_version }}
+            file_postfix=$version
+          fi
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo $version
+          echo "file_postfix=$file_postfix" >> $GITHUB_OUTPUT
+          echo "major=$(echo $version | sed 's/\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\).*/\1/')" >> $GITHUB_OUTPUT
+          echo "minor=$(echo $version | sed 's/\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\).*/\2/')" >> $GITHUB_OUTPUT
+          echo "bugfix=$(echo $version | sed 's/\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\).*/\3/')" >> $GITHUB_OUTPUT
+      
+      - name: Build the application binary
+        uses: xanderhendriks/action-build-stm32cubeide@v15.0
+        with:
+          project-path: 'firmware'
+          project-target: 'balloon_machine_v3'
+        env:
+          ENV_VERSION_MAJOR: ${{ steps.version_handling.outputs.major }}
+          ENV_VERSION_MINOR: ${{ steps.version_handling.outputs.minor }}
+          ENV_VERSION_BUGFIX: ${{ steps.version_handling.outputs.bugfix }}
+          ENV_SHORT_GIT_HASH: ${{ steps.short-sha.outputs.sha }}
+      
+      - name: Rename and copy files
+        run: |
+          mkdir -p stm32-firmware
+          cp firmware/Debug/balloon_machine_v3.elf stm32-firmware/application-${{ steps.version_handling.outputs.file_postfix }}.elf
+          cp firmware/Debug/balloon_machine_v3.list stm32-firmware/application-${{ steps.version_handling.outputs.file_postfix }}.list
+          cp firmware/Debug/balloon_machine_v3.map stm32-firmware/application-${{ steps.version_handling.outputs.file_postfix }}.map
+      
+      - name: Convert to HEX and BIN files
+        run: |
+          set -e
+          BASE=application-${{ steps.version_handling.outputs.file_postfix }}
+          arm-none-eabi-objcopy -O ihex   "stm32-firmware/$BASE.elf" "stm32-firmware/$BASE.hex"
+          arm-none-eabi-objcopy -O binary "stm32-firmware/$BASE.elf" "stm32-firmware/$BASE.bin"      
+          echo "Generated firmware artifacts:"
+          ls -lh stm32-firmware
+      
+      - name: Upload application artifacts
+        uses: actions/upload-artifact@v4.6.1
+        with:
+          name: stm32-firmware-application-ide-${{ steps.version_handling.outputs.file_postfix }}
+          path: stm32-firmware
+ 
+  release:
+    needs: [build-application-cubeide]
+    if: github.ref == 'refs/heads/master' || github.event.inputs.release == 'y'
+    name: Release to Github
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4.1.7
+      - name: Download artifacts
+        uses: actions/download-artifact@v4.1.9
+        with:
+          path: stm32-firmware
+
+      - name: Determine version
+        id: determine_version
+        run: |
+          asset=$(find stm32-firmware -name "stm32-firmware-application-ide-* " -o -name "stm32-firmware-application-ide-*" | head -n 1)
+          base=$(basename "$asset")
+          version="${base#stm32-firmware-application-ide-}"
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "file_postfix=$version" >> $GITHUB_OUTPUT
+          echo "isprelease=$isprelease" >> $GITHUB_OUTPUT
+
+      - name: Release to Github        
+        id: create_release
+        uses: ncipollo/release-action@v1.16.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: v${{ steps.determine_version.outputs.file_postfix }}
+          name: v${{ steps.determine_version.outputs.file_postfix }}
+          commit: ${{ github.sha }}
+          prerelease: ${{ steps.determine_version.outputs.isprelease }}
+          draft: false
+          artifacts: "stm32-firmware/stm32-firmware-*/*"

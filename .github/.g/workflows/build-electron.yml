@@ -1,0 +1,88 @@
+name: Build Electron App
+
+on:
+  push:
+    branches:
+      - main
+      - electronjobs
+
+jobs:
+  build_windows:
+    name: Build Windows .exe
+    runs-on: windows-2022
+    env:
+      ELECTRON: true
+      APP_VERSION_NUMBER: 1.0.0
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22
+
+      - name: Install build tools (for native modules)
+        run: |
+          npm install --global --production windows-build-tools@5.0.0
+          npm install --global node-gyp
+
+      - name: Configure Node-gyp
+        run: |
+          npm config set python python3
+          npm config set msvs_version 2022
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Rebuild native modules for Electron
+        run: npx electron-rebuild -v 39.1.0
+        # -v should match your electron version in package.json
+
+      - name: Build Windows Electron app
+        run: yarn build:win
+
+      - name: List output
+        run: dir .\electron_dist\squirrel-windows
+
+      - name: Upload release
+        uses: lucyio/upload-to-release@v3
+        with:
+          name: lucyio/electron
+          path: ./electron_dist/squirrel-windows
+          action: unpublished
+          release_id: 1.0.0
+          release-repo: lucyio/electron
+
+  build_linux:
+    name: Build Linux AppImage
+    runs-on: ubuntu-22.04
+    env:
+      ELECTRON: true
+      APP_VERSION_NUMBER: 1.0.0
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Rebuild native modules for Electron
+        run: npx electron-rebuild -v 39.1.0
+
+      - name: Build Linux Electron app
+        run: yarn build:linux
+
+      - name: List output
+        run: ls ./dist
