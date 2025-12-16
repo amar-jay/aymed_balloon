@@ -104,12 +104,12 @@ export function Dashboard({ isConnected, connectionId }: DashboardProps) {
       weldingDuration: currentSystemData.weldingTime,
       coolingDuration: currentSystemData.coolingTime,
       isSuccessful:
-        currentSystemData.topTemp > (currentConfig?.topTempThreshold || 120) * .9 &&
-        currentSystemData.bottomTemp > (currentConfig?.bottomTempThreshold || 120) * .9,
+        currentSystemData.topTemp > (currentConfig?.topTempThreshold || 120) * 0.9 &&
+        currentSystemData.bottomTemp > (currentConfig?.bottomTempThreshold || 120) * 0.9,
       error:
-        currentSystemData.topTemp < (currentConfig?.topTempThreshold || 120) * .9
+        currentSystemData.topTemp < (currentConfig?.topTempThreshold || 120) * 0.9
           ? 'Top heater too low temperature'
-          : currentSystemData.bottomTemp < (currentConfig?.bottomTempThreshold || 120) * .9
+          : currentSystemData.bottomTemp < (currentConfig?.bottomTempThreshold || 120) * 0.9
             ? 'Bottom heater too low temperature'
             : undefined
     }
@@ -123,12 +123,9 @@ export function Dashboard({ isConnected, connectionId }: DashboardProps) {
       const currentSystemData = systemDataRef.current
       const currentConfig = configRef.current
 
-      if (currentSystemData?.pedalActive) {
+      if (currentSystemData) {
         const newWeld = createWeld(currentSystemData, currentConfig)
         await addWeld(newWeld, notify)
-      } else {
-        // Reset the pedal state when pedal is released
-        lastPedalStateRef.current = false
       }
     },
     [addWeld]
@@ -138,10 +135,20 @@ export function Dashboard({ isConnected, connectionId }: DashboardProps) {
     // if (!isConnected) return
     // if (!connectionId) return
     const interval = setInterval(async () => {
-			// if (!isConnected) return
+      // if (!isConnected) return
       if (!connectionId) {
-        pushSystemSnapshot(generateMockSystemData())
-        // setConfig(generateMockSystemConfig())
+        // Currently not connected, so using mock data temporarily for testing
+        if (process.env.NODE_ENV === 'development') {
+          const status = generateMockSystemData()
+          pushSystemSnapshot(status)
+          const isPedalActive = status?.pedalActive ?? false
+          if (isPedalActive && !lastPedalStateRef.current) {
+            const newWeld = createWeld(status, configRef.current)
+            await addWeld(newWeld, false)
+          }
+          lastPedalStateRef.current = isPedalActive
+          // setConfig(generateMockSystemConfig())
+        }
         return
       }
 
@@ -170,16 +177,12 @@ export function Dashboard({ isConnected, connectionId }: DashboardProps) {
       // to handle whenever the pedal is pressed
       // this is used to add welds automatically when the pedal is pressed
       // and avoid debouncing when held down
-      if (lastPedalStateRef.current !== true) {
-        lastPedalStateRef.current = true
-        if (status?.pedalActive) {
-          const newWeld = createWeld(status, c)
-          await addWeld(newWeld, false)
-        } else {
-          // Reset the pedal state when pedal is released
-          lastPedalStateRef.current = false
-        }
+      const isPedalActive = status?.pedalActive ?? false
+      if (isPedalActive && !lastPedalStateRef.current) {
+        const newWeld = createWeld(status, c)
+        await addWeld(newWeld, false)
       }
+      lastPedalStateRef.current = isPedalActive
     }, 1000)
 
     const configInterval = setInterval(async () => {
