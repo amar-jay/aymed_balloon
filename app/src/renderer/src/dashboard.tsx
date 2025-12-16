@@ -316,43 +316,45 @@ export function Dashboard({ isConnected, connectionId }: DashboardProps) {
             </div>
           </div>
           {/* if its in dev mode, show the raw system data and config */}
-          {process.env.NODE_ENV === 'development' && (
-            <>
-              {/* Temperature Graphs Section */}
-              <TempGraph pastSystemData={pastSystemData} />
+          <>
+            {/* Temperature Graphs Section */}
+            <TempGraph pastSystemData={pastSystemData} />
 
-              <div className="grid grid-cols-2 gap-2">
-                {sessionId ? (
-                  <ActiveSessionPanel
-                    session={session}
-                    resetSessionId={() => setSessionId(null)}
-                    deleteSession={deleteSession}
-                    addWeld={handleAddWeld}
-                    endSession={endSession}
-                    generatePDF={generatePDF}
-                  />
-                ) : (
-                  <CreateSessionForm setSessionId={setSessionId} />
+            <div className="grid grid-cols-2 gap-2">
+              {sessionId ? (
+                <ActiveSessionPanel
+                  session={session}
+                  resetSessionId={() => setSessionId(null)}
+                  deleteSession={deleteSession}
+                  addWeld={handleAddWeld}
+                  endSession={endSession}
+                  generatePDF={generatePDF}
+                />
+              ) : (
+                <CreateSessionForm setSessionId={setSessionId} />
+              )}
+              <div className="rounded-lg border dark:border-border p-4 space-y-2 transition-colors">
+                <h4 className="text-sm text-muted-foreground">System Status</h4>
+                <Badge
+                  variant={config?.sysErrorEnabled ? 'destructive' : 'outline'}
+                  className={cn(
+                    !config?.sysErrorEnabled && 'bg-green-600/80 text-white',
+                    'w-[50px]'
+                  )}
+                >
+                  {config?.sysErrorEnabled ? 'ERROR' : 'OK'}
+                </Badge>
+                {process.env.NODE_ENV === 'development' && (
+                  <>
+                    <h4 className="text-sm text-muted-foreground mt-2">System Data:</h4>
+                    <p className="text-xs">{JSON.stringify(systemData, null, 2)}</p>
+                    <h4 className="text-sm text-muted-foreground mt-2">System Config:</h4>
+                    <p className="text-xs">{JSON.stringify(config, null, 2)}</p>
+                  </>
                 )}
-                <div className="rounded-lg border dark:border-border p-4 space-y-2 transition-colors">
-                  <h4 className="text-sm text-muted-foreground">System Status</h4>
-                  <Badge
-                    variant={config?.sysErrorEnabled ? 'destructive' : 'outline'}
-                    className={cn(
-                      !config?.sysErrorEnabled && 'bg-green-600/80 text-white',
-                      'w-[50px]'
-                    )}
-                  >
-                    {config?.sysErrorEnabled ? 'ERROR' : 'OK'}
-                  </Badge>
-                  <h4 className="text-sm text-muted-foreground mt-2">System Data:</h4>
-                  <p className="text-xs">{JSON.stringify(systemData, null, 2)}</p>
-                  <h4 className="text-sm text-muted-foreground mt-2">System Config:</h4>
-                  <p className="text-xs">{JSON.stringify(config, null, 2)}</p>
-                </div>
               </div>
-            </>
-          )}
+            </div>
+          </>
 
           {/* if its in production, show interface for normal using, by that I mean for a welding session for a user blah blah blah */}
           {process.env.NODE_ENV === 'production' && <></>}
