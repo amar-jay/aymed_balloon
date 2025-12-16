@@ -10,7 +10,8 @@ import {
   deleteVersion,
   isVersionDownloaded,
   getLatestVersion,
-  getOnlineVersions
+  getOnlineVersions,
+  saveTempFirmware
 } from '../lib/update'
 
 import icon from '../../resources/logo.jpeg?asset'
@@ -126,6 +127,12 @@ app.whenReady().then(() => {
     isVersionDownloaded(version)
   )
   ipcMain.handle('update:get-latest-version', async () => getLatestVersion())
+  ipcMain.handle(
+    'update:save-temp-firmware',
+    async (_, fileBuffer: ArrayBuffer, fileName: string): Promise<string> =>
+      saveTempFirmware(fileBuffer, fileName)
+  )
+
   createWindow()
 
   app.on('activate', function () {

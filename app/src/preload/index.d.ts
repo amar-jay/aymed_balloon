@@ -29,7 +29,9 @@ import type {
   isVersionDownloaded,
   getLatestVersion,
   getOnlineVersions,
-  getVersion
+  getVersion,
+  deleteTempFirmware,
+  saveTempFirmware
 } from '../lib/update'
 
 export interface SystemConfig {
@@ -148,6 +150,8 @@ declare global {
       UpdatedeleteVersion: typeof deleteVersion
       UpdateisVersionDownloaded: typeof isVersionDownloaded
       UpdategetLatestVersion: typeof getLatestVersion
+      UpdatesaveTempFirmware: typeof saveTempFirmware
+      UpdatedeleteTempFirmware: typeof deleteTempFirmware
     }
   }
 }

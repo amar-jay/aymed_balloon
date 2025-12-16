@@ -390,7 +390,7 @@ function setupDatabaseHandlers(db: Database.Database) {
     })
 
     // open the generated PDF file
-    // shell.openPath(filePath)
+    // mshell.openPath(filePath)
 
     return filePath
   }

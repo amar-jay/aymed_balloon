@@ -2,6 +2,7 @@ import { app } from 'electron'
 import { join } from 'path'
 import fs from 'fs/promises'
 import yaml from 'js-yaml'
+import { tmpdir } from 'os'
 
 const updatesDir = join(app.getPath('userData'), 'updates')
 const updateInfosPath = join(app.getPath('userData'), 'aymed-updates.yaml')
@@ -237,5 +238,32 @@ async function fileExists(path: string): Promise<boolean> {
     return true
   } catch {
     return false
+  }
+}
+
+export async function saveTempFirmware(fileBuffer: ArrayBuffer, fileName: string): Promise<string> {
+  try {
+    // Create a temporary file path
+    const tempDir = tmpdir()
+    const timestamp = Date.now()
+    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_')
+    const tempFilePath = join(tempDir, `firmware_${timestamp}_${sanitizedFileName}`)
+
+    // Write the buffer to the temporary file
+    await fs.writeFile(tempFilePath, Buffer.from(fileBuffer))
+
+    return tempFilePath
+  } catch {
+    throw new Error(`Failed to save local firmware file`)
+  }
+}
+
+export async function deleteTempFirmware(filePath: string): Promise<void> {
+  try {
+    if (await fileExists(filePath)) {
+      await fs.unlink(filePath)
+    }
+  } catch {
+    throw new Error(`Failed to delete temporary firmware file`)
   }
 }

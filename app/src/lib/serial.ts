@@ -563,7 +563,7 @@ export async function uploadFirmware(
     const lines = content.split(/\r?\n/)
 
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim() // perhaps there is no need to trim?
+      const line = lines[i] //.trim() perhaps there is no need to trim?
       if (!line) continue
 
       await sendCommand(connectionId, line)
