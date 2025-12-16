@@ -18,13 +18,24 @@
   *
   * Total updateable: 64KB + 6*128KB = 832KB
   *
+  * RTOS Considerations:
+  * - Flash operations are protected with taskENTER_CRITICAL/taskEXIT_CRITICAL
+  * - Non-essential tasks are suspended during firmware update
+  * - UART access uses existing uartSemaphoreHandle
+  * - Uses osDelay for RTOS-aware delays
+  *
   ******************************************************************************
   */
 
 #include "bootloader.h"
 #include "utils.h"
+#include "cmsis_os.h"
 #include <string.h>
 #include <stdlib.h>
+
+/* External task handles for suspension during update */
+extern osThreadId_t sensorTaskHandle;
+extern osThreadId_t heaterTaskHandle;
 
 /* Configuration -------------------------------------------------------------*/
 #define APP_START_ADDRESS   0x08000000      /**< Application base address */
@@ -40,12 +51,15 @@ static BootloaderState_t bootloaderState = BOOTLOADER_IDLE;
 static uint32_t extendedAddress = 0;        /**< Extended address from 0x04 records */
 static uint32_t bytesWritten = 0;           /**< Total bytes written to flash */
 static uint8_t sectorsErased = 0;           /**< Flag indicating sectors have been erased */
+static uint8_t tasksWereSuspended = 0;      /**< Flag indicating if tasks were suspended */
 
 /* Private function prototypes -----------------------------------------------*/
 static HAL_StatusTypeDef Bootloader_EraseFlash(void);
 static HAL_StatusTypeDef ParseHEXLine(const char* line, IntelHEXRecord_t* record);
 static HAL_StatusTypeDef WriteToFlash(uint32_t address, uint8_t* data, uint16_t length);
 static uint8_t CalculateChecksum(const IntelHEXRecord_t* record);
+static void Bootloader_SuspendNonEssentialTasks(void);
+static void Bootloader_ResumeNonEssentialTasks(void);
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -75,12 +89,18 @@ uint32_t Bootloader_GetBytesWritten(void) {
 
 /**
   * @brief  Reset bootloader to idle state
+  * @note   Also resumes any suspended tasks
   */
 void Bootloader_Reset(void) {
     bootloaderState = BOOTLOADER_IDLE;
     extendedAddress = 0;
     bytesWritten = 0;
     sectorsErased = 0;
+    
+    // Resume tasks if they were suspended
+    if (tasksWereSuspended) {
+        Bootloader_ResumeNonEssentialTasks();
+    }
 }
 
 /**
@@ -92,10 +112,13 @@ void Bootloader_HandleCommand(const char* command, const char* value) {
     if (strcmp(value, "START") == 0) {
         usb_printf("Starting firmware update...\r\n");
         
+        // Suspend non-essential tasks to avoid conflicts
+        Bootloader_SuspendNonEssentialTasks();
+        
         // Initialize state
         Bootloader_Init();
         
-        // Erase flash sectors
+        // Erase flash sectors (protected by critical section internally)
         if (Bootloader_EraseFlash() == HAL_OK) {
             bootloaderState = BOOTLOADER_RECEIVING;
             extendedAddress = 0;
@@ -104,12 +127,15 @@ void Bootloader_HandleCommand(const char* command, const char* value) {
         } else {
             bootloaderState = BOOTLOADER_ERROR;
             usb_printf("ERROR: Failed to prepare flash\r\n");
+            // Resume tasks if erase failed
+            Bootloader_ResumeNonEssentialTasks();
         }
     } 
     else if (strcmp(value, "END") == 0) {
         if (bootloaderState == BOOTLOADER_COMPLETE) {
             usb_printf("Firmware update complete. Resetting in 1 second...\r\n");
-            HAL_Delay(1000);  // Give time for message to send
+            osDelay(1000);  // RTOS-aware delay to give time for message to send
+            // Note: Tasks will be resumed by system reset
             NVIC_SystemReset();
         } else {
             usb_printf("ERROR: Update not complete (state: %d)\r\n", bootloaderState);
@@ -118,6 +144,8 @@ void Bootloader_HandleCommand(const char* command, const char* value) {
     else if (strcmp(value, "ABORT") == 0) {
         Bootloader_Reset();
         usb_printf("Firmware update aborted\r\n");
+        // Resume tasks after abort
+        Bootloader_ResumeNonEssentialTasks();
     }
     else {
         usb_printf("ERROR: Unknown bootloader command value: %s\r\n", value);
@@ -212,12 +240,17 @@ HAL_StatusTypeDef Bootloader_ProcessHEXLine(const char* line) {
 /**
   * @brief  Erase flash sectors for firmware update
   * @retval HAL_OK if successful, HAL_ERROR otherwise
+  * @note   Flash operations are protected with critical section for RTOS safety
   */
 static HAL_StatusTypeDef Bootloader_EraseFlash(void) {
     FLASH_EraseInitTypeDef eraseInit;
     uint32_t sectorError = 0;
+    HAL_StatusTypeDef status;
     
     usb_printf("Erasing flash sectors %d to %d...\r\n", FIRST_SECTOR, LAST_SECTOR);
+    
+    // Enter critical section to prevent RTOS task switching during flash operation
+    taskENTER_CRITICAL();
     
     // Unlock flash
     HAL_FLASH_Unlock();
@@ -228,11 +261,14 @@ static HAL_StatusTypeDef Bootloader_EraseFlash(void) {
     eraseInit.Sector = FIRST_SECTOR;
     eraseInit.NbSectors = (LAST_SECTOR - FIRST_SECTOR + 1);
     
-    // Perform erase
-    HAL_StatusTypeDef status = HAL_FLASHEx_Erase(&eraseInit, &sectorError);
+    // Perform erase (this can take 10-15 seconds)
+    status = HAL_FLASHEx_Erase(&eraseInit, &sectorError);
     
     // Lock flash
     HAL_FLASH_Lock();
+    
+    // Exit critical section
+    taskEXIT_CRITICAL();
     
     if (status == HAL_OK) {
         usb_printf("Flash erased successfully\r\n");
@@ -339,9 +375,13 @@ static uint8_t CalculateChecksum(const IntelHEXRecord_t* record) {
   * @param  data: Pointer to data buffer
   * @param  length: Number of bytes to write
   * @retval HAL_OK if successful, HAL_ERROR otherwise
+  * @note   Flash operations are protected with critical section for RTOS safety
   */
 static HAL_StatusTypeDef WriteToFlash(uint32_t address, uint8_t* data, uint16_t length) {
     HAL_StatusTypeDef status = HAL_OK;
+    
+    // Enter critical section to prevent RTOS task switching during flash write
+    taskENTER_CRITICAL();
     
     // Unlock flash
     HAL_FLASH_Unlock();
@@ -364,6 +404,7 @@ static HAL_StatusTypeDef WriteToFlash(uint32_t address, uint8_t* data, uint16_t 
             usb_printf("ERROR: Flash write failed at 0x%08lX (error: %lu)\r\n", 
                        address, HAL_FLASH_GetError());
             HAL_FLASH_Lock();
+            taskEXIT_CRITICAL();
             return status;
         }
         
@@ -374,10 +415,62 @@ static HAL_StatusTypeDef WriteToFlash(uint32_t address, uint8_t* data, uint16_t 
     // Lock flash
     HAL_FLASH_Lock();
     
+    // Exit critical section
+    taskEXIT_CRITICAL();
+    
     // Update bytes written counter
     bytesWritten += length;
     
     return status;
+}
+
+/**
+  * @brief  Suspend non-essential RTOS tasks during firmware update
+  * @note   Suspends sensor and heater tasks to avoid conflicts with flash/UART
+  *         Log task remains active to handle UART communication
+  */
+static void Bootloader_SuspendNonEssentialTasks(void) {
+    if (tasksWereSuspended) {
+        return;  // Already suspended
+    }
+    
+    // Suspend sensor task (reads from ADC, writes to flash for logging)
+    if (sensorTaskHandle != NULL) {
+        vTaskSuspend(sensorTaskHandle);
+        usb_printf("Sensor task suspended for firmware update\r\n");
+    }
+    
+    // Suspend heater task (controls heaters, may access config in flash)
+    if (heaterTaskHandle != NULL) {
+        vTaskSuspend(heaterTaskHandle);
+        usb_printf("Heater task suspended for firmware update\r\n");
+    }
+    
+    tasksWereSuspended = 1;
+}
+
+/**
+  * @brief  Resume non-essential RTOS tasks after firmware update
+  * @note   Resumes sensor and heater tasks that were suspended
+  */
+static void Bootloader_ResumeNonEssentialTasks(void) {
+    if (!tasksWereSuspended) {
+        return;  // Not suspended
+    }
+    
+    // Resume sensor task
+    if (sensorTaskHandle != NULL) {
+        vTaskResume(sensorTaskHandle);
+        usb_printf("Sensor task resumed\r\n");
+    }
+    
+    // Resume heater task
+    if (heaterTaskHandle != NULL) {
+        vTaskResume(heaterTaskHandle);
+        usb_printf("Heater task resumed\r\n");
+    }
+    
+    tasksWereSuspended = 0;
 }
 
 /************************ (C) COPYRIGHT Aymed Balloon Team *****END OF FILE****/
