@@ -355,9 +355,6 @@ export function Dashboard({ isConnected, connectionId }: DashboardProps) {
               </div>
             </div>
           </>
-
-          {/* if its in production, show interface for normal using, by that I mean for a welding session for a user blah blah blah */}
-          {process.env.NODE_ENV === 'production' && <></>}
         </div>
       )}
     </main>

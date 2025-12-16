@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog } from 'electron'
+import { app, BrowserWindow, dialog, shell } from 'electron'
 import { join } from 'path'
 import Database from 'better-sqlite3'
 import { Session, Weld, computeSessionStats } from './types/session'
@@ -371,9 +371,11 @@ function setupDatabaseHandlers(db: Database.Database) {
       /[^a-zA-Z0-9]/g,
       '_'
     )
+
+    const documentsPath = app.getPath('documents')
     const { filePath } = await dialog.showSaveDialog(BrowserWindow.getFocusedWindow()!, {
       title: 'Save Session PDF',
-      defaultPath: `session-${session.id}-${sessionName}.pdf`,
+      defaultPath: join(documentsPath, `session-${session.id}-${sessionName}.pdf`),
       filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
     })
 
@@ -386,6 +388,9 @@ function setupDatabaseHandlers(db: Database.Database) {
       filePath,
       session
     })
+
+    // open the generated PDF file
+    // shell.openPath(filePath)
 
     return filePath
   }
