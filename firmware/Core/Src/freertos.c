@@ -97,7 +97,7 @@ void StartHeater(
     osDelay(100);
     MonitorError();
     osDelay(100);
-    ManageOperation();
+//    ManageOperation();
   }
 }
 
