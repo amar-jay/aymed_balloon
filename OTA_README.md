@@ -46,14 +46,16 @@ Choose your starting point based on what you need:
 
 | Document | Size | Purpose | Audience |
 |----------|------|---------|----------|
-| [OTA_README.md](./OTA_README.md) | 3KB | Navigation guide | Everyone |
+| [OTA_README.md](./OTA_README.md) | 9KB | Navigation guide | Everyone |
 | [OTA_UPDATE_SUMMARY.md](./OTA_UPDATE_SUMMARY.md) | 12KB | High-level overview | Managers, Reviewers |
 | [OTA_QUICK_START.md](./OTA_QUICK_START.md) | 14KB | Implementation guide | Developers |
 | [OTA_ARCHITECTURE.md](./OTA_ARCHITECTURE.md) | 18KB | Visual diagrams | Architects, Developers |
 | [OTA_UPDATE_IMPLEMENTATION_STRATEGY.md](./OTA_UPDATE_IMPLEMENTATION_STRATEGY.md) | 15KB | Complete design | Senior Developers |
 | [TESTING_GUIDE.md](./TESTING_GUIDE.md) | 11KB | Testing procedures | QA, Developers |
+| [DRAG_DROP_FIRMWARE_UPLOAD.md](./DRAG_DROP_FIRMWARE_UPLOAD.md) | 10KB | Drag & drop feature | Developers |
+| [OTA_RTOS_SAFETY.md](./OTA_RTOS_SAFETY.md) | 13KB | RTOS safety guide | Embedded Engineers |
 
-**Total:** 73 KB of comprehensive documentation
+**Total:** 104 KB of comprehensive documentation
 
 ---
 
@@ -99,12 +101,20 @@ Use this checklist to track your progress:
 - Bootloader code → [OTA_QUICK_START.md](./OTA_QUICK_START.md) "Step 1"
 - Command integration → [OTA_QUICK_START.md](./OTA_QUICK_START.md) "Step 1"
 - Frontend hookup → [OTA_QUICK_START.md](./OTA_QUICK_START.md) "Step 3"
+- Drag & drop → [DRAG_DROP_FIRMWARE_UPLOAD.md](./DRAG_DROP_FIRMWARE_UPLOAD.md)
+
+**RTOS & Thread Safety:**
+- RTOS considerations → [OTA_RTOS_SAFETY.md](./OTA_RTOS_SAFETY.md)
+- Task suspension → [OTA_RTOS_SAFETY.md](./OTA_RTOS_SAFETY.md) "Task Suspension"
+- Critical sections → [OTA_RTOS_SAFETY.md](./OTA_RTOS_SAFETY.md) "Critical Sections"
+- Resource conflicts → [OTA_RTOS_SAFETY.md](./OTA_RTOS_SAFETY.md) "Safety Analysis"
 
 **Testing:**
 - Unit tests → [TESTING_GUIDE.md](./TESTING_GUIDE.md) "Phase 2"
 - Integration tests → [TESTING_GUIDE.md](./TESTING_GUIDE.md) "Phase 3-4"
 - Error scenarios → [TESTING_GUIDE.md](./TESTING_GUIDE.md) "Phase 5"
 - Performance → [TESTING_GUIDE.md](./TESTING_GUIDE.md) "Phase 6"
+- RTOS tests → [OTA_RTOS_SAFETY.md](./OTA_RTOS_SAFETY.md) "Testing Recommendations"
 
 **Troubleshooting:**
 - Common issues → [OTA_QUICK_START.md](./OTA_QUICK_START.md) "Troubleshooting"
