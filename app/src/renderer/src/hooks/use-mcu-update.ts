@@ -26,11 +26,17 @@ export const useMCUUpdate = (connectionId?: string | null) => {
 
         // 1. Resolve firmware source
         if (file instanceof File) {
-          // Not implemented yet, but fail loudly and clearly
-          throw new Error('Local firmware file upload is not implemented yet')
-        }
-
-        if (typeof file === 'string') {
+          // Handle local file upload
+          toast.info(`Preparing local firmware file: ${file.name}...`)
+          
+          // Read the file as ArrayBuffer
+          const fileBuffer = await file.arrayBuffer()
+          
+          // Save to temporary location via IPC
+          firmwarePath = await window.api.UpdatesaveLocalFirmware(fileBuffer, file.name)
+          
+          toast.info('Local firmware file prepared successfully')
+        } else if (typeof file === 'string') {
           const version = versions.find((v) => v.version === file || v.tag === file)
 
           if (!version) {
@@ -57,13 +63,17 @@ export const useMCUUpdate = (connectionId?: string | null) => {
         }
 
         // 2. Upload to MCU
+        if (!connectionId) {
+          throw new Error('No active connection. Please connect to device first.')
+        }
+
         toast.info('Uploading firmware to MCU. Do not disconnect.', {
           duration: 10000
         })
 
-        // await window.api.SerialuploadFirmware(connectionId, firmwarePath)
+        await window.api.SerialuploadFirmware(connectionId, firmwarePath)
 
-        // toast.success('Firmware uploaded successfully')
+        toast.success('Firmware uploaded successfully')
       } catch (error) {
         console.error('[Firmware Update]', error)
         toast.error((error as Error).message)

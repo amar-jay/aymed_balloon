@@ -85,7 +85,9 @@ const api = {
   UpdateisVersionDownloaded: (tag: string): Promise<boolean> =>
     ipcRenderer.invoke('update:is-version-downloaded', tag),
   UpdategetLatestVersion: (): Promise<VersionInfo | null> =>
-    ipcRenderer.invoke('update:get-latest-version')
+    ipcRenderer.invoke('update:get-latest-version'),
+  UpdatesaveLocalFirmware: (fileBuffer: ArrayBuffer, fileName: string): Promise<string> =>
+    ipcRenderer.invoke('update:save-local-firmware', fileBuffer, fileName)
 } satisfies Window['api']
 
 // Use `contextBridge` APIs to expose Electron APIs to

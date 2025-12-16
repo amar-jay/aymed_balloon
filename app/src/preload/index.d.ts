@@ -148,6 +148,7 @@ declare global {
       UpdatedeleteVersion: typeof deleteVersion
       UpdateisVersionDownloaded: typeof isVersionDownloaded
       UpdategetLatestVersion: typeof getLatestVersion
+      UpdatesaveLocalFirmware: (fileBuffer: ArrayBuffer, fileName: string) => Promise<string>
     }
   }
 }
