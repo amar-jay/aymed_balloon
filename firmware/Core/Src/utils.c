@@ -1,6 +1,7 @@
 #include "../Types/minibuf.h"
 #include "system.h"
 #include "main.h"   // For CDC_Transmit_FS
+#include "bootloader.h"  // For OTA firmware update
 #include <stdlib.h>
 #include <stdio.h>          // For vsnprintf
 #include <stdarg.h>         // For va_list, va_start, va_end
@@ -345,6 +346,12 @@ void handle_commands(const char *key, const char *value, BalloonConfig_t* config
 
 		osMutexRelease(configMutexHandle);
 	}
+
+
+	// Handle firmware update commands (outside of mutex lock)
+	if (strcmp(key, "FIRMWARE_UPDATE") == 0) {
+		Bootloader_HandleCommand(key, value);
+	}
 }
 
 // ---- process command ----
@@ -398,6 +405,14 @@ void process_command(const char *input, BalloonConfig_t* config, BalloonState_t*
 						}
         } else {
             usb_printf("ERROR: Invalid GET command format\r\n");
+        }
+    } else if (input[0] == ':') {     // Handle Intel HEX lines during firmware update
+        // This is an Intel HEX line
+        if (Bootloader_GetState() == BOOTLOADER_RECEIVING) {
+            Bootloader_ProcessHEXLine(input);
+            // Note: ACK responses are controlled by BOOTLOADER_SEND_ACK define in bootloader.c
+        } else {
+            usb_printf("ERROR: Not in firmware update mode\r\n");
         }
     }
 
