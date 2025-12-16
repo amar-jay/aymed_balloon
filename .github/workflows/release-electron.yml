@@ -1,0 +1,161 @@
+name: Release Electron App
+
+on:
+  # push:
+  #   tags:
+  #     - 'app*.*.*' # so that it doesn't conflict with the firmware releases
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., app1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-22.04
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Get version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          release_name: Release ${{ steps.get_version.outputs.version }}
+          draft: false
+          prerelease: false
+
+  build_windows:
+    name: Build Windows .exe
+    needs: release
+    runs-on: windows-2022
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+          cache-dependency-path: app/pnpm-lock.yaml
+      
+      - name: Install dependencies
+        env:
+          npm_config_python: python3
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build Windows Electron app
+        run: pnpm run build:win
+
+      - name: Get Windows installer name
+        id: get_installer
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem -Path dist -Filter *.exe | Select-Object -First 1
+          echo "installer_name=$($installer.Name)" >> $env:GITHUB_OUTPUT
+          echo "installer_path=app/dist/$($installer.Name)" >> $env:GITHUB_OUTPUT
+
+      - name: Upload Windows Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: ${{ steps.get_installer.outputs.installer_path }}
+          asset_name: ${{ steps.get_installer.outputs.installer_name }}
+          asset_content_type: application/octet-stream
+
+  build_linux:
+    name: Build Linux AppImage
+    needs: release
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+          cache-dependency-path: app/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Linux Electron app
+        run: pnpm run build:linux
+
+      - name: Get AppImage name
+        id: get_appimage
+        run: |
+          appimage=$(find dist -name "*.AppImage" -type f | head -n 1)
+          echo "appimage_name=$(basename $appimage)" >> $GITHUB_OUTPUT
+          echo "appimage_path=app/$appimage" >> $GITHUB_OUTPUT
+
+      - name: Upload Linux AppImage Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: ${{ steps.get_appimage.outputs.appimage_path }}
+          asset_name: ${{ steps.get_appimage.outputs.appimage_name }}
+          asset_content_type: application/octet-stream
+
+      - name: Get .deb name
+        id: get_deb
+        run: |
+          deb=$(find dist -name "*.deb" -type f | head -n 1)
+          if [ -n "$deb" ]; then
+            echo "deb_name=$(basename $deb)" >> $GITHUB_OUTPUT
+            echo "deb_path=app/$deb" >> $GITHUB_OUTPUT
+            echo "has_deb=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_deb=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload Linux .deb Release Asset
+        if: steps.get_deb.outputs.has_deb == 'true'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: ${{ steps.get_deb.outputs.deb_path }}
+          asset_name: ${{ steps.get_deb.outputs.deb_name }}
+          asset_content_type: application/octet-stream
