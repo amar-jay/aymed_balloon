@@ -1,6 +1,7 @@
 // jotai state managment funcs
 import { atomWithStorage } from 'jotai/utils'
 import { SystemConfig, SystemVersion } from 'src/lib/types/minibuf'
+import { atom } from 'jotai'
 
 // ============================================================================
 
@@ -71,65 +72,29 @@ export const versionAtom = atomWithStorage<SystemVersion | null>('version', null
 // Storage key: 'historyLimit', default: 240
 export const historyLimitAtom = atomWithStorage<number>('historyLimit', 240)
 
-// DEPRECATED A NEW SYSTEM IS BEING IMPLEMENTED NOW!
-// I want an atom to store a list of firware version (files) downloaded, with one being the latest
-// but I also want to limit it to make sure it can fit in localStorage
-// interface FirmwareEntry {
-//   data: string // base64 encoded firmware file
-//   downloadedAt: string // ISO date string
-//   isLatest?: boolean
-// }
+// error atom.
+// if the last encounted error is longer than a minute ago, clear it
+// Storage key: 'lastError', default: null
+export interface ErrorInfo {
+  message: string
+  timestamp: number
+}
 
-// const _firmwareVersionsAtom = atomWithStorage<Record<string, FirmwareEntry>>('firmwareVersions', {})
+const _lastErrorAtom = atom<ErrorInfo | null>(null)
 
-// Writable atom that enforces a limit of 5 firmware versions to prevent localStorage overflow
-// export const firmwareVersionsAtom = atom(
-//   (get) => {
-//     const versions = get(_firmwareVersionsAtom)
-//     if (Object.keys(versions).length === 0) {
-//       const fromStoreVersions = window.api.UpdategetVersionsNames()
-//       // update _
-//       return
-//     }
-//   },
-//   (get, set, update: { action: 'add'; version: string; data?: File }) => {
-//     const current = get(_firmwareVersionsAtom)
-//     if (update.action === 'add' && update.data) {
-//       const base64 = btoa(String.fromCharCode(...new Uint8Array(update.data)))
-//       const newEntry: FirmwareEntry = {
-//         data: base64,
-//         downloadedAt: new Date().toISOString(),
-//         isLatest: update.isLatest
-//       }
-//       const newVersions = { ...current, [update.version]: newEntry }
-//       // Limit to 5 entries, removing oldest first (but preserve latest if marked)
-//       const keys = Object.keys(newVersions)
-//       if (keys.length > 5) {
-//         const sorted = keys
-//           .filter((k) => !newVersions[k].isLatest) // Don't remove latest
-//           .sort(
-//             (a, b) =>
-//               new Date(newVersions[a].downloadedAt).getTime() -
-//               new Date(newVersions[b].downloadedAt).getTime()
-//           )
-//         const toRemove = sorted.slice(0, keys.length - 5)
-//         toRemove.forEach((k) => delete newVersions[k])
-//         // If still over, remove more including latest if necessary
-//         if (Object.keys(newVersions).length > 5) {
-//           const allSorted = Object.keys(newVersions).sort(
-//             (a, b) =>
-//               new Date(newVersions[a].downloadedAt).getTime() -
-//               new Date(newVersions[b].downloadedAt).getTime()
-//           )
-//           const excess = allSorted.slice(0, Object.keys(newVersions).length - 5)
-//           excess.forEach((k) => delete newVersions[k])
-//         }
-//       }
-//       set(_firmwareVersionsAtom, newVersions)
-//     } else if (update.action === 'remove') {
-//       const newVersions = { ...current }
-//       delete newVersions[update.version]
-//       set(_firmwareVersionsAtom, newVersions)
-//     }
-//   }
-// )
+export const lastErrorAtom = atom(
+  (get) => {
+    const lastError = get(_lastErrorAtom)
+    if (!lastError) return null
+
+    // if error is older than 3 seconds, clear it
+    if (Date.now() - lastError.timestamp > 3000) {
+      return null
+    }
+
+    return lastError
+  },
+  (_get, set, newError: ErrorInfo | null) => {
+    set(_lastErrorAtom, newError)
+  }
+)

@@ -10,17 +10,14 @@ export const useMCUUpdate = (connectionId?: string | null) => {
     window.api.UpdategetOnlineVersions().then(setVersions).catch(console.error)
   }, [])
 
-  // download selected version
-  const downloadVersion = async (version: string) => {}
-
   // upload to MCU: first wait until its implemented on firmware first
   // for now use sendCommand to send packets
   const uploadFirmware = React.useCallback(
     async (file?: string | File) => {
-      // if (!connectionId) {
-      //   toast.info('No active connection')
-      //   return
-      // }
+      if (!connectionId) {
+        toast.info('No active connection')
+        return
+      }
 
       setIsDownloading(true)
 
@@ -74,13 +71,12 @@ export const useMCUUpdate = (connectionId?: string | null) => {
         setIsDownloading(false)
       }
     },
-    [versions, connectionId]
+    [connectionId, versions]
   )
 
   return {
     versions,
     isDownloading,
-    downloadVersion,
     uploadFirmware
   }
 }

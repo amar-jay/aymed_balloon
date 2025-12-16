@@ -4,20 +4,56 @@ import { cn } from './lib/utils'
 import { Card } from './components/ui/card'
 import { useCallback, useEffect, useState, useRef } from 'react'
 import { SystemConfig, SystemData } from 'src/lib/types/minibuf'
-import { TempGraph } from './components/temp-graph'
+import { TempGraph } from './components/temp-graph-v3'
 import { useAtom } from 'jotai/react'
 import { historyLimitAtom, settingsAtom, versionAtom } from './lib/jotai'
 import VoltageCard from './components/voltage-card'
 import { OperationCard } from './components/operation-card'
 import { CreateSessionForm } from './components/CreateSessionForm'
 import { ActiveSessionPanel } from './components/ActiveSessionPanel'
-import { useSessionById } from './use-sessions'
+import { useSessionById } from './hooks/use-sessions'
 
 interface DashboardProps {
   isConnected: boolean
   connectionId: string | null
 }
 
+const generateMockSystemData = (): SystemData => {
+  return {
+    topTemp: Math.random() * 150,
+    bottomTemp: Math.random() * 150,
+    powerSupplyTemp: Math.random() * 100,
+    powerSupplyVoltage: 24 + Math.random() * 6,
+    weldingTime: Math.floor(Math.random() * 60),
+    coolingTime: Math.floor(Math.random() * 60),
+    pedalActive: Math.random() < 0.5,
+    topHeaterActive: Math.random() < 0.5,
+    bottomHeaterActive: Math.random() < 0.5,
+    sysError: Math.random() < 0.1 ? 'Overheat' : undefined
+  }
+}
+
+const generateMockSystemConfig = (): SystemConfig => {
+  return {
+    opTime: 30,
+    coTime: 15, // cooling time
+    topTempThreshold: 120,
+    bottomTempThreshold: 140,
+    powerTempError: 80,
+    topTempOffset: 0,
+    bottomTempOffset: 0,
+    sysErrorEnabled: true,
+    menuResetDelay: 0,
+    timeCalibration: 0,
+    maxTempError: 0,
+    vccVoltageError: 0,
+    powerVccErrorEnabled: false,
+    voltageCalibration: 0,
+    heaterErrorEnable: 120,
+    coolingDelay: 0,
+    useInternalADC: false
+  }
+}
 export function Dashboard({ isConnected, connectionId }: DashboardProps) {
   const [systemData, setSystemData] = useState<SystemData | null>(null)
   // const [version, setVersion] = useState<string | null>(null)
@@ -68,17 +104,17 @@ export function Dashboard({ isConnected, connectionId }: DashboardProps) {
       weldingDuration: currentSystemData.weldingTime,
       coolingDuration: currentSystemData.coolingTime,
       isSuccessful:
-        currentSystemData.topTemp <= (currentConfig?.topTempThreshold || 110) &&
-        currentSystemData.bottomTemp <= (currentConfig?.bottomTempThreshold || 140),
+        currentSystemData.topTemp > (currentConfig?.topTempThreshold || 120) * .9 &&
+        currentSystemData.bottomTemp > (currentConfig?.bottomTempThreshold || 120) * .9,
       error:
-        currentSystemData.topTemp < (currentConfig?.topTempThreshold || 110)
+        currentSystemData.topTemp < (currentConfig?.topTempThreshold || 120) * .9
           ? 'Top heater too low temperature'
-          : currentSystemData.bottomTemp < (currentConfig?.bottomTempThreshold || 140)
+          : currentSystemData.bottomTemp < (currentConfig?.bottomTempThreshold || 120) * .9
             ? 'Bottom heater too low temperature'
             : undefined
     }
 
-    console.log('Created weld:', newWeld)
+    console.log('Created weld:', newWeld, currentSystemData, currentConfig)
     return newWeld
   }
 
@@ -99,10 +135,15 @@ export function Dashboard({ isConnected, connectionId }: DashboardProps) {
   )
 
   useEffect(() => {
-    if (!isConnected) return
-    if (!connectionId) return
+    // if (!isConnected) return
+    // if (!connectionId) return
     const interval = setInterval(async () => {
-      if (!connectionId) return
+			// if (!isConnected) return
+      if (!connectionId) {
+        pushSystemSnapshot(generateMockSystemData())
+        // setConfig(generateMockSystemConfig())
+        return
+      }
 
       await window.api.SerialsendCommand(connectionId, 'GET STATUS')
       const status = window.api.SerialgetSystemStatus(connectionId)
@@ -195,7 +236,7 @@ export function Dashboard({ isConnected, connectionId }: DashboardProps) {
                 <Gauge
                   value={parseFloat(systemData?.topTemp.toFixed(2) ?? '88.88')}
                   min={0}
-                  max={config?.topTempThreshold}
+                  max={1.2 * (config?.topTempThreshold || 120)}
                   label="°C"
                   size={130}
                 />
@@ -214,7 +255,7 @@ export function Dashboard({ isConnected, connectionId }: DashboardProps) {
                 <Gauge
                   value={parseFloat(systemData?.bottomTemp.toFixed(2) ?? '88.88')}
                   min={0}
-                  max={config?.bottomTempThreshold}
+                  max={1.2 * (config?.bottomTempThreshold || 120)}
                   label="°C"
                   size={130}
                 />

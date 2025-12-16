@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Main } from './serial_monitor'
-import { useSerial } from './use-serial'
+import { useSerial } from './hooks/use-serial'
 import { Dashboard } from './dashboard'
 import { currentPathAtom } from './lib/jotai'
 import { useAtom } from 'jotai/react'

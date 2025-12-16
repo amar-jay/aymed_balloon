@@ -1,4 +1,4 @@
-import { useSessionById } from '../use-sessions'
+import { useSessionById } from '../hooks/use-sessions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
@@ -80,9 +80,10 @@ export function ActiveSessionPanel({
         </div>
 
         <div className="flex gap-2">
-          <Button onClick={() => handleAddWeld()} size="sm" className="flex-1">
+          <div className="flex-1"></div>
+          <Button onClick={() => handleAddWeld()} size="sm">
+            {/* // className="flex-1"> */}
             <Plus className="h-4 w-4 mr-1" />
-            Add Weld
           </Button>
           <Button onClick={generatePDF} variant="outline" size="sm">
             <FileDown className="h-4 w-4" />

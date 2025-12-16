@@ -2,7 +2,7 @@
 // export PDF downloads typeshit
 
 import { useCallback, useEffect, useState } from 'react'
-import { useSessionById } from './use-sessions'
+import { useSessionById } from './hooks/use-sessions'
 import { SessionHeader } from './components/SessionHeader'
 import { QuickStats } from './components/QuickStats'
 import { WeldsTable } from './components/WeldsTable'

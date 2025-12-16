@@ -9,7 +9,7 @@ import logo from '@renderer/assets/logo.jpeg?asset'
 import usb from '@renderer/assets/usb2.svg?asset'
 // get sync icon from lucide-react
 import { RefreshCcw } from 'lucide-react'
-import { SerialDevice } from './use-serial'
+import { SerialDevice } from './hooks/use-serial'
 import { Profile } from './components/profile'
 import { currentPathType } from './lib/jotai'
 

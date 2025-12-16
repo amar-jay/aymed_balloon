@@ -13,7 +13,7 @@ import {
 import { Badge } from './components/ui/badge'
 import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from './components/ui/empty'
 import { NativeSelect, NativeSelectOption } from './components/ui/native-select'
-import { useSessions } from './use-sessions'
+import { useSessions } from './hooks/use-sessions'
 import {
   Trash2,
   Calendar,

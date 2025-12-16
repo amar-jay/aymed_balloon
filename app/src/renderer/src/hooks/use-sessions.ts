@@ -1,8 +1,8 @@
 import React, { useCallback, useMemo } from 'react'
-import { currentPathAtom } from './lib/jotai'
+import { currentPathAtom, lastErrorAtom } from '../lib/jotai'
 import { useAtom } from 'jotai/react'
 import { toast } from 'sonner'
-import type { Session, Weld } from '../../preload/index.d'
+import type { Session, Weld } from '../../../preload'
 
 /**
  * This hook provides session data and actions for all sessions. It includes
@@ -111,6 +111,7 @@ type RemoveUndefined<T> = T extends undefined ? never : T | null
 
 export function useSessionById(sessionId: number | null) {
   const [, setCurrentPath] = useAtom(currentPathAtom)
+  const [latestError] = useAtom(lastErrorAtom)
 
   type SafeSession = RemoveUndefined<Session>
 
@@ -164,6 +165,12 @@ export function useSessionById(sessionId: number | null) {
   const addWeld = useCallback(
     async (weld: Omit<Weld, 'id' | 'createdAt'>, notify = true) => {
       if (!sessionId) return null
+
+      if (latestError) {
+        weld.error = latestError.message
+        weld.isSuccessful = false
+      }
+
       try {
         const weldId = await window.api.DBaddWeldToSession(sessionId, weld)
         await fetchSession()
@@ -174,7 +181,7 @@ export function useSessionById(sessionId: number | null) {
         return null
       }
     },
-    [sessionId, fetchSession]
+    [sessionId, latestError, fetchSession]
   )
 
   // End session

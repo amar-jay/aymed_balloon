@@ -1,3 +1,5 @@
+import { lastErrorAtom } from '@renderer/lib/jotai'
+import { useAtom } from 'jotai'
 import * as React from 'react'
 import { toast } from 'sonner'
 export interface SerialDevice {
@@ -20,6 +22,7 @@ export const useSerial = () => {
   const [status, setStatus] = React.useState('Ready')
   const [loading, setLoading] = React.useState(false)
   const [baudrate] = React.useState(115200)
+  const [, setLastError] = useAtom(lastErrorAtom)
 
   // Function to add data to the received data list
   const addReceivedData = React.useCallback((data: string) => {
@@ -39,6 +42,7 @@ export const useSerial = () => {
             if (data.trim() === '') return
             if (data.startsWith('ERROR:')) {
               toast.error('Serial Error', { description: data })
+              setLastError({ message: data, timestamp: Date.now() })
             }
             if (data.startsWith('[LOG] Parsed config successfully')) {
               toast.success('MCU Config Updated', { description: data })
