@@ -123,22 +123,25 @@ BootloaderState_t Bootloader_GetState(void);
 uint32_t Bootloader_GetBytesWritten(void);
 
 /**
-  * @brief  Check if device should enter firmware update mode
-  * @note   This checks for a magic value in backup SRAM
-  * @retval 1 if update mode requested, 0 otherwise
+  * @brief  Check if device is currently in firmware update mode
+  * @note   Checks current bootloader state (RECEIVING or COMPLETE)
+  * @note   This does NOT check persistent storage - update mode is not preserved across resets
+  * @retval 1 if currently in update mode, 0 otherwise
   */
 uint8_t Bootloader_CheckUpdateModeRequest(void);
 
 /**
-  * @brief  Request firmware update mode on next boot
-  * @note   Sets a magic value in backup SRAM that survives reset
+  * @brief  Display instructions for entering firmware update mode
+  * @note   Update mode is entered via FIRMWARE_UPDATE=START command, not persistent flags
+  * @note   This function only prints helpful instructions to the user
   * @retval None
   */
 void Bootloader_RequestUpdateMode(void);
 
 /**
-  * @brief  Clear firmware update mode request
-  * @note   Clears the magic value in backup SRAM
+  * @brief  Exit firmware update mode and return to idle state
+  * @note   Resets bootloader state machine and resumes suspended RTOS tasks
+  * @note   Does not affect any persistent storage
   * @retval None
   */
 void Bootloader_ClearUpdateModeRequest(void);
