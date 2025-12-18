@@ -103,6 +103,20 @@ void Bootloader_Reset(void) {
     }
 }
 
+void Bootloader_JumpToMainApp(uint32_t _app_addr)
+{
+	uint32_t jump_addr;
+
+	ptrFapp jump_app;
+
+	jump_addr = *(uint32_t*)(_app_addr + 4);
+	jump_app  = (ptrFapp)jump_addr;
+
+	__set_MSP(*(uint32_t*)_app_addr);
+
+	jump_app();
+}
+
 /**
   * @brief  Handle bootloader commands
   * @param  command: Command name
