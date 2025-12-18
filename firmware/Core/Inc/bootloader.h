@@ -16,15 +16,19 @@
   * Update Flow:
   * 1. Device runs normally from 0x08000000 (sectors 0-10)
   * 2. User sends: FIRMWARE_UPDATE=START (via UART)
-  * 3. Firmware erases sectors 4-10 (application area)
-  * 4. User sends Intel HEX lines (new firmware)
-  * 5. Firmware writes to sectors 4-10
-  * 6. User sends: FIRMWARE_UPDATE=END
-  * 7. Device performs system reset
-  * 8. New firmware runs from 0x08000000
+  * 3. Firmware erases **ALL** sectors 0-10 (~30 seconds)
+  * 4. User sends Intel HEX lines (new firmware data)
+  * 5. Firmware writes to flash and validates each write
+  * 6. Firmware validates vector table (stack pointer, reset vector)
+  * 7. User sends: FIRMWARE_UPDATE=END
+  * 8. Device performs system reset
+  * 9. New firmware boots from 0x08000000
   *
-  * WARNING: If update is interrupted, device may be bricked. Ensure stable
-  * power and reliable UART connection during updates.
+  * WARNING: If update is interrupted during/after erase, device WILL BE BRICKED.
+  * Recovery requires SWD/JTAG programmer. Ensure:
+  * - Stable power supply throughout update
+  * - Reliable UART connection  
+  * - Complete firmware HEX file ready before starting
   *
   * Usage:
   * 1. Initialize: Bootloader_Init()
