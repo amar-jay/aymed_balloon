@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * @file    bootloader.h
-  * @brief   OTA firmware update bootloader header
+  * @brief   OTA firmware update module header
   * @author  Abdel Manan Abdel Rahman
   ******************************************************************************
   * @attention
@@ -9,11 +9,28 @@
   * This module implements an Intel HEX format parser and flash writer for
   * over-the-air firmware updates via UART.
   *
+  * IMPORTANT: This is NOT a traditional bootloader architecture. The firmware
+  * updates itself while running. There is NO separate bootloader in protected
+  * flash sectors. This is an in-application OTA updater.
+  *
+  * Update Flow:
+  * 1. Device runs normally from 0x08000000 (sectors 0-10)
+  * 2. User sends: FIRMWARE_UPDATE=START (via UART)
+  * 3. Firmware erases sectors 4-10 (application area)
+  * 4. User sends Intel HEX lines (new firmware)
+  * 5. Firmware writes to sectors 4-10
+  * 6. User sends: FIRMWARE_UPDATE=END
+  * 7. Device performs system reset
+  * 8. New firmware runs from 0x08000000
+  *
+  * WARNING: If update is interrupted, device may be bricked. Ensure stable
+  * power and reliable UART connection during updates.
+  *
   * Usage:
   * 1. Initialize: Bootloader_Init()
-  * 2. Send command: Bootloader_HandleCommand("FIRMWARE_UPDATE", "START")
-  * 3. Send HEX lines: Bootloader_ProcessHEXLine(":10010000...")
-  * 4. End update: Bootloader_HandleCommand("FIRMWARE_UPDATE", "END")
+  * 2. Send command: FIRMWARE_UPDATE=START
+  * 3. Send HEX lines: :10010000...
+  * 4. End update: FIRMWARE_UPDATE=END
   *
   ******************************************************************************
   */
@@ -100,6 +117,27 @@ BootloaderState_t Bootloader_GetState(void);
   * @retval Number of bytes written to flash
   */
 uint32_t Bootloader_GetBytesWritten(void);
+
+/**
+  * @brief  Check if device should enter firmware update mode
+  * @note   This checks for a magic value in backup SRAM
+  * @retval 1 if update mode requested, 0 otherwise
+  */
+uint8_t Bootloader_CheckUpdateModeRequest(void);
+
+/**
+  * @brief  Request firmware update mode on next boot
+  * @note   Sets a magic value in backup SRAM that survives reset
+  * @retval None
+  */
+void Bootloader_RequestUpdateMode(void);
+
+/**
+  * @brief  Clear firmware update mode request
+  * @note   Clears the magic value in backup SRAM
+  * @retval None
+  */
+void Bootloader_ClearUpdateModeRequest(void);
 
 #ifdef __cplusplus
 }

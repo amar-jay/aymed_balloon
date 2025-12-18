@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * @file    bootloader.c
-  * @brief   OTA firmware update bootloader implementation
+  * @brief   In-application OTA firmware update implementation
   * @author  Abdel Manan Abdel Rahman
   ******************************************************************************
   * @attention
@@ -9,18 +9,32 @@
   * This module implements an Intel HEX format parser and flash writer for
   * over-the-air firmware updates via UART.
   *
-  * Memory Layout (STM32F407VGTx - 1024KB Flash):
-  * - Sectors 0-1: 16KB each - Bootloader/system (preserved)
-  * - Sectors 2-3: 16KB each - EEPROM emulation (preserved)
-  * - Sector 4: 64KB - Application start (updateable)
-  * - Sectors 5-10: 128KB each - Application (updateable)
-  * - Sector 11: 128KB - Reserved for config (preserved)
+  * ARCHITECTURE CLARIFICATION:
+  * This is NOT a traditional dual-bank bootloader! It's an in-application
+  * self-update mechanism. The running firmware erases and writes to its own
+  * flash space. If interrupted, the device may be bricked.
   *
-  * Total updateable: 64KB + 6*128KB = 832KB
+  * Memory Layout (STM32F407VGTx - 1024KB Flash):
+  * - Sectors 0-3: 64KB total - Vector table, startup, critical code
+  * - Sectors 4-10: 832KB total - Application code (updateable area)
+  * - Sector 11: 128KB - Configuration storage (preserved during update)
+  *
+  * Update Process:
+  * 1. Firmware runs normally from 0x08000000
+  * 2. FIRMWARE_UPDATE=START command received
+  * 3. Non-essential RTOS tasks suspended
+  * 4. Sectors 4-10 erased (takes ~10-15 seconds)
+  * 5. Intel HEX records received and written to flash
+  * 6. FIRMWARE_UPDATE=END triggers system reset
+  * 7. New firmware boots from 0x08000000
+  *
+  * Critical Sectors (NOT updated):
+  * - Sectors 0-3: Must remain intact for recovery
+  * - Sector 11: Configuration data
   *
   * RTOS Considerations:
-  * - Flash operations are protected with taskENTER_CRITICAL/taskEXIT_CRITICAL
-  * - Non-essential tasks are suspended during firmware update
+  * - Flash operations protected with taskENTER_CRITICAL/taskEXIT_CRITICAL
+  * - Non-essential tasks suspended during update to prevent conflicts
   * - UART access uses existing uartSemaphoreHandle
   * - Uses osDelay for RTOS-aware delays
   *
@@ -42,6 +56,13 @@ extern osThreadId_t heaterTaskHandle;
 #define APP_SIZE            (832 * 1024)    /**< Maximum application size (832KB) - matches updateable area */
 #define FIRST_SECTOR        FLASH_SECTOR_4  /**< First sector to erase */
 #define LAST_SECTOR         FLASH_SECTOR_10 /**< Last sector to erase */
+
+/* Boot Magic Configuration --------------------------------------------------*/
+/* Note: This implementation uses a simple in-application OTA update mechanism.
+ * The device does NOT have a separate bootloader in different flash sectors.
+ * Instead, it receives firmware updates while running and writes them to flash.
+ * Boot mode is controlled via UART commands, not persistent flags.
+ */
 
 /* Enable ACK responses for each HEX line (useful for debugging) */
 // #define BOOTLOADER_SEND_ACK
@@ -103,18 +124,31 @@ void Bootloader_Reset(void) {
     }
 }
 
-void Bootloader_JumpToMainApp(uint32_t _app_addr)
-{
-	uint32_t jump_addr;
+/**
+  * @brief  Check if device should enter firmware update mode
+  * @retval Current bootloader state (1 if in update mode, 0 otherwise)
+  * @note   This checks the current state, not a persistent flag
+  */
+uint8_t Bootloader_CheckUpdateModeRequest(void) {
+    // Return 1 if we're currently in receiving or complete state
+    return (bootloaderState == BOOTLOADER_RECEIVING || 
+            bootloaderState == BOOTLOADER_COMPLETE) ? 1 : 0;
+}
 
-	ptrFapp jump_app;
+/**
+  * @brief  Request firmware update mode
+  * @note   This doesn't persist across resets - use FIRMWARE_UPDATE START command
+  */
+void Bootloader_RequestUpdateMode(void) {
+    usb_printf("To enter update mode, send: FIRMWARE_UPDATE=START\r\n");
+}
 
-	jump_addr = *(uint32_t*)(_app_addr + 4);
-	jump_app  = (ptrFapp)jump_addr;
-
-	__set_MSP(*(uint32_t*)_app_addr);
-
-	jump_app();
+/**
+  * @brief  Clear firmware update mode request
+  * @note   Resets bootloader to idle state
+  */
+void Bootloader_ClearUpdateModeRequest(void) {
+    Bootloader_Reset();
 }
 
 /**
