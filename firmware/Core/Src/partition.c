@@ -163,17 +163,25 @@ HAL_StatusTypeDef Partition_MarkValid(Partition_t partition, uint32_t version,
                                        uint32_t size, uint32_t crc) {
     BootMetadata_t metadata;
     
+    // Initialize structure to zero for safety
+    memset(&metadata, 0, sizeof(BootMetadata_t));
+    
     // Read current metadata
     if (!metadataLoaded) {
         if (Partition_ReadMetadata(&metadata) != HAL_OK) {
             // Initialize with defaults if read fails
-            memset(&metadata, 0xFF, sizeof(BootMetadata_t));
             metadata.magic = BOOT_METADATA_MAGIC;
             metadata.active_partition = PARTITION_A;
             metadata.boot_count_a = 0;
             metadata.boot_count_b = 0;
             metadata.partition_a_valid = 0;
             metadata.partition_b_valid = 0;
+            metadata.partition_a_version = 0;
+            metadata.partition_b_version = 0;
+            metadata.partition_a_size = 0;
+            metadata.partition_b_size = 0;
+            metadata.partition_a_crc = 0;
+            metadata.partition_b_crc = 0;
         }
     } else {
         memcpy(&metadata, &cachedMetadata, sizeof(BootMetadata_t));
@@ -328,14 +336,27 @@ void Partition_JumpToApplication(Partition_t partition) {
         return;
     }
     
+    // Additional bounds check - address must be in valid flash range
+    if (appAddress < 0x08000000 || appAddress >= 0x08100000) {
+        return;
+    }
+    
     // Check if firmware exists
     if (!Partition_CheckFirmwareExists(partition)) {
         return;
     }
     
-    // Get stack pointer and reset handler address
-    uint32_t stackPointer = *((uint32_t*)appAddress);
-    uint32_t resetHandler = *((uint32_t*)(appAddress + 4));
+    // Get stack pointer and reset handler address with explicit bounds checking
+    volatile uint32_t* stackPointerAddr = (volatile uint32_t*)appAddress;
+    volatile uint32_t* resetHandlerAddr = (volatile uint32_t*)(appAddress + 4);
+    
+    // Verify addresses are still in bounds (shouldn't be needed but extra safety)
+    if ((uint32_t)resetHandlerAddr >= 0x08100000) {
+        return;
+    }
+    
+    uint32_t stackPointer = *stackPointerAddr;
+    uint32_t resetHandler = *resetHandlerAddr;
     
     // Disable interrupts
     __disable_irq();

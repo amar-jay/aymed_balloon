@@ -58,8 +58,11 @@ typedef enum {
   * Stored in Sector 2 at address 0x08008000
   * Contains information about which partition to boot from
   * and metadata for each partition
+  * 
+  * Note: Structure is designed to be word-aligned (4 bytes)
+  * Total size: 40 bytes
   */
-typedef struct {
+typedef struct __attribute__((packed)) {
     uint32_t magic;                 /**< Magic number (0xDEADBEEF) for validation */
     uint8_t active_partition;       /**< Active partition: 0=A, 1=B */
     uint8_t boot_count_a;           /**< Boot attempt counter for partition A */
