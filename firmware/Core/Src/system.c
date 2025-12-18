@@ -596,9 +596,9 @@ uint8_t rx_byte = 0; // the only RX byte variable
 
 // Build line buffer and process commands
 void LogCallbackHandler() {
-  while (HAL_UART_Receive(&huart4, &rx_byte, 1, 5) == HAL_OK) {
+  while (HAL_UART_Receive(&huart4, &rx_byte, 1, 100) == HAL_OK) {
     if (rx_byte == '\n' || rx_byte == '\r') {
-      osDelay(10);
+//      osDelay(100);
       rx_line[rx_index] = '\0'; // terminate string
       process_command((char *)rx_line, &balloonConfig, &balloonState);
       rx_index = 0; // reset buffer
