@@ -124,7 +124,19 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+  #include "partition.h"
+  
+  // Initialize partition system
+  Partition_Init();
+  
+  // Check if we should boot to a different partition
+  // This is useful when running from bootloader region initially
+  Partition_t currentPartition = Partition_GetCurrent();
+  if (currentPartition == PARTITION_UNKNOWN) {
+      // We're running from bootloader region, check if we should jump to app
+      // Note: In production, this would be handled by a dedicated bootloader
+      // For now, we'll just continue to the main application
+  }
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
