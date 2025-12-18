@@ -27,18 +27,6 @@ void Partition_Init(void) {
     // Read metadata from flash
     if (Partition_ReadMetadata(&cachedMetadata) == HAL_OK) {
         metadataLoaded = 1;
-        
-        // Determine which partition we're currently running from
-        uint32_t pc = (uint32_t)Partition_Init;  // Get current program counter address
-        
-        if (pc >= PARTITION_A_START_ADDR && pc < (PARTITION_A_START_ADDR + PARTITION_A_SIZE)) {
-            currentPartition = PARTITION_A;
-        } else if (pc >= PARTITION_B_START_ADDR && pc < (PARTITION_B_START_ADDR + PARTITION_B_SIZE)) {
-            currentPartition = PARTITION_B;
-        } else {
-            // Running from bootloader region (0x08000000 - 0x08010000)
-            currentPartition = PARTITION_UNKNOWN;
-        }
     } else {
         // Metadata is invalid, initialize with defaults
         memset(&cachedMetadata, 0xFF, sizeof(BootMetadata_t));
@@ -58,9 +46,20 @@ void Partition_Init(void) {
         // Write initial metadata
         Partition_WriteMetadata(&cachedMetadata);
         metadataLoaded = 1;
-        
-        // Default to partition A if metadata was invalid
+    }
+    
+    // Determine which partition we're currently running from
+    // Use the address of this function to determine current code location
+    uint32_t pc = (uint32_t)Partition_Init;
+    
+    if (pc >= PARTITION_A_START_ADDR && pc < (PARTITION_A_START_ADDR + PARTITION_A_SIZE)) {
         currentPartition = PARTITION_A;
+    } else if (pc >= PARTITION_B_START_ADDR && pc < (PARTITION_B_START_ADDR + PARTITION_B_SIZE)) {
+        currentPartition = PARTITION_B;
+    } else {
+        // Running from bootloader region (0x08000000 - 0x08010000)
+        // Keep as UNKNOWN to indicate we're in bootloader mode
+        currentPartition = PARTITION_UNKNOWN;
     }
 }
 
@@ -293,13 +292,27 @@ uint8_t Partition_CheckFirmwareExists(Partition_t partition) {
         return 0;
     }
     
+    // Check if address is within valid flash range
+    if (address < 0x08000000 || address >= 0x08100000) {
+        return 0;
+    }
+    
     // Check if stack pointer is valid (should point to RAM)
-    uint32_t stackPointer = *((uint32_t*)address);
+    // Use volatile to prevent compiler optimization
+    volatile uint32_t* stackPointerAddr = (volatile uint32_t*)address;
+    uint32_t stackPointer = *stackPointerAddr;
     
     // STM32F407 RAM is at 0x20000000 - 0x20020000 (128KB)
     // Stack pointer should be within this range
     if (stackPointer >= 0x20000000 && stackPointer <= 0x20020000) {
-        return 1;
+        // Also check that reset vector looks valid (should be odd for Thumb mode and in flash)
+        volatile uint32_t* resetVectorAddr = (volatile uint32_t*)(address + 4);
+        uint32_t resetVector = *resetVectorAddr;
+        
+        // Reset vector should be in flash and have LSB set (Thumb mode)
+        if ((resetVector & 0x1) && (resetVector >= 0x08000000) && (resetVector < 0x08100000)) {
+            return 1;
+        }
     }
     
     return 0;
