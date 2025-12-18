@@ -1,22 +1,27 @@
 /**
   ******************************************************************************
   * @file    bootloader.c
-  * @brief   OTA firmware update bootloader implementation
+  * @brief   OTA firmware update bootloader implementation with A/B partitioning
   * @author  Aymed Balloon Team
   ******************************************************************************
   * @attention
   *
   * This module implements an Intel HEX format parser and flash writer for
-  * over-the-air firmware updates via UART.
+  * over-the-air firmware updates via UART with A/B partitioning support.
   *
   * Memory Layout (STM32F407VGTx - 1024KB Flash):
-  * - Sectors 0-1: 16KB each - Bootloader/system (preserved)
-  * - Sectors 2-3: 16KB each - EEPROM emulation (preserved) 
-  * - Sector 4: 64KB - Application start (updateable)
-  * - Sectors 5-10: 128KB each - Application (updateable)
-  * - Sector 11: 128KB - Reserved for config (preserved)
+  * - Sectors 0-1: 16KB each - Bootloader/initial code (preserved)
+  * - Sector 2: 16KB - Boot metadata (preserved)
+  * - Sector 3: 16KB - EEPROM emulation (preserved)
+  * - Sectors 4-6: 320KB - Application Partition A (updateable)
+  * - Sectors 7-9: 384KB - Application Partition B (updateable)
+  * - Sectors 10-11: 256KB - Config storage (preserved)
   *
-  * Total updateable: 64KB + 6*128KB = 832KB
+  * A/B Partitioning:
+  * - Firmware runs from either Partition A or Partition B
+  * - OTA updates write to the INACTIVE partition
+  * - After update, metadata is updated to point to new partition
+  * - On reset, bootloader checks metadata and boots from active partition
   *
   * RTOS Considerations:
   * - Flash operations are protected with taskENTER_CRITICAL/taskEXIT_CRITICAL
@@ -28,6 +33,7 @@
   */
 
 #include "bootloader.h"
+#include "partition.h"
 #include "utils.h"
 #include "cmsis_os.h"
 #include <string.h>
@@ -38,11 +44,6 @@ extern osThreadId_t sensorTaskHandle;
 extern osThreadId_t heaterTaskHandle;
 
 /* Configuration -------------------------------------------------------------*/
-#define APP_START_ADDRESS   0x08000000      /**< Application base address */
-#define APP_SIZE            (832 * 1024)    /**< Maximum application size (832KB) - matches updateable area */
-#define FIRST_SECTOR        FLASH_SECTOR_4  /**< First sector to erase */
-#define LAST_SECTOR         FLASH_SECTOR_10 /**< Last sector to erase */
-
 /* Enable ACK responses for each HEX line (useful for debugging) */
 // #define BOOTLOADER_SEND_ACK
 
@@ -52,6 +53,11 @@ static uint32_t extendedAddress = 0;        /**< Extended address from 0x04 reco
 static uint32_t bytesWritten = 0;           /**< Total bytes written to flash */
 static uint8_t sectorsErased = 0;           /**< Flag indicating sectors have been erased */
 static uint8_t tasksWereSuspended = 0;      /**< Flag indicating if tasks were suspended */
+static Partition_t targetPartition = PARTITION_UNKNOWN;  /**< Target partition for OTA update */
+static uint32_t targetBaseAddress = 0;      /**< Base address of target partition */
+static uint32_t targetSize = 0;             /**< Size of target partition */
+static uint32_t targetFirstSector = 0;      /**< First sector of target partition */
+static uint32_t targetLastSector = 0;       /**< Last sector of target partition */
 
 /* Private function prototypes -----------------------------------------------*/
 static HAL_StatusTypeDef Bootloader_EraseFlash(void);
@@ -71,6 +77,9 @@ void Bootloader_Init(void) {
     extendedAddress = 0;
     bytesWritten = 0;
     sectorsErased = 0;
+    targetPartition = PARTITION_UNKNOWN;
+    targetBaseAddress = 0;
+    targetSize = 0;
 }
 
 /**
@@ -112,6 +121,31 @@ void Bootloader_HandleCommand(const char* command, const char* value) {
     if (strcmp(value, "START") == 0) {
         usb_printf("Starting firmware update...\r\n");
         
+        // Determine current partition
+        Partition_t currentPartition = Partition_GetCurrent();
+        targetPartition = Partition_GetInactive();
+        
+        usb_printf("Current partition: %s\r\n", 
+                   currentPartition == PARTITION_A ? "A" : 
+                   currentPartition == PARTITION_B ? "B" : "UNKNOWN");
+        usb_printf("Target partition: %s\r\n", 
+                   targetPartition == PARTITION_A ? "A" : "B");
+        
+        // Get target partition details
+        targetBaseAddress = Partition_GetStartAddress(targetPartition);
+        targetSize = Partition_GetSize(targetPartition);
+        
+        if (targetPartition == PARTITION_A) {
+            targetFirstSector = PARTITION_A_FIRST_SECTOR;
+            targetLastSector = PARTITION_A_LAST_SECTOR;
+        } else {
+            targetFirstSector = PARTITION_B_FIRST_SECTOR;
+            targetLastSector = PARTITION_B_LAST_SECTOR;
+        }
+        
+        usb_printf("Target address: 0x%08lX, size: %lu KB\r\n", 
+                   targetBaseAddress, targetSize / 1024);
+        
         // Suspend non-essential tasks to avoid conflicts
         Bootloader_SuspendNonEssentialTasks();
         
@@ -133,10 +167,29 @@ void Bootloader_HandleCommand(const char* command, const char* value) {
     } 
     else if (strcmp(value, "END") == 0) {
         if (bootloaderState == BOOTLOADER_COMPLETE) {
-            usb_printf("Firmware update complete. Resetting in 1 second...\r\n");
-            osDelay(1000);  // RTOS-aware delay to give time for message to send
-            // Note: Tasks will be resumed by system reset
-            NVIC_SystemReset();
+            usb_printf("Firmware update complete. Updating boot metadata...\r\n");
+            
+            // Mark target partition as valid (version 1, CRC not implemented yet)
+            if (Partition_MarkValid(targetPartition, 1, bytesWritten, 0) == HAL_OK) {
+                usb_printf("Partition %s marked as valid\r\n", 
+                           targetPartition == PARTITION_A ? "A" : "B");
+                
+                // Set target partition as active
+                if (Partition_SetActive(targetPartition) == HAL_OK) {
+                    usb_printf("Active partition set to %s\r\n", 
+                               targetPartition == PARTITION_A ? "A" : "B");
+                    
+                    usb_printf("Resetting in 1 second...\r\n");
+                    osDelay(1000);  // RTOS-aware delay to give time for message to send
+                    
+                    // Note: Tasks will be resumed by system reset
+                    NVIC_SystemReset();
+                } else {
+                    usb_printf("ERROR: Failed to set active partition\r\n");
+                }
+            } else {
+                usb_printf("ERROR: Failed to mark partition as valid\r\n");
+            }
         } else {
             usb_printf("ERROR: Update not complete (state: %d)\r\n", bootloaderState);
         }
@@ -179,18 +232,28 @@ HAL_StatusTypeDef Bootloader_ProcessHEXLine(const char* line) {
     switch (record.recordType) {
         case 0x00: // Data record
         {
-            uint32_t fullAddress = extendedAddress + record.address;
+            // Calculate address from HEX file (relative to 0x08000000)
+            uint32_t hexAddress = extendedAddress + record.address;
             
-            // Validate address range
-            if (fullAddress < APP_START_ADDRESS || 
-                fullAddress >= (APP_START_ADDRESS + APP_SIZE)) {
-                usb_printf("ERROR: Address 0x%08lX out of range\r\n", fullAddress);
+            // Calculate offset from base (0x08000000)
+            uint32_t offset = hexAddress - 0x08000000;
+            
+            // Map to target partition address
+            uint32_t targetAddress = targetBaseAddress + offset;
+            
+            // Validate address is within target partition
+            if (targetAddress < targetBaseAddress || 
+                targetAddress >= (targetBaseAddress + targetSize)) {
+                usb_printf("ERROR: Address 0x%08lX out of target partition range\r\n", targetAddress);
+                usb_printf("       HEX address: 0x%08lX, offset: 0x%08lX\r\n", hexAddress, offset);
+                usb_printf("       Target range: 0x%08lX - 0x%08lX\r\n", 
+                           targetBaseAddress, targetBaseAddress + targetSize);
                 bootloaderState = BOOTLOADER_ERROR;
                 return HAL_ERROR;
             }
             
-            // Write to flash
-            status = WriteToFlash(fullAddress, record.data, record.byteCount);
+            // Write to flash at target partition address
+            status = WriteToFlash(targetAddress, record.data, record.byteCount);
             if (status != HAL_OK) {
                 bootloaderState = BOOTLOADER_ERROR;
                 return status;
@@ -241,13 +304,16 @@ HAL_StatusTypeDef Bootloader_ProcessHEXLine(const char* line) {
   * @brief  Erase flash sectors for firmware update
   * @retval HAL_OK if successful, HAL_ERROR otherwise
   * @note   Flash operations are protected with critical section for RTOS safety
+  *         Erases the target partition sectors only
   */
 static HAL_StatusTypeDef Bootloader_EraseFlash(void) {
     FLASH_EraseInitTypeDef eraseInit;
     uint32_t sectorError = 0;
     HAL_StatusTypeDef status;
     
-    usb_printf("Erasing flash sectors %d to %d...\r\n", FIRST_SECTOR, LAST_SECTOR);
+    usb_printf("Erasing flash sectors %lu to %lu (partition %s)...\r\n", 
+               targetFirstSector, targetLastSector,
+               targetPartition == PARTITION_A ? "A" : "B");
     
     // Enter critical section to prevent RTOS task switching during flash operation
     taskENTER_CRITICAL();
@@ -258,10 +324,10 @@ static HAL_StatusTypeDef Bootloader_EraseFlash(void) {
     // Configure erase
     eraseInit.TypeErase = FLASH_TYPEERASE_SECTORS;
     eraseInit.VoltageRange = FLASH_VOLTAGE_RANGE_3;  // 2.7V to 3.6V
-    eraseInit.Sector = FIRST_SECTOR;
-    eraseInit.NbSectors = (LAST_SECTOR - FIRST_SECTOR + 1);
+    eraseInit.Sector = targetFirstSector;
+    eraseInit.NbSectors = (targetLastSector - targetFirstSector + 1);
     
-    // Perform erase (this can take 10-15 seconds)
+    // Perform erase (this can take several seconds)
     status = HAL_FLASHEx_Erase(&eraseInit, &sectorError);
     
     // Lock flash

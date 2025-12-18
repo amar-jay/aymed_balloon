@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include "system.h"
 #include "utils.h"
+#include "partition.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -124,7 +125,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+  
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -133,6 +134,15 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+  
+  // Initialize partition system early
+  Partition_Init();
+  
+  // Check if we should boot to a different partition
+  // This is useful when running from bootloader region initially
+  // Note: Boot_CheckAndJumpToPartition() won't return if it jumps to another partition
+  extern uint8_t Boot_CheckAndJumpToPartition(void);
+  Boot_CheckAndJumpToPartition();
 
   /* USER CODE END Init */
 
