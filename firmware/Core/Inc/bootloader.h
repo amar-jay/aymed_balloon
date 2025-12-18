@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * @file    bootloader.h
-  * @brief   OTA firmware update bootloader header
+  * @brief   OTA firmware update module header
   * @author  Abdel Manan Abdel Rahman
   ******************************************************************************
   * @attention
@@ -9,11 +9,32 @@
   * This module implements an Intel HEX format parser and flash writer for
   * over-the-air firmware updates via UART.
   *
+  * IMPORTANT: This is NOT a traditional bootloader architecture. The firmware
+  * updates itself while running. There is NO separate bootloader in protected
+  * flash sectors. This is an in-application OTA updater.
+  *
+  * Update Flow:
+  * 1. Device runs normally from 0x08000000 (sectors 0-10)
+  * 2. User sends: FIRMWARE_UPDATE=START (via UART)
+  * 3. Firmware erases **ALL** sectors 0-10 (~30 seconds)
+  * 4. User sends Intel HEX lines (new firmware data)
+  * 5. Firmware writes to flash and validates each write
+  * 6. Firmware validates vector table (stack pointer, reset vector)
+  * 7. User sends: FIRMWARE_UPDATE=END
+  * 8. Device performs system reset
+  * 9. New firmware boots from 0x08000000
+  *
+  * WARNING: If update is interrupted during/after erase, device WILL BE BRICKED.
+  * Recovery requires SWD/JTAG programmer. Ensure:
+  * - Stable power supply throughout update
+  * - Reliable UART connection  
+  * - Complete firmware HEX file ready before starting
+  *
   * Usage:
   * 1. Initialize: Bootloader_Init()
-  * 2. Send command: Bootloader_HandleCommand("FIRMWARE_UPDATE", "START")
-  * 3. Send HEX lines: Bootloader_ProcessHEXLine(":10010000...")
-  * 4. End update: Bootloader_HandleCommand("FIRMWARE_UPDATE", "END")
+  * 2. Send command: FIRMWARE_UPDATE=START
+  * 3. Send HEX lines: :10010000...
+  * 4. End update: FIRMWARE_UPDATE=END
   *
   ******************************************************************************
   */
@@ -100,6 +121,30 @@ BootloaderState_t Bootloader_GetState(void);
   * @retval Number of bytes written to flash
   */
 uint32_t Bootloader_GetBytesWritten(void);
+
+/**
+  * @brief  Check if device is currently in firmware update mode
+  * @note   Checks current bootloader state (RECEIVING or COMPLETE)
+  * @note   This does NOT check persistent storage - update mode is not preserved across resets
+  * @retval 1 if currently in update mode, 0 otherwise
+  */
+uint8_t Bootloader_CheckUpdateModeRequest(void);
+
+/**
+  * @brief  Display instructions for entering firmware update mode
+  * @note   Update mode is entered via FIRMWARE_UPDATE=START command, not persistent flags
+  * @note   This function only prints helpful instructions to the user
+  * @retval None
+  */
+void Bootloader_RequestUpdateMode(void);
+
+/**
+  * @brief  Exit firmware update mode and return to idle state
+  * @note   Resets bootloader state machine and resumes suspended RTOS tasks
+  * @note   Does not affect any persistent storage
+  * @retval None
+  */
+void Bootloader_ClearUpdateModeRequest(void);
 
 #ifdef __cplusplus
 }

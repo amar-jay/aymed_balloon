@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * @file    bootloader.c
-  * @brief   OTA firmware update bootloader implementation
+  * @brief   In-application OTA firmware update implementation
   * @author  Abdel Manan Abdel Rahman
   ******************************************************************************
   * @attention
@@ -9,18 +9,39 @@
   * This module implements an Intel HEX format parser and flash writer for
   * over-the-air firmware updates via UART.
   *
-  * Memory Layout (STM32F407VGTx - 1024KB Flash):
-  * - Sectors 0-1: 16KB each - Bootloader/system (preserved)
-  * - Sectors 2-3: 16KB each - EEPROM emulation (preserved)
-  * - Sector 4: 64KB - Application start (updateable)
-  * - Sectors 5-10: 128KB each - Application (updateable)
-  * - Sector 11: 128KB - Reserved for config (preserved)
+  * ARCHITECTURE CLARIFICATION:
+  * This is NOT a traditional dual-bank bootloader! It's an in-application
+  * self-update mechanism. The running firmware erases and writes to its own
+  * flash space. If interrupted, the device may be bricked.
   *
-  * Total updateable: 64KB + 6*128KB = 832KB
+  * Memory Layout (STM32F407VGTx - 1024KB Flash):
+  * - Sectors 0-3: 64KB total - Vector table, startup code, firmware
+  * - Sectors 4-10: 832KB total - Application code, data
+  * - Sector 11: 128KB - Configuration storage (NEVER touched by updater)
+  *
+  * Update Process:
+  * 1. Firmware runs normally from 0x08000000
+  * 2. FIRMWARE_UPDATE=START command received via UART
+  * 3. Non-essential RTOS tasks suspended
+  * 4. **ALL application sectors (0-10) erased** (takes ~20-30 seconds)
+  * 5. Intel HEX records received and written to flash
+  * 6. Basic validation performed (stack pointer, reset vector)
+  * 7. FIRMWARE_UPDATE=END triggers system reset
+  * 8. New firmware boots from 0x08000000
+  *
+  * Critical Sector (NEVER updated):
+  * - Sector 11: Configuration data permanently preserved
+  *
+  * IMPORTANT SAFETY NOTES:
+  * - Device will be BRICKED if update interrupted during erase/write
+  * - No recovery possible without SWD/JTAG programmer
+  * - Ensure stable power supply during entire update process
+  * - Ensure reliable UART connection
+  * - Test new firmware thoroughly before deploying updates
   *
   * RTOS Considerations:
-  * - Flash operations are protected with taskENTER_CRITICAL/taskEXIT_CRITICAL
-  * - Non-essential tasks are suspended during firmware update
+  * - Flash operations protected with taskENTER_CRITICAL/taskEXIT_CRITICAL
+  * - Non-essential tasks suspended during update to prevent conflicts
   * - UART access uses existing uartSemaphoreHandle
   * - Uses osDelay for RTOS-aware delays
   *
@@ -39,9 +60,24 @@ extern osThreadId_t heaterTaskHandle;
 
 /* Configuration -------------------------------------------------------------*/
 #define APP_START_ADDRESS   0x08000000      /**< Application base address */
-#define APP_SIZE            (832 * 1024)    /**< Maximum application size (832KB) - matches updateable area */
-#define FIRST_SECTOR        FLASH_SECTOR_4  /**< First sector to erase */
+#define APP_END_ADDRESS     0x080DFFFF      /**< Application end address (end of sector 10) */
+#define APP_SIZE            (896 * 1024)    /**< Maximum application size: sectors 0-10 = 896KB */
+#define FIRST_SECTOR        FLASH_SECTOR_0  /**< First sector to erase - full firmware update */
 #define LAST_SECTOR         FLASH_SECTOR_10 /**< Last sector to erase */
+#define CONFIG_SECTOR       FLASH_SECTOR_11 /**< Configuration sector (never erased) */
+
+/* Boot Magic Configuration --------------------------------------------------*/
+/* Note: This implementation uses a simple in-application OTA update mechanism.
+ * The device does NOT have a separate bootloader in different flash sectors.
+ * Instead, it receives firmware updates while running and writes them to flash.
+ * Boot mode is controlled via UART commands, not persistent flags.
+ *
+ * WARNING: During update, ALL application sectors (0-10) are erased. If the
+ * update is interrupted (power loss, communication failure), the device will
+ * be bricked and require recovery via SWD/JTAG. Ensure stable power and
+ * reliable communication before starting an update.
+ */
+#define MIN_FIRMWARE_SIZE   (16 * 1024)     /**< Minimum valid firmware size (16KB) */
 
 /* Enable ACK responses for each HEX line (useful for debugging) */
 // #define BOOTLOADER_SEND_ACK
@@ -52,6 +88,7 @@ static uint32_t extendedAddress = 0;        /**< Extended address from 0x04 reco
 static uint32_t bytesWritten = 0;           /**< Total bytes written to flash */
 static uint8_t sectorsErased = 0;           /**< Flag indicating sectors have been erased */
 static uint8_t tasksWereSuspended = 0;      /**< Flag indicating if tasks were suspended */
+static uint32_t updateStartTime = 0;        /**< Timestamp when update started (for timeout) */
 
 /* Private function prototypes -----------------------------------------------*/
 static HAL_StatusTypeDef Bootloader_EraseFlash(void);
@@ -103,18 +140,31 @@ void Bootloader_Reset(void) {
     }
 }
 
-void Bootloader_JumpToMainApp(uint32_t _app_addr)
-{
-	uint32_t jump_addr;
+/**
+  * @brief  Check if device should enter firmware update mode
+  * @retval Current bootloader state (1 if in update mode, 0 otherwise)
+  * @note   This checks the current state, not a persistent flag
+  */
+uint8_t Bootloader_CheckUpdateModeRequest(void) {
+    // Return 1 if we're currently in receiving or complete state
+    return (bootloaderState == BOOTLOADER_RECEIVING || 
+            bootloaderState == BOOTLOADER_COMPLETE) ? 1 : 0;
+}
 
-	ptrFapp jump_app;
+/**
+  * @brief  Request firmware update mode
+  * @note   This doesn't persist across resets - use FIRMWARE_UPDATE START command
+  */
+void Bootloader_RequestUpdateMode(void) {
+    usb_printf("To enter update mode, send: FIRMWARE_UPDATE=START\r\n");
+}
 
-	jump_addr = *(uint32_t*)(_app_addr + 4);
-	jump_app  = (ptrFapp)jump_addr;
-
-	__set_MSP(*(uint32_t*)_app_addr);
-
-	jump_app();
+/**
+  * @brief  Clear firmware update mode request
+  * @note   Resets bootloader to idle state
+  */
+void Bootloader_ClearUpdateModeRequest(void) {
+    Bootloader_Reset();
 }
 
 /**
@@ -124,7 +174,25 @@ void Bootloader_JumpToMainApp(uint32_t _app_addr)
   */
 void Bootloader_HandleCommand(const char* command, const char* value) {
     if (strcmp(value, "START") == 0) {
-        usb_printf("Starting firmware update...\r\n");
+        usb_printf("\r\n");
+        usb_printf("========================================\r\n");
+        usb_printf("   FIRMWARE UPDATE - DANGER ZONE\r\n");
+        usb_printf("========================================\r\n");
+        usb_printf("WARNING: This will erase ALL firmware!\r\n");
+        usb_printf("WARNING: Device will BRICK if interrupted!\r\n");
+        usb_printf("- Ensure stable power supply\r\n");
+        usb_printf("- Ensure reliable UART connection\r\n");
+        usb_printf("- Do NOT disconnect during update\r\n");
+        usb_printf("\r\n");
+        usb_printf("Sectors to erase: 0-10 (896KB)\r\n");
+        usb_printf("Config sector 11: PRESERVED\r\n");
+        usb_printf("\r\n");
+        usb_printf("This will take ~30 seconds...\r\n");
+        usb_printf("========================================\r\n");
+        usb_printf("\r\n");
+
+        // Record start time
+        updateStartTime = HAL_GetTick();
 
         // Suspend non-essential tasks to avoid conflicts
         Bootloader_SuspendNonEssentialTasks();
@@ -133,31 +201,68 @@ void Bootloader_HandleCommand(const char* command, const char* value) {
         Bootloader_Init();
 
         // Erase flash sectors (protected by critical section internally)
+        usb_printf("Erasing flash sectors...\r\n");
         if (Bootloader_EraseFlash() == HAL_OK) {
             bootloaderState = BOOTLOADER_RECEIVING;
             extendedAddress = 0;
             bytesWritten = 0;
-            usb_printf("UPDATE READY\r\n");
+            usb_printf("\r\n");
+            usb_printf("========================================\r\n");
+            usb_printf("UPDATE READY - Send Intel HEX data now\r\n");
+            usb_printf("========================================\r\n");
         } else {
             bootloaderState = BOOTLOADER_ERROR;
-            usb_printf("ERROR: Failed to prepare flash\r\n");
-            // Resume tasks if erase failed
+            usb_printf("\r\n");
+            usb_printf("ERROR: Failed to erase flash\r\n");
+            usb_printf("Device may be in undefined state - recovery via SWD required\r\n");
+            // Resume tasks if erase failed (though device may be unstable)
             Bootloader_ResumeNonEssentialTasks();
         }
     }
     else if (strcmp(value, "END") == 0) {
         if (bootloaderState == BOOTLOADER_COMPLETE) {
-            usb_printf("Firmware update complete. Resetting in 1 second...\r\n");
-            osDelay(1000);  // RTOS-aware delay to give time for message to send
+            uint32_t updateDuration = (HAL_GetTick() - updateStartTime) / 1000;
+            usb_printf("\r\n");
+            usb_printf("========================================\r\n");
+            usb_printf("   FIRMWARE UPDATE SUCCESSFUL\r\n");
+            usb_printf("========================================\r\n");
+            usb_printf("Total bytes written: %lu (%lu KB)\r\n", bytesWritten, bytesWritten / 1024);
+            usb_printf("Update duration: %lu seconds\r\n", updateDuration);
+            usb_printf("Resetting device in 2 seconds...\r\n");
+            usb_printf("========================================\r\n");
+            osDelay(2000);  // RTOS-aware delay to give time for message to send
             // Note: Tasks will be resumed by system reset
             NVIC_SystemReset();
+        } else if (bootloaderState == BOOTLOADER_ERROR) {
+            usb_printf("\r\n");
+            usb_printf("ERROR: Cannot complete update - errors occurred\r\n");
+            usb_printf("Device firmware may be corrupted\r\n");
+            usb_printf("Recovery via SWD/JTAG programmer required\r\n");
         } else {
+            usb_printf("\r\n");
             usb_printf("ERROR: Update not complete (state: %d)\r\n", bootloaderState);
+            usb_printf("Expected state: COMPLETE, current state: %d\r\n", bootloaderState);
         }
     }
     else if (strcmp(value, "ABORT") == 0) {
+        usb_printf("\r\n");
+        usb_printf("========================================\r\n");
+        usb_printf("   FIRMWARE UPDATE ABORTED\r\n");
+        usb_printf("========================================\r\n");
+        
+        if (sectorsErased) {
+            usb_printf("WARNING: Flash sectors were already erased!\r\n");
+            usb_printf("WARNING: Device firmware is INCOMPLETE!\r\n");
+            usb_printf("WARNING: Recovery via SWD/JTAG required!\r\n");
+            usb_printf("Device may not boot properly after reset.\r\n");
+        } else {
+            usb_printf("Update aborted before flash erase.\r\n");
+            usb_printf("Device firmware intact.\r\n");
+        }
+        
         Bootloader_Reset();
-        usb_printf("Firmware update aborted\r\n");
+        usb_printf("========================================\r\n");
+        
         // Resume tasks after abort
         Bootloader_ResumeNonEssentialTasks();
     }
@@ -195,10 +300,17 @@ HAL_StatusTypeDef Bootloader_ProcessHEXLine(const char* line) {
         {
             uint32_t fullAddress = extendedAddress + record.address;
 
-            // Validate address range
-            if (fullAddress < APP_START_ADDRESS ||
-                fullAddress >= (APP_START_ADDRESS + APP_SIZE)) {
-                usb_printf("ERROR: Address 0x%08lX out of range\r\n", fullAddress);
+            // Validate address range - must be within application area
+            if (fullAddress < APP_START_ADDRESS || fullAddress > APP_END_ADDRESS) {
+                usb_printf("ERROR: Address 0x%08lX out of valid range [0x%08lX - 0x%08lX]\r\n",
+                           fullAddress, APP_START_ADDRESS, APP_END_ADDRESS);
+                bootloaderState = BOOTLOADER_ERROR;
+                return HAL_ERROR;
+            }
+
+            // Prevent writes to configuration sector (sector 11)
+            if (fullAddress >= 0x080E0000 && fullAddress <= 0x080FFFFF) {
+                usb_printf("ERROR: Cannot write to config sector (0x%08lX)\r\n", fullAddress);
                 bootloaderState = BOOTLOADER_ERROR;
                 return HAL_ERROR;
             }
@@ -210,17 +322,35 @@ HAL_StatusTypeDef Bootloader_ProcessHEXLine(const char* line) {
                 return status;
             }
 
-            // Optional: Print progress every 1KB
-            if (bytesWritten % 1024 == 0) {
+            // Print progress every 16KB (one sector 4+)
+            if (bytesWritten % (16 * 1024) == 0) {
                 usb_printf("Progress: %lu KB written\r\n", bytesWritten / 1024);
             }
         }
         break;
 
         case 0x01: // End of file
+            // Validate that we received a reasonable amount of data
+            if (bytesWritten < MIN_FIRMWARE_SIZE) {
+                usb_printf("ERROR: Firmware too small (%lu bytes, minimum %lu)\r\n",
+                           bytesWritten, MIN_FIRMWARE_SIZE);
+                bootloaderState = BOOTLOADER_ERROR;
+                return HAL_ERROR;
+            }
+
+            // Verify vector table looks valid (stack pointer should be in RAM)
+            uint32_t stackPointer = *(volatile uint32_t*)APP_START_ADDRESS;
+            if (stackPointer < 0x20000000 || stackPointer > 0x20020000) {
+                usb_printf("ERROR: Invalid stack pointer in new firmware: 0x%08lX\r\n", stackPointer);
+                usb_printf("WARNING: New firmware may be corrupt. Send ABORT to cancel or END to proceed anyway.\r\n");
+                // Don't set ERROR state - let user decide
+            }
+
             usb_printf("UPDATE COMPLETE\r\n");
             usb_printf("Total bytes written: %lu (%lu KB)\r\n",
                        bytesWritten, bytesWritten / 1024);
+            usb_printf("Stack pointer: 0x%08lX\r\n", stackPointer);
+            usb_printf("Reset vector: 0x%08lX\r\n", *(volatile uint32_t*)(APP_START_ADDRESS + 4));
             bootloaderState = BOOTLOADER_COMPLETE;
             break;
 
