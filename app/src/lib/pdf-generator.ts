@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Professional PDF Report Generator for Welding Sessions
  * Generates well-designed, professional PDF reports with proper formatting,
@@ -171,7 +172,7 @@ export async function generateSessionPDF(options: PDFOptions): Promise<void> {
           align: 'center'
         })
       }
-    } catch (err) {
+    } catch {
       // If logo fails to load, show session ID as fallback
       const idText = `#${session.id || 'N/A'}`
       const idWidth = doc.widthOfString(idText) + 20
@@ -288,7 +289,7 @@ export async function generateSessionPDF(options: PDFOptions): Promise<void> {
 
       columns.forEach((col, i) => {
         // Adjust text position for padding
-        const textX = col.align === 'right' ? currentX - 5 : currentX + 5
+        // const textX = col.align === 'right' ? currentX - 5 : currentX + 5
         const align = col.align as any
 
         doc.text(col.header.toUpperCase(), currentX, y + 6, {
@@ -442,19 +443,19 @@ export async function generateSessionPDF(options: PDFOptions): Promise<void> {
 /**
  * Formats duration in milliseconds to a human-readable string
  */
-function formatDuration(ms: number): string {
-  const seconds = Math.floor(ms / 1000)
-  const minutes = Math.floor(seconds / 60)
-  const hours = Math.floor(minutes / 60)
-  const days = Math.floor(hours / 24)
+// function formatDuration(ms: number): string {
+//   const seconds = Math.floor(ms / 1000)
+//   const minutes = Math.floor(seconds / 60)
+//   const hours = Math.floor(minutes / 60)
+//   const days = Math.floor(hours / 24)
 
-  if (days > 0) {
-    return `${days}d ${hours % 24}h ${minutes % 60}m`
-  } else if (hours > 0) {
-    return `${hours}h ${minutes % 60}m`
-  } else if (minutes > 0) {
-    return `${minutes}m ${seconds % 60}s`
-  } else {
-    return `${seconds}s`
-  }
-}
+//   if (days > 0) {
+//     return `${days}d ${hours % 24}h ${minutes % 60}m`
+//   } else if (hours > 0) {
+//     return `${hours}h ${minutes % 60}m`
+//   } else if (minutes > 0) {
+//     return `${minutes}m ${seconds % 60}s`
+//   } else {
+//     return `${seconds}s`
+//   }
+// }

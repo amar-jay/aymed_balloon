@@ -1,17 +1,25 @@
-import * as React from "react"
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts"
-import { SystemData } from 'src/lib/types/minibuf'
-import { Card } from "./ui/card"
+import * as React from 'react'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select"
+  Area,
+  AreaChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer
+} from 'recharts'
+import { SystemData } from 'src/lib/types/minibuf'
+import { Card } from './ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 
-export function TempGraph({ pastSystemData, isAnimated = false }: { pastSystemData: SystemData[], isAnimated?: boolean }) {
-  const [timeRange, setTimeRange] = React.useState("60")
+export function TempGraph({
+  pastSystemData,
+  isAnimated = false
+}: {
+  pastSystemData: SystemData[]
+  isAnimated?: boolean
+}) {
+  const [timeRange, setTimeRange] = React.useState('60')
 
   const filteredData = React.useMemo(() => {
     const range = parseInt(timeRange)
@@ -22,7 +30,7 @@ export function TempGraph({ pastSystemData, isAnimated = false }: { pastSystemDa
       topTemp: d.topTemp,
       bottomTemp: d.bottomTemp
     }))
-    
+
     if (data.length <= range) return data
     return data.slice(data.length - range)
   }, [pastSystemData, timeRange])
@@ -63,10 +71,7 @@ export function TempGraph({ pastSystemData, isAnimated = false }: { pastSystemDa
             </div>
           </div>
           <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger
-              className="w-[130px] h-8 text-xs rounded-lg"
-              aria-label="Select a value"
-            >
+            <SelectTrigger className="w-[130px] h-8 text-xs rounded-lg" aria-label="Select a value">
               <SelectValue placeholder="Last 60s" />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
@@ -79,7 +84,7 @@ export function TempGraph({ pastSystemData, isAnimated = false }: { pastSystemDa
               <SelectItem value="60" className="rounded-lg text-xs">
                 Last 60s
               </SelectItem>
-               <SelectItem value="30" className="rounded-lg text-xs">
+              <SelectItem value="30" className="rounded-lg text-xs">
                 Last 30s
               </SelectItem>
             </SelectContent>
@@ -111,7 +116,7 @@ export function TempGraph({ pastSystemData, isAnimated = false }: { pastSystemDa
                 minTickGap={32}
                 tickFormatter={(value) => `${value}`}
               />
-              <YAxis 
+              <YAxis
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
@@ -120,11 +125,12 @@ export function TempGraph({ pastSystemData, isAnimated = false }: { pastSystemDa
               />
               <Tooltip
                 contentStyle={{
-                    backgroundColor: 'var(--secondary)',
-                    borderColor: 'var(--border)',
-                    borderRadius: 'var(--radius)'
+                  backgroundColor: 'var(--secondary)',
+                  borderColor: 'var(--border)',
+                  borderRadius: 'var(--radius)'
                 }}
                 itemStyle={{ color: 'var(--foreground)' }}
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 labelFormatter={(_) => ``}
               />
               <Area

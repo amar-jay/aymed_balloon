@@ -53,7 +53,6 @@ extern "C" {
   */
 typedef enum {
     BOOTLOADER_IDLE = 0,        /**< Idle state, ready to start update */
-    BOOTLOADER_READY,           /**< Flash erased, ready to receive data */
     BOOTLOADER_RECEIVING,       /**< Receiving and writing HEX data */
     BOOTLOADER_ERROR,           /**< Error occurred during update */
     BOOTLOADER_COMPLETE         /**< Update completed successfully */

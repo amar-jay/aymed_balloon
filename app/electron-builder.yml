@@ -1,5 +1,5 @@
-appId: com.electron.app
-productName: app
+appId: com.amarjay.aymed
+productName: aymed-welder
 directories:
   buildResources: build
 files:
@@ -12,7 +12,7 @@ files:
 asarUnpack:
   - resources/**
 win:
-  executableName: app
+  executableName: aymed-welder
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}

@@ -549,7 +549,8 @@ export async function uploadFirmware(
   // 3. Wait for device to be ready
   console.log('[Firmware] Waiting for device...')
   try {
-    await waitForResponse(connectionId, 'UPDATE READY', 10000)
+    // Erase can take up to 30 seconds, so we wait 40s to be safe
+    await waitForResponse(connectionId, 'UPDATE READY', 40000)
   } catch {
     throw new Error('Device did not enter bootloader mode. Check connection and try again.')
   }

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, shell } from 'electron'
+import { app, BrowserWindow, dialog } from 'electron'
 import { join } from 'path'
 import Database from 'better-sqlite3'
 import { Session, Weld, computeSessionStats } from './types/session'

@@ -4,7 +4,8 @@ import { cn } from './lib/utils'
 import { Card } from './components/ui/card'
 import { useCallback, useEffect, useState, useRef } from 'react'
 import { SystemConfig, SystemData } from 'src/lib/types/minibuf'
-import { TempGraph } from './components/temp-graph-v3'
+import { TempGraph } from './components/temp-graph'
+import { TempGraph as TempGraphv3 } from './components/temp-graph-v3'
 import { useAtom } from 'jotai/react'
 import { historyLimitAtom, settingsAtom, versionAtom } from './lib/jotai'
 import VoltageCard from './components/voltage-card'
@@ -29,31 +30,13 @@ const generateMockSystemData = (): SystemData => {
     pedalActive: Math.random() < 0.5,
     topHeaterActive: Math.random() < 0.5,
     bottomHeaterActive: Math.random() < 0.5,
-    sysError: Math.random() < 0.1 ? 'Overheat' : undefined
+    proximityActive: Math.random() < 0.5,
+    coolingFanActive: Math.random() < 0.5,
+    pressureValveActive: Math.random() < 0.5
+    // sysError: Math.random() < 0.1 ? 'Overheat' : undefined
   }
 }
 
-const generateMockSystemConfig = (): SystemConfig => {
-  return {
-    opTime: 30,
-    coTime: 15, // cooling time
-    topTempThreshold: 120,
-    bottomTempThreshold: 140,
-    powerTempError: 80,
-    topTempOffset: 0,
-    bottomTempOffset: 0,
-    sysErrorEnabled: true,
-    menuResetDelay: 0,
-    timeCalibration: 0,
-    maxTempError: 0,
-    vccVoltageError: 0,
-    powerVccErrorEnabled: false,
-    voltageCalibration: 0,
-    heaterErrorEnable: 120,
-    coolingDelay: 0,
-    useInternalADC: false
-  }
-}
 export function Dashboard({ isConnected, connectionId }: DashboardProps) {
   const [systemData, setSystemData] = useState<SystemData | null>(null)
   // const [version, setVersion] = useState<string | null>(null)
@@ -88,13 +71,26 @@ export function Dashboard({ isConnected, connectionId }: DashboardProps) {
       setPastSystemData((prev) => {
         if (prev.length >= HISTORY_LIMIT) {
           // drop the first
-          return [...prev.slice(1), next]
+          return [...prev.slice(prev.length - HISTORY_LIMIT + 1), next]
         }
         return [...prev, next]
       })
     },
-    [HISTORY_LIMIT]
+    [HISTORY_LIMIT, setSystemData, setPastSystemData]
   )
+
+  // Listen for status updates from use-serial hook
+  useEffect(() => {
+    const handleStatusUpdate = (event: CustomEvent<SystemData>) => {
+      pushSystemSnapshot(event.detail)
+    }
+
+    window.addEventListener('serial-status-update', handleStatusUpdate as EventListener)
+    return () => {
+      window.removeEventListener('serial-status-update', handleStatusUpdate as EventListener)
+    }
+  }, [pushSystemSnapshot])
+
 
   const createWeld = (currentSystemData, currentConfig) => {
     const newWeld = {
@@ -138,25 +134,26 @@ export function Dashboard({ isConnected, connectionId }: DashboardProps) {
       // if (!isConnected) return
       if (!connectionId) {
         // Currently not connected, so using mock data temporarily for testing
-        if (process.env.NODE_ENV === 'development') {
-          const status = generateMockSystemData()
-          pushSystemSnapshot(status)
-          const isPedalActive = status?.pedalActive ?? false
-          if (isPedalActive && !lastPedalStateRef.current) {
-            const newWeld = createWeld(status, configRef.current)
-            await addWeld(newWeld, false)
-          }
-          lastPedalStateRef.current = isPedalActive
-          // setConfig(generateMockSystemConfig())
-        }
+        // if (process.env.NODE_ENV === 'development') {
+        //   const status = generateMockSystemData()
+        //   pushSystemSnapshot(status)
+        //   const isPedalActive = status?.pedalActive ?? false
+        //   if (isPedalActive && !lastPedalStateRef.current) {
+        //     const newWeld = createWeld(status, configRef.current)
+        //     await addWeld(newWeld, false)
+        //   }
+        //   lastPedalStateRef.current = isPedalActive
+        //   // setConfig(generateMockSystemConfig())
+        // }
         return
       }
 
       await window.api.SerialsendCommand(connectionId, 'GET STATUS')
-      const status = window.api.SerialgetSystemStatus(connectionId)
-      if (status) {
-        pushSystemSnapshot({ ...status })
-      }
+      // const status = window.api.SerialgetSystemStatus(connectionId)
+      // if (status) {
+      //   console.log('GET STATUS sent', status)
+      //   pushSystemSnapshot({ ...status })
+      // }
 
       // request version and config frequently if not present already
       // especially useful on initial connect
@@ -177,12 +174,12 @@ export function Dashboard({ isConnected, connectionId }: DashboardProps) {
       // to handle whenever the pedal is pressed
       // this is used to add welds automatically when the pedal is pressed
       // and avoid debouncing when held down
-      const isPedalActive = status?.pedalActive ?? false
-      if (isPedalActive && !lastPedalStateRef.current) {
-        const newWeld = createWeld(status, c)
-        await addWeld(newWeld, false)
-      }
-      lastPedalStateRef.current = isPedalActive
+      // const isPedalActive = status?.pedalActive ?? false
+      // if (isPedalActive && !lastPedalStateRef.current) {
+      //   const newWeld = createWeld(status, c)
+      //   await addWeld(newWeld, false)
+      // }
+      // lastPedalStateRef.current = isPedalActive
     }, 1000)
 
     const configInterval = setInterval(async () => {
@@ -232,7 +229,7 @@ export function Dashboard({ isConnected, connectionId }: DashboardProps) {
           {/* Temperature Gauges Section */}
           <div>
             {/* <h2 className="text-lg font-semibold mb-4 text-foreground">Temperature Monitoring</h2> */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
+            <div className="grid grid-cols-5 gap-6">
               {/* Top Heater */}
               <Card className="flex flex-col items-center transition-colors shadow-none md:border-none">
                 <div className="text-sm font-medium text-muted-foreground">Top Heater</div>
@@ -318,7 +315,11 @@ export function Dashboard({ isConnected, connectionId }: DashboardProps) {
           {/* if its in dev mode, show the raw system data and config */}
           <>
             {/* Temperature Graphs Section */}
-            <TempGraph pastSystemData={pastSystemData} />
+            {process.env.NODE_ENV === 'development' ? (
+              <TempGraph pastSystemData={pastSystemData} />
+            ) : (
+              <TempGraphv3 pastSystemData={pastSystemData} />
+            )}
 
             <div className="grid grid-cols-2 gap-2">
               {sessionId ? (
@@ -347,7 +348,7 @@ export function Dashboard({ isConnected, connectionId }: DashboardProps) {
                 {process.env.NODE_ENV === 'development' && (
                   <>
                     <h4 className="text-sm text-muted-foreground mt-2">System Data:</h4>
-                    <p className="text-xs">{JSON.stringify(systemData, null, 2)}</p>
+                    <p className="text-xs">{JSON.stringify(systemData, null, 2)}, </p>
                     <h4 className="text-sm text-muted-foreground mt-2">System Config:</h4>
                     <p className="text-xs">{JSON.stringify(config, null, 2)}</p>
                   </>

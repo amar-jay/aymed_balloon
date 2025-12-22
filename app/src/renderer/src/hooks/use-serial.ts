@@ -50,6 +50,13 @@ export const useSerial = () => {
             addReceivedData(`[${new Date().toLocaleTimeString()}] ${data}`)
           })
         }
+
+        // Also check for status updates since we're reading the buffer
+        const status = await window.api.SerialgetSystemStatus(connectionId)
+        if (status) {
+          // Dispatch a custom event so other components can listen
+          window.dispatchEvent(new CustomEvent('serial-status-update', { detail: status }))
+        }
       } catch (error) {
         console.error('Error reading data:', error)
       }
